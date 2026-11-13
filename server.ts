@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { assessPain, detectOverload, generateSession, painDurationGuidance, sessionTotal, type PainEntry, type SessionExercise } from "./src/logic";
 import { MUSCLE_PARTS, JOINTS, RED_FLAGS, EXERCISES, ROTATIONS } from "./src/exercises";
 import { loadStore, saveStore, resetStore } from "./src/store";
+import { InvalidInput, parseProfile, validNote, validPainLevel, validReps, validRpe } from "./src/validate";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const PUBLIC = join(process.cwd(), "public");
@@ -30,16 +31,28 @@ function publicState() {
   };
 }
 
+// Every field is validated (src/validate.ts); an invalid value throws
+// InvalidInput and the handler answers 400 without storing anything.
+// Nothing is silently clamped, truncated, or coerced anymore.
 function applyExerciseUpdate(ex: SessionExercise, body: Record<string, unknown>): SessionExercise {
-  const logged = Array.isArray(body.loggedSets)
-    ? body.loggedSets.slice(0, 10).map((v) => Math.max(0, Math.min(999, Math.trunc(Number(v) || 0))))
-    : ex.loggedSets;
-  return {
-    ...ex, loggedSets: logged,
-    rpe: body.rpe === null || body.rpe === "" || body.rpe === undefined ? ex.rpe : Math.max(1, Math.min(10, Number(body.rpe) || ex.rpe || 1)),
-    completed: typeof body.completed === "boolean" ? body.completed : ex.completed,
-    note: typeof body.note === "string" ? body.note.slice(0, 500) : ex.note,
-  };
+  let loggedSets = ex.loggedSets;
+  if (body.loggedSets !== undefined) {
+    if (!Array.isArray(body.loggedSets)) throw new InvalidInput("回数の形式が正しくありません");
+    if (body.loggedSets.length > 10) throw new InvalidInput("セット数が多すぎます");
+    loggedSets = body.loggedSets.map(validReps);
+  }
+  let rpe = ex.rpe;
+  if (body.rpe !== undefined) {
+    const v = validRpe(body.rpe); // null = "not entered": keep the stored value, as before
+    if (v !== null) rpe = v;
+  }
+  let completed = ex.completed;
+  if (body.completed !== undefined) {
+    if (typeof body.completed !== "boolean") throw new InvalidInput("完了フラグの形式が正しくありません");
+    completed = body.completed;
+  }
+  const note = body.note === undefined ? ex.note : validNote(body.note);
+  return { ...ex, loggedSets, rpe, completed, note };
 }
 
 const server = Bun.serve({
@@ -53,21 +66,25 @@ const server = Bun.serve({
       if (path === "/api/profile" && req.method === "POST") {
         const b = await req.json();
         const store = loadStore();
-        store.profile = {
-          age: b.age ? Number(b.age) : null, sex: String(b.sex ?? ""),
-          heightCm: b.heightCm ? Number(b.heightCm) : null, weightKg: b.weightKg ? Number(b.weightKg) : null,
-          bodyFatNote: String(b.bodyFatNote ?? ""), habitNote: String(b.habitNote ?? ""),
-        };
+        store.profile = parseProfile(b); // throws InvalidInput -> 400
         saveStore(store); return json(publicState());
       }
 
       if (path === "/api/pain" && req.method === "POST") {
         const b = await req.json();
         const store = loadStore();
+        // Pain levels are validated, not clamped: a present value must be
+        // an integer 0-5 (a missing part means 0, as the client sends all).
+        const level = (obj: unknown, key: string): number => {
+          if (obj === undefined || obj === null) return 0;
+          if (typeof obj !== "object") throw new InvalidInput("痛みレベルの形式が正しくありません");
+          const v = (obj as Record<string, unknown>)[key];
+          return v === undefined ? 0 : validPainLevel(v);
+        };
         const entry: PainEntry = {
           date: today(),
-          soreness: Object.fromEntries(MUSCLE_PARTS.map((p) => [p, Math.max(0, Math.min(5, Number(b.soreness?.[p]) || 0))])),
-          jointPain: Object.fromEntries(JOINTS.map((j) => [j, Math.max(0, Math.min(5, Number(b.jointPain?.[j]) || 0))])),
+          soreness: Object.fromEntries(MUSCLE_PARTS.map((p) => [p, level(b.soreness, p)])),
+          jointPain: Object.fromEntries(JOINTS.map((j) => [j, level(b.jointPain, j)])),
           redFlags: Array.isArray(b.redFlags) ? b.redFlags.filter((x: unknown) => RED_FLAGS.some((f) => f.id === x)) : [],
         };
         store.pain = [...store.pain.filter((p) => p.date !== entry.date), entry];
@@ -134,6 +151,8 @@ const server = Bun.serve({
       if (await file.exists()) return new Response(file);
       return new Response(Bun.file(join(PUBLIC, "index.html")));
     } catch (e) {
+      if (e instanceof InvalidInput) return json({ error: e.message }, 400);
+      if (e instanceof SyntaxError) return json({ error: "リクエストの形式が正しくありません" }, 400);
       return json({ error: String(e) }, 500);
     }
   },

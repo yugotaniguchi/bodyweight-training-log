@@ -87,6 +87,11 @@ textarea{height:auto;min-height:42px;padding:9px 10px;line-height:1.5;resize:ver
 .ok{border:1px solid var(--badge);background:#0b2420;color:#99f6e4;padding:10px;border-radius:10px;margin:10px 0}
 .caution{border:1px solid #92400e;background:#241a08;color:#fde68a;padding:10px;border-radius:10px;margin:8px 0}
 .refs,.small{font-size:13px;color:var(--sub)}.error{color:#f87171}
+/* Fallback UI: while a button's request runs it is disabled and dimmed;
+   a failed request leaves an error line right after its button. */
+button:disabled{opacity:.55;cursor:default}
+.action-err{margin:8px 0 0;font-size:14px}
+.cancel-btns .action-err{flex:0 0 100%;margin:2px 0 0;text-align:center}
 label.row{display:block;margin:6px 0}
 .note h2{color:var(--text)} .note p{color:var(--sub);font-size:13px}
 
@@ -179,7 +184,7 @@ label.row{display:block;margin:6px 0}
 .cancel-link{display:block;margin:14px auto 2px;background:none;border:none;color:var(--sub);text-decoration:underline;font-size:14px;cursor:pointer}
 .cancel-confirm{margin-top:14px;text-align:center}
 .cancel-confirm p{margin:0;color:var(--sub);font-size:13px}
-.cancel-btns{display:flex;gap:8px;justify-content:center;margin-top:10px}
+.cancel-btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px}
 
 /* Countdown timer on timed-exercise cards: black box like the other fields */
 .timer{margin-top:14px;background:var(--bg);border-radius:10px;padding:12px}

@@ -121,6 +121,9 @@ All three notice boxes share: 1px solid border, radius 10px, padding
   no fill (aria-label / title: `設定`)
 - Nav segments, in order: `コンディション` / `ワークアウト` / `レポート`
 - Loading placeholder: `読み込み中…`
+- Load-failure retry button: `再読み込み`
+- Network-failure message (no response at all):
+  `通信に失敗しました。接続を確認してもう一度お試しください。`
 
 ### Condition screen （コンディション）
 - Headings: `まず、警告サインの確認` / `今日の筋肉痛は？（部位ごと）` /
@@ -551,7 +554,98 @@ Shown verbatim at the bottom of every screen, after the app area:
   margin-top **20px** (0 when inside the finish-area card). Total
   rendered height is 58px at the standard line height.
 
-### Date display — only two forms
+### Fallback UI — loading and request failure
+
+The app talks only to its own API, so fallback UI exists only where a
+wait or a failure would otherwise leave a blank or unresponsive screen.
+
+- Initial load: the app area shows the loading placeholder
+  `読み込み中…` until the state arrives. If the load fails, the area
+  shows the reason as error text (`.error`) followed by a primary CTA
+  `再読み込み`, which returns to the loading placeholder and retries.
+  Never a blank screen.
+- Every button that sends a request — the condition CTA in all its
+  states, `今日のワークアウトを作る`, the per-exercise record buttons,
+  `今日のトレーニングを完了する`, `取り消す`, the history-edit save,
+  the settings `保存`, and the reset confirmation — is disabled while
+  its request runs, so nothing can be submitted twice. Disabled
+  buttons render at **opacity 0.55** with the default cursor; no
+  label change, no spinner.
+- If such a request fails, the reason appears as an error line
+  (`.error`, 14px, margin-top 8px) directly after the button, and the
+  button is re-enabled. A failure is never silent and never leaves a
+  button stuck. Two pre-existing error spots stay as they are instead:
+  the workout empty state's error line carries generation failures,
+  and a blocked start via `ワークアウトを開始` shows its reason there.
+- A network-level failure (no response at all) is always worded
+  `通信に失敗しました。接続を確認してもう一度お試しください。`; a server
+  refusal shows the server's reason text.
+
+## Input validation, escaping, and numeric keyboards
+
+Validation is enforced **twice** with the same rules and the same reason
+texts: in the client before sending (the reason appears in the same
+error line used for request failures, directly after the button), and
+again on the server for every write. An invalid write is refused with
+HTTP 400 and the reason; **nothing is stored**, and no value is ever
+silently clamped, truncated, or coerced into range.
+
+### Validation rules (normative)
+
+- Set reps / seconds: integers **0–999** only. Negatives, decimals and
+  strings are refused.
+- RPE: empty (not entered), or **6–10 in 0.5 steps** only.
+- Pain levels (soreness and joint pain): integers **0–5** only, checked
+  on the server as well as in the tap UI.
+- Per-exercise note: at most **200 characters**; a longer note is a
+  save error, never a silent truncation.
+- Profile: **age required, integer 10–100**; **height required,
+  integer 100–250** (cm); **weight required, 20–300** (kg, decimals
+  allowed). A required field left empty is an error. The two profile
+  free-text fields （体脂肪などの補足 / 運動習慣の補足） are capped at 200
+  characters. (There is no numeric body-fat field; body fat is a
+  free-text note.)
+- Dates: **YYYY-MM-DD only**, naming a real calendar day. No endpoint
+  accepts a date from the client — the server derives "today"
+  (Asia/Tokyo) itself; the format rule guards every date that is read
+  or written.
+
+### Validation messages (exact UI text)
+
+- `回数は0〜999の整数で入力してください`
+- `RPEは6〜10（0.5刻み）で入力してください`
+- `痛みレベルは0〜5の整数で入力してください`
+- `メモは200文字以内で入力してください`
+- `年齢を入力してください` / `年齢は10〜100の整数で入力してください`
+- `身長を入力してください` / `身長は100〜250cmの整数で入力してください`
+- `体重を入力してください` / `体重は20〜300kgで入力してください`
+- `補足は200文字以内で入力してください`
+- `日付はYYYY-MM-DD形式で入力してください`
+
+### Escaping (XSS)
+
+There is no database and no SQL anywhere, so SQL injection does not
+apply. The injection surface that does exist — user-entered text
+rendered back as HTML — is closed by escaping: **every** user-entered
+string (exercise notes, profile fields, and any text derived from
+stored data) is inserted into markup only through the escaper, or
+assigned via `textContent`. A tag typed into a note is stored as data
+and displayed as literal text; it never becomes markup and never runs.
+
+### Numeric keyboards (iOS / Android stock keyboards)
+
+Numeric fields summon the numeric keypad via `inputmode` while staying
+`type="text"`:
+
+- Set inputs (workout cards and history edit): `type="text"` —
+  deliberately **not** `type="number"`, which once displayed a typed
+  `1` as `01` — with `inputmode="numeric"` and `pattern="[0-9]*"`.
+- Integer profile fields (age, height): `inputmode="numeric"` with
+  `pattern="[0-9]*"`.
+- Decimal fields (weight; the history-edit RPE text input):
+  `inputmode="decimal"`.
+
+## Date display — only two forms
 - Dates may appear **only** in these two shapes: (a) the header's
   `M/D（曜）`, (b) the history list's single-line `MM/DD(曜)`. Full
   date strings (`YYYY-MM-DD`, `○年○月○日`, long

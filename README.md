@@ -39,6 +39,10 @@ bun --watch run server.ts
 4. **Logging**: Each exercise is a card headed by its variation name, with the total target at the top-right. The set fields — black boxes in an even row — start out **pre-filled with the target** (reps, or seconds for timed exercises): keep them, or overwrite with what you actually did. RPE is a select with exactly ten options — `未入力`, then `6（かなり楽）`, `6.5（楽）`, `7（やや楽）`, `7.5（少しきつい）`, `8（きつい）`, `8.5（かなりきつい）`, `9（とてもきつい）`, `9.5（ほぼ限界）`, `10（限界）` — and only the number is saved. Each exercise also has a note field that affects only that exercise; there is no session-wide note. The card's **記録して完了** button saves that exercise and advances the gauge; a recorded exercise's button becomes 記録を更新. Timed exercises (planks and the like) have a countdown timer on the card — start it at the target seconds, pause or reset as needed, and watch the remaining-time bar; it beeps and turns teal when time is up. The timer never writes to the record: what you type is what gets saved. At the bottom, **今日のトレーニングを完了する** finishes the day, and the underlined **このワークアウトを取り消す** link deletes today's session (after an inline confirmation) so you can start over from the pain check.
 5. **Report (results live here too)**: There is no separate results screen. Finishing a session takes you to **レポート**, a quiet list, newest first: the date in one line (`11/13(金)`) on the left, the rotation and one row per exercise in the middle (name in white, variation and RPE word in gray, logged sets right-aligned), any per-exercise notes in small gray, and the session's total reps as a big number on the right. Entries are separated by hairlines, not cards. The `記録を編集` button under each entry lets you fix sets, RPE, completion, and exercise notes afterwards; edits update the totals and feed into the next session's decisions.
 
+**Loading and failure states**: The app talks only to its own local server, so the fallback UI is deliberately small. The first load shows `読み込み中…`; if it fails, the reason appears with a **再読み込み** button instead of a blank screen. Every button that sends data is disabled while its request runs, and if a save fails, the reason shows as a short error line right under the button and the button works again — nothing fails silently, gets stuck, or submits twice.
+
+**Input validation**: The same rules are checked in the browser before sending and again on the server for every write, so even a hand-crafted request cannot store a broken value — the server answers HTTP 400 with the reason and stores nothing (no silent clamping or truncation). Set reps are integers 0–999; RPE is empty or 6–10 in 0.5 steps; pain levels are integers 0–5; an exercise note is at most 200 characters (longer is a save error); the profile requires an age (integer 10–100), a height (integer 100–250 cm), and a weight (20–300 kg), and its free-text fields are capped at 200 characters; dates are YYYY-MM-DD only. Numeric fields bring up the numeric keypad on iOS/Android (`inputmode="numeric"` / `"decimal"`) while staying `type="text"`, which avoids the old `type="number"` leading-zero display bug. There is no database or SQL, so SQL injection does not apply; user-entered text (notes, profile fields) is always escaped when rendered, so a tag typed into a note displays as literal text and never runs.
+
 The app is **dark-themed** — near-black background, white text, gray secondary text, one bright teal accent — and follows the design rules in [DESIGN.md](DESIGN.md), which were measured from the original space. Every screen opens with a header: the date (only ever shown as `M/D（曜）`) and the purpose line (`器具なし / 筋力・筋肥大`) on the left, and on the right a huge **Day N** numeral (N = days since your first recorded session) over the cumulative rep count from your session history, with a small, muted **gear button** at the very top-right for settings (shown only on the condition and settings screens). The Workout screen carries a **week dot row** — seven dots for Mon–Sun with no day numbers (never week boxes). All large numerals (Day count, gauge, metrics, pain-tile levels, totals, timers, history dates) use the **Barlow Condensed** typeface, falling back to the system font when it cannot be loaded. Dates appear in only two places in the whole app: the header and the history list.
 
 ## How the next workout is decided
@@ -315,6 +319,38 @@ Screens:
 - Settings (via the gear button): a quiet ← ホームに戻る back button at
   the top-left, then the profile form (uniform grid fields) and
   the data reset with the stacked confirmation described above.
+
+Fallback UI (loading and failure — keep it this small; the app talks
+only to its own API): the app area shows 読み込み中… until the first
+state load finishes; if that load fails, it shows the reason as red
+error text (#f87171) with a full-width #2dd4bf 再読み込み button that
+retries — never a blank screen. Every button that sends a request is
+disabled while its request runs (disabled buttons render at opacity
+0.55, no label change, no spinner); if the request fails, the reason
+appears as a short red error line (14px) directly after the button and
+the button is re-enabled. A network-level failure is always worded
+通信に失敗しました。接続を確認してもう一度お試しください。; a server refusal
+shows the server's reason. Generation failures keep their existing
+spot: the error line under the 今日のワークアウトを作る button on the
+workout empty state.
+
+Input validation, escaping, numeric keyboards: validate on both the
+client (reason shown in the same error line, before sending) and the
+server (invalid write → HTTP 400 with the reason, nothing stored, no
+silent clamping or truncation). Rules: set reps are integers 0–999;
+RPE is empty or 6–10 in 0.5 steps; pain levels are integers 0–5;
+exercise notes are at most 200 characters (longer is a save error);
+profile age is required (integer 10–100), height required (integer
+100–250 cm), weight required (20–300 kg, decimals allowed), profile
+free-text fields at most 200 characters; dates are YYYY-MM-DD only.
+User-entered text is always escaped when rendered (there is no SQL
+anywhere, so the injection risk is markup injection — a tag typed
+into a note must display as literal text, never run). Numeric fields
+stay type="text" (type="number" once displayed a typed 1 as 01) and
+summon the phone keypad with inputmode: set inputs and the integer
+profile fields (age, height) use inputmode="numeric" with
+pattern="[0-9]*"; decimal fields (weight, the history-edit RPE input)
+use inputmode="decimal".
 
 Labels are in Japanese. Do not change the workout logic, the pain rules,
 or any saved data while doing design work.

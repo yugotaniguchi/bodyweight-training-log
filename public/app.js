@@ -20,14 +20,53 @@ const painIsSaved = () => painSavedGen === painGen;
 
 const $app = document.getElementById("app");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const NETWORK_ERROR = "通信に失敗しました。接続を確認してもう一度お試しください。";
 async function api(path, body) {
-  const res = await fetch(path, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {});
+  let res;
+  try {
+    res = await fetch(path, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {});
+  } catch { throw new Error(NETWORK_ERROR); }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   if (data.today) state = data;
   return data;
 }
-async function load() { state = await (await fetch("/api/state")).json(); if (state.pain) painSavedGen = painGen; render(); }
+async function load() {
+  let res;
+  try { res = await fetch("/api/state"); } catch { throw new Error(NETWORK_ERROR); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "読み込みに失敗しました");
+  state = data;
+  if (state.pain) painSavedGen = painGen;
+  render();
+}
+// Initial-load failure: never a blank screen — the reason plus a retry.
+function loadFailed(e) {
+  $app.innerHTML = `<p class="error">${esc(e.message)}</p><button class="cta" id="reloadBtn">再読み込み</button>`;
+  document.getElementById("reloadBtn").addEventListener("click", () => {
+    $app.innerHTML = `<p>読み込み中…</p>`;
+    load().catch(loadFailed);
+  });
+}
+// Run a button's request with the button disabled meanwhile. On failure the
+// reason appears in an error line right after the button and the button is
+// usable again (never a silent failure, never a stuck button).
+// Returns true on success.
+async function withBusy(btn, fn) {
+  if (!btn || btn.disabled) return false;
+  btn.disabled = true;
+  try { await fn(); return true; }
+  catch (e) {
+    let err = btn.nextElementSibling;
+    if (!err || !err.classList.contains("action-err")) {
+      err = document.createElement("p");
+      err.className = "error action-err";
+      btn.insertAdjacentElement("afterend", err);
+    }
+    err.textContent = e.message || "保存に失敗しました。もう一度お試しください。";
+    return false;
+  } finally { if (btn.isConnected) btn.disabled = false; }
+}
 document.getElementById("tabs").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-view]"); if (!b) return;
   view = b.dataset.view; menuCancelArm = false; menuGenError = ""; render();
@@ -197,9 +236,9 @@ function renderPain() {
   <div class="badges"><span class="badge">0–1 通常</span><span class="badge">2 軽減</span><span class="badge">3以上 除外</span><span class="badge">サインあり 受診目安</span></div>
   ${tapGrid("jointPain", state.catalog.joints, jointPain)}
   <button class="cta" id="savePain">${painCta}</button>
-  ${a ? (a.care ? `<div class="warn">受診目安：${a.careReasons.join(" / ")}</div>`
+  ${a ? (a.care ? `<div class="warn">受診目安：${esc(a.careReasons.join(" / "))}</div>`
       : a.rest ? `<div class="warn">完全休養日：${esc(a.restReason)}</div>`
-      : `<div class="ok">開始できます。${a.parts.flatMap((p) => p.reasons).join(" / ")}</div>`) : ""}
+      : `<div class="ok">開始できます。${esc(a.parts.flatMap((p) => p.reasons).join(" / "))}</div>`) : ""}
   ${(state.guidance ?? []).map((g) => `<div class="caution">${esc(g.message)}</div>`).join("")}
   ${(state.overload ?? []).length ? `<div class="caution">24時間ルールの自動判定（次回に反映）<ul>${state.overload.map((o) => `<li>${esc(o.reason)}</li>`).join("")}</ul></div>` : ""}`;
 }
@@ -210,7 +249,7 @@ function exerciseCard(s, ex, editable) {
   const unrecorded = editable && !ex.completed && ex.rpe == null && ex.loggedSets.every((v) => v === 0);
   const sets = ex.loggedSets.map((v, i) => {
     const shown = unrecorded ? ex.targetReps : (v === 0 ? "" : v);
-    return `<input class="set-input" type="text" inputmode="numeric" autocomplete="off" data-set="${ex.id}:${i}" value="${shown}" placeholder="0">`;
+    return `<input class="set-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-set="${ex.id}:${i}" value="${shown}" placeholder="0">`;
   }).join(" ");
   return `<div class="card"><h3>${esc(ex.name)}（${esc(ex.variation)}）</h3>
     <p class="small">${esc(ex.muscleGroup)} ／ 目標 ${ex.targetReps}${ex.targetUnit} × ${ex.targetSets}セット<br>${esc(ex.cue)}</p>
@@ -232,6 +271,31 @@ function collectExercise(root, ex) {
   const noteEl = root.querySelector(`[data-note="${ex.id}"]`);
   return { loggedSets, rpe: rpeEl && rpeEl.value !== "" ? Number(rpeEl.value) : null, completed: doneEl ? doneEl.checked : ex.completed, note: noteEl ? noteEl.value : ex.note };
 }
+// Client-side mirror of the server validation (src/validate.ts). The server
+// re-checks everything and answers 400 with the reason; checking here first
+// shows the same reason in the button's error line without a round trip.
+// Each returns a short reason string, or null when the input is valid.
+const NOTE_MAX_LEN = 200;
+function validateExerciseData(d) {
+  for (const v of d.loggedSets) if (!Number.isInteger(v) || v < 0 || v > 999) return "回数は0〜999の整数で入力してください";
+  if (d.rpe != null && !(typeof d.rpe === "number" && d.rpe >= 6 && d.rpe <= 10 && Number.isInteger(d.rpe * 2))) return "RPEは6〜10（0.5刻み）で入力してください";
+  if (typeof d.note === "string" && d.note.length > NOTE_MAX_LEN) return "メモは200文字以内で入力してください";
+  return null;
+}
+function validateProfileData(v) {
+  const num = (s) => { const t = String(s).trim(); return t === "" ? null : Number(t); };
+  const age = num(v.age);
+  if (age === null || Number.isNaN(age)) return "年齢を入力してください";
+  if (!Number.isInteger(age) || age < 10 || age > 100) return "年齢は10〜100の整数で入力してください";
+  const h = num(v.heightCm);
+  if (h === null || Number.isNaN(h)) return "身長を入力してください";
+  if (!Number.isInteger(h) || h < 100 || h > 250) return "身長は100〜250cmの整数で入力してください";
+  const w = num(v.weightKg);
+  if (w === null || Number.isNaN(w)) return "体重を入力してください";
+  if (Number.isNaN(w) || w < 20 || w > 300) return "体重は20〜300kgで入力してください";
+  if (v.bodyFatNote.length > NOTE_MAX_LEN || v.habitNote.length > NOTE_MAX_LEN) return "補足は200文字以内で入力してください";
+  return null;
+}
 // Menu-screen exercise card, laid out like the original space: muscle
 // group small at the top-left, the variation as the big heading, target
 // line and form cue in gray, the total target at the top-right. Set inputs
@@ -244,7 +308,7 @@ function menuExerciseCard(s, ex) {
   const recorded = ex.completed || ex.rpe != null || ex.loggedSets.some((v) => v !== 0);
   const sets = ex.loggedSets.map((v, i) => {
     const shown = recorded ? (v === 0 ? "" : v) : ex.targetReps;
-    return `<div class="set-cell"><div class="set-label">${i + 1}セット目</div><input class="set-input" type="text" inputmode="numeric" autocomplete="off" data-set="${ex.id}:${i}" value="${shown}" placeholder="0"></div>`;
+    return `<div class="set-cell"><div class="set-label">${i + 1}セット目</div><input class="set-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-set="${ex.id}:${i}" value="${shown}" placeholder="0"></div>`;
   }).join("");
   const rpeOptions = [`<option value=""${ex.rpe == null ? " selected" : ""}>未入力</option>`]
     .concat(RPE_SELECT.map(([v, w]) => `<option value="${v}"${ex.rpe === v ? " selected" : ""}>${v}（${w}）</option>`)).join("");
@@ -334,9 +398,9 @@ function renderSettings() {
   return `<button class="back-btn" id="backHome">← ホームに戻る</button>
   <h2>プロフィール（初回設定）</h2>
   <div class="form-grid">
-    <div class="field"><label for="pf-age">年齢</label><input type="text" inputmode="numeric" id="pf-age" value="${p.age ?? ""}"></div>
+    <div class="field"><label for="pf-age">年齢</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="pf-age" value="${p.age ?? ""}"></div>
     <div class="field"><label for="pf-sex">性別</label><input type="text" id="pf-sex" value="${esc(p.sex)}"></div>
-    <div class="field"><label for="pf-height">身長（cm）</label><input type="text" inputmode="decimal" id="pf-height" value="${p.heightCm ?? ""}"></div>
+    <div class="field"><label for="pf-height">身長（cm）</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="pf-height" value="${p.heightCm ?? ""}"></div>
     <div class="field"><label for="pf-weight">体重（kg）</label><input type="text" inputmode="decimal" id="pf-weight" value="${p.weightKg ?? ""}"></div>
     <div class="field wide"><label for="pf-fat">体脂肪などの補足</label><textarea id="pf-fat" rows="2">${esc(p.bodyFatNote)}</textarea></div>
     <div class="field wide"><label for="pf-habit">運動習慣の補足</label><textarea id="pf-habit" rows="2">${esc(p.habitNote)}</textarea></div>
@@ -347,6 +411,7 @@ function renderSettings() {
   ${resetArm ? `<div class="reset-confirm"><p>本当に全データを消しますか？プロフィール・痛みの記録・セッション履歴がすべて消え、元に戻せません。</p><button class="btn danger-solid" id="resetConfirm">本当に全データを消す</button><button class="btn" id="resetCancel">キャンセル</button></div>` : ""}`;
 }
 function render() {
+  if (!state) return; // nothing to render until the initial load succeeds
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
   // The gear is shown only on the home (pain) screen and on Settings.
   document.getElementById("gear").style.display = view === "pain" || view === "settings" ? "" : "none";
@@ -375,32 +440,35 @@ function bind() {
   $app.querySelectorAll(".set-input").forEach((el) => el.addEventListener("input", () => { el.value = sanitizeDigits(el.value); }));
   const savePain = document.getElementById("savePain");
   if (savePain) savePain.addEventListener("click", async () => {
+    const payload = () => ({ soreness: state.pain?.soreness ?? painDraft.soreness, jointPain: state.pain?.jointPain ?? painDraft.jointPain, redFlags: state.pain?.redFlags ?? painDraft.redFlags });
+    const savePainNow = async () => {
+      await api("/api/pain", payload());
+      painSavedGen = painGen;
+      Object.keys(painDraft.soreness).length = 0;
+    };
     if (state.todaySession?.status === "completed") { // 「今日の結果を見る」: save any edits first, then go
-      if (!painIsSaved()) {
-        await api("/api/pain", { soreness: state.pain?.soreness ?? painDraft.soreness, jointPain: state.pain?.jointPain ?? painDraft.jointPain, redFlags: state.pain?.redFlags ?? painDraft.redFlags });
-        painSavedGen = painGen;
-        Object.keys(painDraft.soreness).length = 0;
-      }
+      if (!painIsSaved() && !(await withBusy(savePain, savePainNow))) return; // failed: error line shown, stay here
       view = "history"; render(); return;
     }
     if (painIsSaved()) { // 「ワークアウトを開始」: create today's session first if there is none yet
       if (!state.todaySession) {
+        savePain.disabled = true; // one generation attempt at a time
         try { await api("/api/session/generate", {}); menuGenError = ""; }
         catch (e) { menuGenError = e.message; } // blocked (red flag / rest day): the menu empty state shows the reason
       }
       view = "menu"; render(); return;
     }
-    await api("/api/pain", { soreness: state.pain?.soreness ?? painDraft.soreness, jointPain: state.pain?.jointPain ?? painDraft.jointPain, redFlags: state.pain?.redFlags ?? painDraft.redFlags });
-    painSavedGen = painGen;
-    Object.keys(painDraft.soreness).length = 0;
-    render(); // the CTA now reads ワークアウトを開始
+    await withBusy(savePain, async () => { await savePainNow(); render(); }); // the CTA now reads ワークアウトを開始
   });
   const backHome = document.getElementById("backHome");
   if (backHome) backHome.addEventListener("click", () => { view = "pain"; render(); });
   const gen = document.getElementById("gen");
   if (gen) gen.addEventListener("click", async () => {
+    if (gen.disabled) return;
+    gen.disabled = true; // the #genErr line below already reports failures
     try { await api("/api/session/generate", {}); menuGenError = ""; view = "menu"; render(); }
-    catch (e) { menuGenError = e.message; document.getElementById("genErr").textContent = e.message; }
+    catch (e) { menuGenError = e.message; const ge = document.getElementById("genErr"); if (ge) ge.textContent = e.message; }
+    finally { if (gen.isConnected) gen.disabled = false; }
   });
   const goCond = document.getElementById("goCond");
   if (goCond) goCond.addEventListener("click", () => { view = "pain"; render(); });
@@ -413,39 +481,56 @@ function bind() {
     const s = state.sessions.find((x) => x.id === sid) ?? state.todaySession;
     const ex = s.exercises.find((x) => x.id === eid);
     // 「記録して完了」: saving from the menu card always marks the exercise completed.
-    await api(`/api/session/${sid}/exercise/${eid}`, { ...collectExercise($app, ex), completed: true }); render();
+    await withBusy(el, async () => {
+      const data = { ...collectExercise($app, ex), completed: true };
+      const err = validateExerciseData(data); if (err) throw new Error(err);
+      await api(`/api/session/${sid}/exercise/${eid}`, data); render();
+    });
   }));
   const findTodayEx = (id) => (state.todaySession?.exercises ?? []).find((e) => e.id === id);
   $app.querySelectorAll("[data-timer-start]").forEach((el) => el.addEventListener("click", () => { const ex = findTodayEx(Number(el.dataset.timerStart)); if (ex) startTimer(ex); }));
   $app.querySelectorAll("[data-timer-pause]").forEach((el) => el.addEventListener("click", () => { const ex = findTodayEx(Number(el.dataset.timerPause)); if (ex) pauseTimer(ex); }));
   $app.querySelectorAll("[data-timer-reset]").forEach((el) => el.addEventListener("click", () => { const ex = findTodayEx(Number(el.dataset.timerReset)); if (ex) resetTimer(ex); }));
   const complete = document.getElementById("complete");
-  if (complete) complete.addEventListener("click", async () => { await api(`/api/session/${state.todaySession.id}/complete`, {}); menuCancelArm = false; view = "history"; render(); });
+  if (complete) complete.addEventListener("click", async () => {
+    await withBusy(complete, async () => { await api(`/api/session/${state.todaySession.id}/complete`, {}); menuCancelArm = false; view = "history"; render(); });
+  });
   const cancelMenu = document.getElementById("cancelMenu");
   if (cancelMenu) cancelMenu.addEventListener("click", () => { menuCancelArm = true; render(); });
   const cancelBack = document.getElementById("cancelBack");
   if (cancelBack) cancelBack.addEventListener("click", () => { menuCancelArm = false; render(); });
   const cancelExec = document.getElementById("cancelExec");
   if (cancelExec) cancelExec.addEventListener("click", async () => {
-    await api(`/api/session/${state.todaySession.id}/delete`, {});
-    menuCancelArm = false; view = "pain"; render();
+    await withBusy(cancelExec, async () => {
+      await api(`/api/session/${state.todaySession.id}/delete`, {});
+      menuCancelArm = false; view = "pain"; render();
+    });
   });
   $app.querySelectorAll("[data-edit-history]").forEach((el) => el.addEventListener("click", () => { editingHist.add(Number(el.dataset.editHistory)); render(); }));
   $app.querySelectorAll("[data-save-history]").forEach((el) => el.addEventListener("click", async () => {
     const s = state.sessions.find((x) => x.id === Number(el.dataset.saveHistory));
     const exercises = s.exercises.map((ex) => ({ exerciseId: ex.id, ...collectExercise($app, ex) }));
-    await api(`/api/session/${s.id}/record`, { exercises }); editingHist.delete(s.id); render();
+    await withBusy(el, async () => {
+      for (const u of exercises) { const err = validateExerciseData(u); if (err) throw new Error(err); }
+      await api(`/api/session/${s.id}/record`, { exercises }); editingHist.delete(s.id); render();
+    });
   }));
   const saveProfile = document.getElementById("saveProfile");
   if (saveProfile) saveProfile.addEventListener("click", async () => {
-    await api("/api/profile", { age: document.getElementById("pf-age").value, sex: document.getElementById("pf-sex").value, heightCm: document.getElementById("pf-height").value, weightKg: document.getElementById("pf-weight").value, bodyFatNote: document.getElementById("pf-fat").value, habitNote: document.getElementById("pf-habit").value });
-    render();
+    await withBusy(saveProfile, async () => {
+      const values = { age: document.getElementById("pf-age").value, sex: document.getElementById("pf-sex").value, heightCm: document.getElementById("pf-height").value, weightKg: document.getElementById("pf-weight").value, bodyFatNote: document.getElementById("pf-fat").value, habitNote: document.getElementById("pf-habit").value };
+      const err = validateProfileData(values); if (err) throw new Error(err);
+      await api("/api/profile", values);
+      render();
+    });
   });
   const reset = document.getElementById("reset");
   if (reset) reset.addEventListener("click", () => { resetArm = true; render(); });
   const resetCancel = document.getElementById("resetCancel");
   if (resetCancel) resetCancel.addEventListener("click", () => { resetArm = false; render(); });
   const resetConfirm = document.getElementById("resetConfirm");
-  if (resetConfirm) resetConfirm.addEventListener("click", async () => { await api("/api/reset", {}); resetArm = false; painGen = 0; painSavedGen = -1; view = "pain"; render(); });
+  if (resetConfirm) resetConfirm.addEventListener("click", async () => {
+    await withBusy(resetConfirm, async () => { await api("/api/reset", {}); resetArm = false; painGen = 0; painSavedGen = -1; view = "pain"; render(); });
+  });
 }
-load().catch((e) => { $app.innerHTML = `<p class="error">${esc(e.message)}</p>`; });
+load().catch(loadFailed);
