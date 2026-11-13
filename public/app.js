@@ -342,6 +342,7 @@ function go(v) {
   history.pushState({ v, k: navKey }, "", VIEW_PATHS[v]);
   render();
   window.scrollTo(0, 0);
+  syncGear();
 }
 window.addEventListener("popstate", (e) => {
   const v = e.state?.v ?? PATH_VIEWS[location.pathname] ?? "pain";
@@ -350,8 +351,26 @@ window.addEventListener("popstate", (e) => {
   view = v; menuCancelArm = false; menuGenError = "";
   render();
   const y = scrollByKey[navKey] ?? 0;
-  requestAnimationFrame(() => window.scrollTo(0, y));
+  requestAnimationFrame(() => { window.scrollTo(0, y); syncGear(); });
 });
+
+// ---------- settings gear: every view, only at the very top ----------
+// The gear is present on all four views, but shown only while the page
+// is scrolled to the very top (a few px of tolerance for fractional /
+// rubber-band offsets). Scrolling down hides it (the .gear-hidden
+// state fades it out and takes no taps); returning to the top shows
+// it again. The state follows the scroll position itself, so view
+// switches and per-entry scroll restoration stay in sync through the
+// scroll events they cause; go(), popstate and render() also sync
+// explicitly so the resting state is never stale.
+const GEAR_TOP_PX = 4;
+function syncGear() {
+  const gear = document.getElementById("gear");
+  if (gear) gear.classList.toggle("gear-hidden", window.scrollY > GEAR_TOP_PX);
+}
+window.addEventListener("scroll", syncGear, { passive: true });
+window.addEventListener("resize", syncGear);
+syncGear();
 // The session the workout screen works on: today's session, or — when
 // today has none — the newest unfinished one (see publicState). A
 // session belongs to the day it was started.
@@ -1015,8 +1034,8 @@ function render() {
     b.classList.toggle("active", active);
     if (active) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
   });
-  // The gear is shown only on the home (pain) screen and on Settings.
-  document.getElementById("gear").style.display = view === "pain" || view === "settings" ? "" : "none";
+  // The gear is present on every view, shown only at the very top.
+  syncGear();
   $app.innerHTML = view === "pain" ? renderPain() : view === "menu" ? renderMenu() : view === "history" ? renderHistory() : renderSettings();
   updateHeader();
   bind();

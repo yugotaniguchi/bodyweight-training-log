@@ -368,7 +368,7 @@ Shown verbatim at the bottom of every screen, after the app area:
 - Settings is **not** a nav segment. The button is deliberately
   inconspicuous: **position fixed, top 10px, right 10px**, z-index 60,
   **34×34px**, radius 50%, 1px solid `--border`, `--surface` fill. It
-  stays at the top-right while scrolling and opens the settings screen.
+  sits at the top-right and opens the settings screen.
 - Icon: an **inline SVG gear** — thin line drawing, stroke width 1.5,
   **no fill**, **18×18px**, in the button's colour `--sub` (`#9ca3af`).
   Never the ⚙ emoji character.
@@ -376,9 +376,16 @@ Shown verbatim at the bottom of every screen, after the app area:
   no change while the settings screen is open. The button is always
   the same muted gray; only its position and shape say it can be
   pressed.
-- **Visibility**: shown **only** on the condition screen (home) and on
-  the settings screen. It is hidden on the workout screen and on the
-  report screen.
+- **Visibility**: present on **every** screen (condition, workout,
+  report, and settings), but shown **only while the page is scrolled
+  to the very top** (scroll offset within a few px of 0). Scrolling
+  down hides it; returning to the top shows it again — on the
+  settings screen too. The shown / hidden state follows the scroll
+  position itself, so it stays correct across view switches and
+  per-entry scroll restoration. While hidden it takes no taps
+  (`pointer-events: none`) and is fully transparent
+  (`opacity: 0`, `visibility: hidden`); the changeover is a quiet
+  0.2s opacity / visibility transition, nothing flashier.
 
 ### Segment navigation
 - A row of segment buttons: gap **6px**, margin 12px 0, wrap allowed.
@@ -1079,8 +1086,8 @@ assessment, treating what is already recorded as fixed premises
 1. Missing-profile warning box (only when no profile is saved)
 2. Header (date + purpose / Day + cumulative reps)
 3. Segment navigation （コンディション active)
-4. Settings gear (fixed, top-right — shown on this screen and on the
-   settings screen only)
+4. Settings gear (fixed, top-right — present on every screen,
+   visible only while scrolled to the very top)
 5. `まず、警告サインの確認` — heading, description, warning-sign chips
 6. `今日の筋肉痛は？（部位ごと）` — heading, description, legend badges,
    2-column tiles (10 parts)
@@ -1097,7 +1104,8 @@ assessment, treating what is already recorded as fixed premises
 12. Footer note `判定基準について` (present on every screen)
 
 ### 2. Workout （ワークアウト）
-1. Header; segment navigation （ワークアウト active); no gear
+1. Header; segment navigation （ワークアウト active); gear as on every
+   screen (visible only at the very top)
 2. Week dot row
 3. Ring gauge
 4. Session title block (title, remaining line, focus note,
@@ -1113,7 +1121,8 @@ assessment, treating what is already recorded as fixed premises
 8. Footer note
 
 ### 3. Report （レポート）
-1. Header; segment navigation （レポート active); no gear
+1. Header; segment navigation （レポート active); gear as on every
+   screen (visible only at the very top)
 2. Heading `レポート` (or the empty-state text + `ワークアウトへ` CTA)
 3. Search field `種目名・メモで検索`; while a query is present, the
    summaries hide and the entries are filtered
@@ -1123,8 +1132,8 @@ assessment, treating what is already recorded as fixed premises
 6. Footer note
 
 ### 4. Settings （設定， via the gear)
-1. Header; segment navigation (no segment active); gear visible in
-   its usual muted style
+1. Header; segment navigation (no segment active); gear in its
+   usual muted style (visible only at the very top, as everywhere)
 2. Back button `← ホームに戻る` (top-left of the content)
 3. Heading `プロフィール（初回設定）`; the uniform form grid; `保存`
 4. Heading `言語`; the `日本語` / `English` buttons
