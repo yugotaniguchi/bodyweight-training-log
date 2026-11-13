@@ -13,7 +13,7 @@
   --sub:#9ca3af;
   --tick-off:#292929;
 }
-body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);max-width:680px;margin:0 auto;padding:16px;line-height:1.6}
+body{font-family:system-ui,sans-serif;font-size:16px;background:var(--bg);color:var(--text);max-width:680px;margin:0 auto;padding:16px;line-height:1.6}
 h2{font-size:17px;margin:22px 0 4px}
 h3{margin:6px 0}
 .desc{color:var(--sub);font-size:13px;margin:0 0 10px}
@@ -53,8 +53,8 @@ nav button.active{background:var(--accent);color:var(--on-accent)}
 .badges{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px}
 .badge{background:var(--badge);color:#fff;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px}
 
-/* Pain tiles: 2-column grid; background deepens through teal shades with
-   the level (inferred ramp — see DESIGN.md). Never a heat scale. */
+/* Pain tiles: 2-column grid; background deepens through the teal level
+   ramp fixed in DESIGN.md. Never a heat scale. */
 .tapgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .tap{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:11px;border:none;background:var(--surface);color:var(--text);cursor:pointer;text-align:left;min-height:74px}
 .tap-row{display:flex;justify-content:space-between;align-items:flex-start}

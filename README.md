@@ -85,13 +85,14 @@ Note: the numeric pain thresholds above convert ideas from general-audience sour
 
 ## Recreate the look in Muse
 
-The standalone app above is plain HTML/CSS. Its look is specified in [DESIGN.md](DESIGN.md) — a dark theme with one bright teal accent, measured from screenshots of the original space. If you use [Muse](https://muse.ai) and want a space that looks like the original, copy the prompt below and paste it into Muse together with your request to build the space. The specific values matter — without them you will get a generic fitness-app look instead.
+The standalone app above is plain HTML/CSS. Its look is specified in [DESIGN.md](DESIGN.md) — a dark theme with one bright teal accent. **Follow DESIGN.md exactly; it is self-contained and needs no other instructions.** No external reference (design gallery, account-level instructions, or anything else) is required, and where anything disagrees with DESIGN.md, DESIGN.md wins. If you use [Muse](https://muse.ai) and want a space that looks like the original, copy the prompt below and paste it into Muse together with your request to build the space. The specific values matter — without them you will get a generic fitness-app look instead.
 
 ```text
 Build a bodyweight training log space. Match this design exactly:
-Follow DESIGN.md in this repository for the exact tokens — it was measured
-from the original space's screenshots and wins over anything below if they
-differ.
+Follow DESIGN.md in this repository exactly — it is self-contained and
+needs no other instructions. It is the only design authority: do not
+consult external galleries or examples, and if anything (including this
+prompt) disagrees with DESIGN.md, DESIGN.md wins.
 
 Theme (this is the most common mistake — do not get it wrong):
 - DARK theme only. Background #0f0f0f (near black), cards #232323, text
@@ -105,71 +106,90 @@ Theme (this is the most common mistake — do not get it wrong):
 Header (top of every screen):
 - Left: the date in small gray (format 11/13（金）), under it the purpose
   line in bold white: 器具なし / 筋力・筋肥大.
-- Right: the word "Day" in small bold gray, then the day count as a huge
-  Barlow Condensed numeral in white; under it, small gray
-  累計 ○○ レップ (cumulative reps summed from the session history).
-- A round gear button (⚙) is fixed at the very top-right of the viewport
-  (position: fixed, stays while scrolling) and opens Settings. Settings
-  is never a navigation segment; keep header space clear of the gear.
+- Right: the word "Day" in small bold gray, then the day count as a
+  52px Barlow Condensed numeral in white. The day count is the calendar
+  days since the first recorded session's date, counting that day as
+  Day 1. Under it, small gray 累計 ○○ レップ (cumulative reps summed
+  from the session history).
+- A round gear button (⚙), 44×44px, is fixed at the top-right of the
+  viewport (position: fixed, top 10px, right 10px, stays while
+  scrolling; #232323 fill, 1px #2d2d2d border, 21px) and opens
+  Settings; while Settings is open it turns #2dd4bf with #052e2b text.
+  Settings is never a navigation segment; the header keeps 54px of
+  right padding clear of the gear.
 
 Navigation:
-- A row of exactly 3 segment buttons (radius about 8px, small gaps) —
-  NOT pills and NOT a sidebar. Active segment: #2dd4bf fill with #052e2b
-  bold text. Inactive: #232323 fill, white text. Labels: 痛みの記録 /
-  メニュー / これまでの記録. There is no Result segment — results are
-  merged into これまでの記録 (see Screens).
+- A row of exactly 3 segment buttons (radius 8px, gap 6px, padding
+  10px 6px, 14px weight 600) — NOT pills and NOT a sidebar. Active
+  segment: #2dd4bf fill with #052e2b bold text. Inactive: #232323 fill,
+  white text. Labels: 痛みの記録 / メニュー / これまでの記録. There is no
+  Result segment — results are merged into これまでの記録 (see Screens).
 
 Typography:
 - Body: system-ui, sans-serif, 15–16px, line height about 1.6.
 - ALL large numerals use Barlow Condensed (Google Fonts; system-ui
   fallback): the Day number, pain-tile level numbers, ring-gauge centre,
   the three metrics, totals, timer digits, history dates.
-- Headings bold white (about 17px); descriptions small gray. Keep text
-  minimal — show things as UI (badges, ticks, bars, gauges), explain only
-  where a decision needs it.
+- Headings bold white (17px); descriptions 13px gray. Keep text
+  minimal — show things as UI (badges, ticks, bars, gauges), explain
+  only where a decision needs it, and only in the two places
+  DESIGN.md allows (the pain-screen description lines and the
+  判定基準について footer section at the bottom of the page).
 
 Pain check screen (in this order):
 1. まず、警告サインの確認 — heading, gray description, then the red flags as
-   CHIPS (not checkboxes): pill shape, thin #2d2d2d outline, #1a1a1a fill,
-   gray label text, wrapping in rows.
+   CHIPS (not checkboxes): pill shape (radius 999px, padding 7px 12px),
+   thin #2d2d2d outline, #1a1a1a fill, gray #9ca3af label text, 13px,
+   wrapping in rows with gap 8px. Selected chip: #2dd4bf border,
+   #19534c fill, white text.
 2. 今日の筋肉痛は？（部位ごと）— heading, gray description
    (タップで強度が上がります（5の次は0に戻ります）), legend badges, tile grid.
 3. 今日の関節痛は？（関節ごと）— same structure; the description notes
    joints use a stricter standard than muscle.
-4. A primary CTA at the bottom: full width, large height, radius about
-   8px, #2dd4bf fill, bold #052e2b text (on this screen in the original
-   it reads 今日の結果を見る）.
+4. A primary CTA at the bottom: full width, padding 16px (58px tall),
+   radius 8px, #2dd4bf fill, bold 16px #052e2b text. It reads
+   痛みの記録を保存； when today's session is completed it reads
+   今日の結果を見る and leads to これまでの記録. Under it, the assessment
+   box (care / rest-day / OK), then any guidance and 24-hour-rule
+   notice boxes.
 
 Legend badges (small dark-teal #19534c pills, white bold text, above each
 tile grid):
 - Muscle: 0–1 通常 / 2 軽減 / 3以上 除外 / 4以上 ×2部位 休養
 - Joints: 0–1 通常 / 2 軽減 / 3以上 除外 / サインあり 受診目安
 
-Pain tiles (2-column grid, gap about 8px):
-- Card #232323, radius about 10–12px; each tap adds 1 (0–5, then back
-  to 0). Muscle parts (10): 胸・肩・上腕・前腕・背中・脚（前）・脚（後ろ）・
-  お尻・ふくらはぎ・腹筋・体幹. Joints (7): 腰・肩・肘・手首・股関節・膝・足首.
-- Inside each tile: part name bold white at top-left; under it the level
-  word in small gray (0 なし / 1 軽い / 2 普通 / 3 強い / 4 かなり強い /
-  5 激しい）; top-right the level as a large Barlow Condensed numeral in
-  white; bottom-right 5 small tick segments — the first "level" ticks
-  light in #2dd4bf, the rest stay #292929.
+Pain tiles (2-column grid, gap 8px):
+- Card #232323, radius 11px, padding 10px 12px, min-height 74px, no
+  border; each tap adds 1 (0–5, then back to 0). Muscle parts (10):
+  胸・肩・上腕・前腕・背中・脚（前）・脚（後ろ）・お尻・ふくらはぎ・腹筋・体幹.
+  Joints (7): 腰・肩・肘・手首・股関節・膝・足首.
+- Inside each tile: part name (15px bold white) at top-left, the level
+  as a 34px Barlow Condensed numeral in white at top-right; second row:
+  the level word in 12px gray (0 なし / 1 軽い / 2 普通 / 3 強い /
+  4 かなり強い / 5 激しい） at the left, and 5 tick segments at the
+  right — each tick 14×5px, radius 2px, gap 3px; the first "level"
+  ticks light in #2dd4bf, the rest stay #292929.
 - Tile background deepens through dark teal shades with the level:
-  1 #17312c, 2 #17453c, 3 #1a5a4c, 4 #20806c, 5 #2dd4bf with #052e2b
-  text. Level 0 is the plain card colour.
+  0 #232323, 1 #17312c, 2 #17453c, 3 #1a5a4c, 4 #20806c, 5 #2dd4bf.
+  At level 5 the numeral and level word turn #052e2b, lit ticks turn
+  #052e2b, and unlit ticks become rgba(5,46,43,0.25); the part name
+  stays white at every level.
 
 Required progress elements (do not omit):
 - A week dot row at the top of the Menu screen: the seven weekday
-  letters (Mon–Sun) spread evenly, each over a dot, with NO day
-  numbers. A day with a completed session gets a filled #2dd4bf dot;
-  today gets a #2dd4bf bold letter and an outline ring in #2dd4bf;
-  other days get a small dark-gray outline circle. Do NOT turn this
-  into week boxes (letters + day numbers in bordered boxes) — the
-  boxes are not part of the original design.
-- A ring gauge under the dot row: a thick SVG ring (track #2d2d2d,
-  arc #2dd4bf), centred, with the completed-exercise COUNT as a huge
-  Barlow Condensed numeral at the centre and "／ total 種目完了" in
-  small gray under it. Then the session title centred in bold white
+  letters (Mon–Sun) spread evenly in 34px-wide cells, each letter
+  (12px gray) over a dot, with NO day numbers. An ordinary day's dot
+  is a 9px circle with a 2px #333333 outline. A day with a completed
+  session gets a filled #2dd4bf dot. Today gets a #2dd4bf bold letter
+  and an 18px circle with a 2px #2dd4bf outline (filled #2dd4bf if
+  today also has a completed session). Do NOT turn this into week
+  boxes (letters + day numbers in bordered boxes) — the boxes are not
+  part of the original design.
+- A ring gauge under the dot row: a 150×150px SVG ring (radius 62,
+  stroke width 13, track #2d2d2d, arc #2dd4bf, round line cap),
+  centred, with the completed-exercise COUNT as a 62px Barlow
+  Condensed numeral at the centre and "／ total 種目完了" in 12px gray
+  under it. Then the session title centred in bold white
   (rotation letter + title, e.g. B 背中 + 脚裏 + 体幹） with あと○種目
   (exercises remaining) in small gray under it; adjustment notes sit
   quietly under the title in small text. Then exactly three metrics in
@@ -192,8 +212,12 @@ Other components:
 - The settings screen's delete confirmation is a separate block stacked
   below the delete button in normal flow (with a cancel button) — never
   overlaid on the button, never a native confirm() dialog.
-- Warning (red flag) box: red border #ef4444, dark red fill #2a0f0f,
-  pale red text #fecaca — the only red in the UI.
+- Notice boxes (1px border, radius 10px, padding 10px). Warning
+  (red flag / care / rest day): border #ef4444, fill #2a0f0f, text
+  #fecaca — red is used only here and in destructive actions. OK box
+  (start allowed, session completed): border #19534c, fill #0b2420,
+  text #99f6e4. Caution box (duration and 24-hour-rule guidance only):
+  border #92400e, fill #241a08, text #fde68a. Error text: #f87171.
 
 Decision engine (required, not optional decoration):
 - Keep a dated pain history (per muscle part and per joint) and judge the
@@ -214,7 +238,7 @@ Decision engine (required, not optional decoration):
 Screens:
 - Menu: the week dot row, ring gauge, title, and metrics above, then
   one card per exercise on a #1a1a1a fill (darker than the pain tiles),
-  radius about 12px, no visible border. Card layout: top-left the
+  radius 12px, no border, padding 18px 20px. Card layout: top-left the
   muscle group in small gray; under it the VARIATION name as the large
   bold white heading (the variation alone, e.g.
   プローンWレイズ（トップで止める）, スーパーマンホールド, 膝曲げレッグレイズ —
@@ -258,8 +282,13 @@ Screens:
   (6 / 6 回, 41 / 41 秒, sets joined with " / "), and any per-exercise
   note under its exercise in small gray as 種目メモ： …; right: the
   session total as a large Barlow Condensed numeral plus a small レップ.
-  Under each entry, a small dark pill 記録を編集 button opens in-place
-  editing of sets / RPE / completion / notes. RPE words: 6 かなり楽，
+  Under each entry, a small dark pill 記録を編集 button (padding
+  5px 14px, radius 999px, 12px bold) replaces the rows in place with
+  one generic card per exercise (#232323 fill, 1px #2d2d2d border,
+  radius 12px, padding 14px): heading 名前（バリエーション）, a small gray
+  target line and cue, generic set inputs (64px wide), an RPE text
+  input (76px) labelled RPE（1〜10、あと何回できたか）, a 完了 checkbox,
+  and a full-width note input; a 修正を保存 pill under the cards saves. RPE words: 6 かなり楽，
   6.5 楽， 7 やや楽， 7.5 少しきつい, 8 きつい, 8.5 かなりきつい, 9 とてもきつい,
   9.5 ほぼ限界， 10 限界.
 - Settings (via the ⚙ gear): the profile form (uniform grid fields) and
