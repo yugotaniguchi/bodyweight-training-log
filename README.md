@@ -2,7 +2,21 @@
 
 A standalone web app for no-equipment bodyweight training. It logs your workouts and builds the next session from your pain check, past results, RPE, and per-exercise notes. No account or external service is required, and your data stays on your own machine.
 
-> This app does not replace medical advice. If a warning sign applies to you, stop and talk to a medical professional.
+## ⚠️ 注意 — 必ず読んでください / Caution — read this first
+
+> **このアプリとリポジトリは、専門家が作成したものではありません。作者個人が自分用に作ったものです。**
+>
+> - トレーニング内容、痛みの判定基準、負荷の調整方法などについて、**医学的・科学的なエビデンスや正確性の保証は一切ありません**。参考文献として挙げている資料の解釈や数値の当てはめも、個人の判断によるものです。
+> - このリポジトリは **あくまでUIと実装の参考** として公開しています。見た目や仕組みの参考に使うことを想定したもので、そのままの内容で運動や健康判断を行うことを推奨するものではありません。
+> - 実際に使う場合は、**自分のデータ、自分の信頼できる資料、必要に応じて専門家の助言で内容を補完・検証してから** 使ってください。
+> - このアプリは医療アドバイスの代わりにはなりません。警告サインに当てはまる場合は運動を中止し、医療機関に相談してください。
+
+> **This app and repository were not created by a professional or expert. They were built by an individual, for personal use.**
+>
+> - There is **no guarantee of medical or scientific evidence or accuracy** for the training content, the pain criteria, or the load-adjustment rules. How the cited references are interpreted and applied is one person's judgment.
+> - This repository is published **as a UI and implementation reference only**. It is not a recommendation to train or make health decisions based on its content as-is.
+> - If you use it, **supplement and verify the content with your own data, sources you trust, and professional advice where needed**.
+> - This app does not replace medical advice. If a warning sign applies to you, stop and talk to a medical professional.
 
 ## Install and run
 
