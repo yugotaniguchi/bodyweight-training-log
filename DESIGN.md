@@ -18,65 +18,121 @@ they are fixed here as the specification.
 
 ## Theme
 
-- **Dark theme only.** Near-black background, white text, gray secondary
-  text, one bright teal accent.
-- Never a light theme. Never a yellow-to-red heat scale for pain levels.
-  Never multi-colour gradients.
+- **Two themes — dark and light — over one teal colour family.** A
+  theme setting on the settings screen chooses between them:
+  `ダーク` (dark), `ライト` (light), and `システム` (system — follow the
+  OS `prefers-color-scheme`). **The default is `システム`.**
+- The setting is stored server-side in the store (`theme`; absent
+  means `システム`), exactly like the language. Changing it applies
+  **immediately, with no reload**: the resolved theme is carried on
+  `<html data-theme="dark|light">` and every colour below is a CSS
+  variable with a value per theme. To avoid a flash of the wrong
+  theme, the setting is also mirrored to `localStorage`
+  (`btl-theme`) and a small inline script in the page head resolves
+  and applies it before first paint; on load the server value wins
+  and re-syncs the mirror. While the setting is `システム`, an OS
+  colour-scheme change re-resolves the theme at once.
+- The dark token set is the original measured look: near-black
+  background, white text, gray secondary text, one bright teal
+  accent. The light set keeps the same teal family on white /
+  near-white: white cards, near-black text, and a **deeper teal
+  accent** (`#0f766e`) — the dark accent `#2dd4bf` reaches only
+  ~1.9:1 on white and cannot carry text.
+- The theme applies to **every screen** （コンディション / ワークアウト /
+  レポート / 設定） and to the token-auth login page, which the server
+  renders with the saved theme's tokens (for `システム`, light tokens
+  plus a `prefers-color-scheme: dark` override). The PWA
+  `theme-color` meta follows the resolved theme (`#0f0f0f` dark /
+  `#f2f2f0` light); the manifest's colours stay `#0f0f0f`.
+- **Universal-design contrast (normative):** normal text reaches at
+  least **4.5:1** against its background in **both** themes, and
+  large text / numerals at least **3:1**. Representative verified
+  pairs — dark: text on bg 16.8:1, `--sub` on bg 7.6:1, CTA text on
+  accent 7.9:1, tile level word on the deepest ramp step 4.8:1;
+  light: text on bg 15.0:1, `--sub` on bg 5.7:1, accent on bg
+  4.9:1, CTA text on accent 5.5:1, tile level word on the deepest
+  ramp step 6.1:1. Colour is never the only channel: pain levels are
+  also a numeral, a word, and a tick count; selection states also
+  differ by border / fill, not hue alone. The `:focus-visible`
+  outline uses `--accent`, clearly visible in both themes.
+- Never a yellow-to-red heat scale for pain levels. Never
+  multi-colour gradients.
 - Functional state colours are not accents: red appears only in warning /
-  red-flag surfaces and destructive actions, dark amber only in guidance
+  red-flag surfaces and destructive actions, amber only in guidance
   notice boxes (see "State colours"). Neither is used decoratively.
 
 ## Colour tokens (normative)
 
-| Token | Value | Used for |
-|---|---|---|
-| `--bg` | `#0f0f0f` | Page background; near-black field fill inside workout cards |
-| `--surface` | `#232323` | Generic cards, pain tiles (level 0), inactive nav segments, gear button |
-| `--surface-2` | `#1a1a1a` | Chip fill, generic input fill, workout exercise cards, finish-area card |
-| `--border` | `#2d2d2d` | Borders, hairlines, gauge track, timer bar track |
-| `--accent` | `#2dd4bf` | Active nav segment, primary CTA, lit ticks, gauge arc, week-dot states |
-| `--on-accent` | `#052e2b` | Text on top of `--accent` (near-black teal) |
-| `--badge` | `#19534c` | Legend badge fill, selected chip fill, OK-box border |
-| `--text` | `#f0f0f0` | Primary text, large numerals |
-| `--sub` | `#9ca3af` | Secondary text: dates, descriptions, chip labels, "Day" label |
-| `--tick-off` | `#292929` | Unlit tick segments on pain tiles (levels 0–4) |
-| `--dot-off` | `#333333` | Week-dot outline for ordinary days |
+Each token has a dark value and a light value; components always
+reference the token, never a raw hex (the pain-tile ramps below are
+the one fixed exception).
+
+| Token | Dark | Light | Used for |
+|---|---|---|---|
+| `--bg` | `#0f0f0f` | `#f2f2f0` | Page background; field fill inside workout cards (near-black in dark, light gray in light) |
+| `--surface` | `#232323` | `#ffffff` | Generic cards, pain tiles (level 0), inactive nav segments, gear button |
+| `--surface-2` | `#1a1a1a` | `#ffffff` | Chip fill, generic input fill, workout exercise cards, finish-area card |
+| `--border` | `#2d2d2d` | `#d5d5d1` | Borders, hairlines, gauge track, timer bar track |
+| `--accent` | `#2dd4bf` | `#0f766e` | Active nav segment, primary CTA, lit ticks, gauge arc, week-dot states |
+| `--on-accent` | `#052e2b` | `#ffffff` | Text on top of `--accent` |
+| `--badge` | `#19534c` | `#115e59` | Legend badge fill, selected chip fill, OK-box border |
+| `--text` | `#f0f0f0` | `#1c1e1c` | Primary text, large numerals, chip labels, card total numerals |
+| `--sub` | `#9ca3af` | `#5b6066` | Secondary text: dates, descriptions, "Day" label, total-target label |
+| `--tick-off` | `#292929` | `#cfd2cd` | Unlit tick segments on pain tiles (levels 0–4) |
+| `--dot-off` | `#333333` | `#b9bbb5` | Week-dot outline for ordinary days |
 
 ### Pain-tile level ramp (normative)
 
-The tile background deepens through dark teal shades as the level rises.
-These exact values are the specification:
+The tile background deepens through teal shades as the level rises.
+These exact values are the specification. The level word is small
+text, so it takes a full-contrast colour in both themes — white on
+the dark ramp (the originally measured gray word colour reached
+only ~1.9:1 on the deepest step and is superseded by the contrast
+rule in "Theme"), near-black on the light ramp.
+
+Dark ramp:
 
 | Level | Tile background | Numeral | Level word | Lit tick | Unlit tick |
 |---|---|---|---|---|---|
-| 0 | `#232323` | `#f0f0f0` | `#9ca3af` | — | `#292929` |
-| 1 | `#17312c` | `#f0f0f0` | `#9ca3af` | `#2dd4bf` | `#292929` |
-| 2 | `#17453c` | `#f0f0f0` | `#9ca3af` | `#2dd4bf` | `#292929` |
-| 3 | `#1a5a4c` | `#f0f0f0` | `#9ca3af` | `#2dd4bf` | `#292929` |
-| 4 | `#20806c` | `#f0f0f0` | `#9ca3af` | `#2dd4bf` | `#292929` |
+| 0 | `#232323` | `#f0f0f0` | `#ffffff` | — | `#292929` |
+| 1 | `#17312c` | `#f0f0f0` | `#ffffff` | `#2dd4bf` | `#292929` |
+| 2 | `#17453c` | `#f0f0f0` | `#ffffff` | `#2dd4bf` | `#292929` |
+| 3 | `#1a5a4c` | `#f0f0f0` | `#ffffff` | `#2dd4bf` | `#292929` |
+| 4 | `#20806c` | `#f0f0f0` | `#ffffff` | `#2dd4bf` | `#292929` |
 | 5 | `#2dd4bf` | `#052e2b` | `#052e2b` | `#052e2b` | `rgba(5,46,43,0.25)` |
 
-The part name stays `#f0f0f0` at every level, including level 5.
+Light ramp:
+
+| Level | Tile background | Numeral | Level word | Lit tick | Unlit tick |
+|---|---|---|---|---|---|
+| 0 | `#ffffff` | `#1c1e1c` | `#1c1e1c` | — | `#cfd2cd` |
+| 1 | `#e2f2ec` | `#1c1e1c` | `#1c1e1c` | `#0f766e` | `#cfd2cd` |
+| 2 | `#c2e7d9` | `#1c1e1c` | `#1c1e1c` | `#0f766e` | `#cfd2cd` |
+| 3 | `#93cfb6` | `#1c1e1c` | `#1c1e1c` | `#0f766e` | `#cfd2cd` |
+| 4 | `#57ab8d` | `#1c1e1c` | `#1c1e1c` | `#0f766e` | `#cfd2cd` |
+| 5 | `#0f766e` | `#ffffff` | `#ffffff` | `#ffffff` | `rgba(255,255,255,0.35)` |
+
+The part name stays in `--text` at every level, including level 5.
 
 ### State colours (normative)
 
 All three notice boxes share: 1px solid border, radius 10px, padding
-10px.
+10px. Values per theme:
 
-| State | Border | Fill | Text | Margin |
+| State | Border (dark / light) | Fill (dark / light) | Text (dark / light) | Margin |
 |---|---|---|---|---|
-| Warning (`.warn`) | `#ef4444` | `#2a0f0f` | `#fecaca` | 10px 0 |
-| OK (`.ok`) | `#19534c` | `#0b2420` | `#99f6e4` | 10px 0 |
-| Caution / guidance (`.caution`) | `#92400e` | `#241a08` | `#fde68a` | 8px 0 |
+| Warning (`.warn`) | `#ef4444` / `#dc2626` | `#2a0f0f` / `#fdeeee` | `#fecaca` / `#7f1d1d` | 10px 0 |
+| OK (`.ok`) | `--badge` | `#0b2420` / `#e6f4f1` | `#99f6e4` / `#0b4f45` | 10px 0 |
+| Caution / guidance (`.caution`) | `#92400e` / `#b45309` | `#241a08` / `#fdf3e0` | `#fde68a` / `#7c2d12` | 8px 0 |
 
-- Error text (`.error`): `#f87171`.
-- Danger button (outline): border `#ef4444`, text `#f87171`, on
-  `--surface` fill.
-- Danger-solid button: fill `#ef4444`, border `#ef4444`, text `#ffffff`,
-  weight 700.
+- Error text (`.error`): `#f87171` dark / `#b91c1c` light.
+- Danger button (outline): border = the warning border, text = the
+  error colour, on `--surface` fill.
+- Danger-solid button: fill `#ef4444` dark / `#dc2626` light, border
+  the same, text `#ffffff`, weight 700.
 - The data-reset confirmation block reuses the warning colours with
   padding 12px and radius 10px (see Settings).
-- The finished countdown timer reuses the OK fill `#0b2420` with a 1px
+- The finished countdown timer reuses the OK fill with a 1px
   `--accent` border.
 
 ## Typography
@@ -146,16 +202,17 @@ All three notice boxes share: 1px solid border, radius 10px, padding
   脚（後ろ）・お尻・ふくらはぎ・腹筋・体幹
 - Joints (7, in order): 腰・肩・肘・手首・股関節・膝・足首
 - Level words (0–5): `なし` `軽い` `普通` `強い` `かなり強い` `激しい`
-- Primary CTA, three states:
-  - `コンディションを保存` — while there are unsaved pain edits (or nothing
-    saved yet today).
-  - `ワークアウトを開始` — after a successful save, while no pain value
-    has been edited since. Tapping it creates today's session first if
-    none exists yet (an existing session is never recreated), then goes
-    to the ワークアウト screen. If creation is blocked (warning sign /
-    rest day), it still goes to the ワークアウト screen, whose empty
-    state shows the blocking reason. Any pain edit after saving returns
-    the label to `コンディションを保存`.
+- Primary CTA, two states:
+  - `保存してワークアウトを開始` — always, while today's session is not
+    completed. One button does the whole flow: tap it and the
+    condition check is saved first (saving also rebuilds the day's
+    planned session around the new assessment — see "Condition
+    re-save rebuilds the planned session"), then today's session is
+    created if none exists yet (an existing session is never
+    recreated), then the app goes to the ワークアウト screen. If
+    creation is blocked (warning sign / rest day), it still goes to
+    the ワークアウト screen, whose empty state shows the blocking
+    reason.
   - `今日の結果を見る` — when today's session is completed; tapping it
     saves any unsaved edits first, then goes to レポート.
 - Missing-profile notice (warning box, top of screen):
@@ -183,6 +240,8 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Metrics labels: `種目` / `セット` / `累計回`
 - Per set: `{n}セット目`; target line: `目標 {sets}セット × {reps}{unit}`
   (unit is `回` or `秒`)
+- Unilateral side labels: `左` / `右` (English: `L` / `R`) — shown over
+  the two inputs of each set of a unilateral exercise
 - Total label: `合計回` or `合計秒`
 - RPE label: `きつさ RPE`; select options — exactly these ten, each
   shown as `value（word）` (the selected option displays in the same
@@ -222,11 +281,15 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Session total suffix: `レップ`
 - Sets display: values joined with ` / `, then a space and the unit
   (`6 / 6 回`, `41 / 41 秒`)
-- Edit button: `記録を編集`; save-edit button: `修正を保存`
-- Edit-card line: `{muscleGroup} ／ 目標 {target}{unit} × {sets}セット`
-- Edit-card RPE label: `RPE（1〜10、あと何回できたか）`; completion
-  checkbox label: `完了`
-- Edit-card note placeholder: `この種目のメモ（例：きつかった／できない／楽だった）`
+- Edit button: `記録を編集`; exit-editing button: `編集を終わる`
+- Edit mode reuses the workout exercise card exactly (same heading /
+  target / cue block, set inputs, RPE select, note field — see
+  "Workout exercise cards"), with the recorded values as the initial
+  values and a per-card save button (`記録して完了` / `記録を更新`, the
+  same labels as the workout screen). There is no separate edit form
+  and no `修正を保存` button.
+- Sets display for a unilateral exercise shows each set's sides:
+  `左{l} / 右{r}` (English: `L{l} / R{r}`)
 - RPE words (a value takes the word of the highest threshold at or below
   it): below 6 `とても楽`, 6 `かなり楽`, 6.5 `楽`, 7 `やや楽`,
   7.5 `少しきつい`, 8 `きつい`, 8.5 `かなりきつい`, 9 `とてもきつい`,
@@ -234,7 +297,10 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 
 ### Settings screen
 - Back button (top-left, above the profile heading): `← ホームに戻る`
-- Headings: `プロフィール（初回設定）`, `データ`
+- Headings: `プロフィール（初回設定）`, `言語`, `テーマ`, `データ`
+- Language buttons: `日本語` / `English`
+- Theme buttons: `ダーク` / `ライト` / `システム` (English: `Dark` /
+  `Light` / `System`, under the heading `Theme`)
 - Field labels: `年齢` / `性別` / `身長（cm）` / `体重（kg）` /
   `体脂肪などの補足` / `運動習慣の補足`
 - Save button: `保存`
@@ -334,10 +400,11 @@ Shown verbatim at the bottom of every screen, after the app area:
 ### Warning-sign chips
 - Red flags are **chips**, not checkboxes: pill shape (radius 999px),
   padding **7px 12px**, 1px solid `--border`, `--surface-2` fill,
-  `--sub` label text, font 13px, wrapping in rows with gap 8px.
+  `--text` label text, font 13px, wrapping in rows with gap 8px.
 - State — unselected: as above.
-- State — selected: border `--accent`, fill `--badge` (`#19534c`), text
-  `#ffffff`.
+- State — selected: border `--accent`, fill `--badge`, text
+  `#ffffff`. Selection is therefore visible from the border and fill
+  as well as the text colour.
 
 ### Legend badges
 - Small pills: `--badge` fill, `#ffffff` bold text, font 12px, padding
@@ -423,13 +490,22 @@ Shown verbatim at the bottom of every screen, after the app area:
     {reps}{unit}`. Under that, the form cue: 13px `--sub`, line height
     1.55, margin-top 8px.
   - Right: the **total target** (target reps × sets, or total seconds)
-    as a **36px Barlow Condensed numeral** in `--sub`; under it the
-    label `合計回` / `合計秒` in 11px `--sub`, margin-top 2px.
+    as a **36px Barlow Condensed numeral** in `--text` — the same
+    bright colour as the card's other numerals; under it the label
+    `合計回` / `合計秒` in 11px `--sub`, margin-top 2px.
 - Set inputs: a flex row, gap 8px, margin-top 16px; one equal-width
   cell per set. Cell label: centred 12px `--sub`, `{n}セット目`, 5px
-  above the input. Input: **height 46px**, fill `--bg` (`#0f0f0f`,
-  near-black), no border, radius 8px, centred, **17px weight 700**
-  `--text` digits.
+  above the input. Input: **height 46px**, fill `--bg`, no border,
+  radius 8px, centred, **17px weight 700** `--text` digits.
+- **Unilateral exercises** (the exercise definition carries a
+  per-side flag; rep-based exercises only, never timed ones —
+  currently シングルレッグRDL and リバースランジ, whose variations include
+  スプリットスクワット and ブルガリアンスクワット): each set cell holds
+  **two inputs side by side** instead of one, each under a short side
+  label — `左` over the left input, `右` over the right (English:
+  `L` / `R`), 11px `--sub`, centred. The pair is recorded per side
+  (see "Left/right recording" under the data rules); the exercise
+  total is the sum of both sides.
 - A hairline divider (1px `--border`), margin 16px 0 12px.
 - RPE row: flex, gap 10px, vertically centred. Label `きつさ RPE` at
   14px. Select: fill `--bg`, no border, **height 40px**, radius 8px,
@@ -478,7 +554,7 @@ Shown verbatim at the bottom of every screen, after the app area:
 - State — running: counts down from the target seconds. Paused: holds
   (the remainder is frozen from the end time; resuming recomputes a
   new end time). Reset: back to the target.
-- State — finished (0 reached): the box fill becomes `#0b2420` with a
+- State — finished (0 reached): the box fill becomes the OK fill with a
   1px `--accent` border, and a short beep sounds (880Hz, twice, via
   WebAudio). The timer **never writes to the record**; the set inputs
   stay manual.
@@ -507,8 +583,8 @@ Shown verbatim at the bottom of every screen, after the app area:
 - State — no session yet (condition recorded): the text
   `今日のセッションはまだありません。`, then a primary CTA
   `今日のワークアウトを作る`, then an error line (`.error`) under it.
-  When the user arrives here via `ワークアウトを開始` and creation was
-  blocked, the error line already shows the blocking reason.
+  When the user arrives here via `保存してワークアウトを開始` and creation
+  was blocked, the error line already shows the blocking reason.
 
 ### History entries (results merged in)
 - There is no separate Result screen. Completing today's session — and
@@ -547,21 +623,22 @@ Shown verbatim at the bottom of every screen, after the app area:
   5px 14px, radius 999px, 1px solid `--border`, `--surface` fill, 12px
   weight 700: `記録を編集`.
 - State — editing (after tapping `記録を編集`): the exercise rows are
-  replaced, in place, by one generic card per exercise (`.card` style:
-  `--surface` fill, 1px `--border`, radius 12px, padding 14px):
-  - Heading: `{name}（{variation}）`.
-  - Small line (13px `--sub`): `{muscleGroup} ／ 目標 {target}{unit} ×
-    {sets}セット`, then the form cue on the next line.
-  - `実施：` followed by one generic set input per set (width 64px —
-    see Form uniformity for the generic control geometry).
-  - A row: `RPE（1〜10、あと何回できたか）` with a generic RPE input
-    (width 76px), then a checkbox row labelled `完了`.
-  - A full-width note input (margin-top 6px) with placeholder
-    `この種目のメモ（例：きつかった／できない／楽だった）`.
-  - Timed exercises show no timer in edit mode.
-  - Under the cards, a `修正を保存` button (same pill style as
-    `記録を編集`). Saving writes the corrected sets / RPE / completion /
-    notes; totals, stats and the entry return to the list form.
+  replaced, in place, by **the workout screen's exercise cards** —
+  the identical card (see "Workout exercise cards"): muscle group,
+  variation heading, target line and cue, the total target at the
+  top-right, `{n}セット目` black-box set inputs (two side inputs for
+  unilateral exercises), the hairline, the same ten-option RPE
+  select, the same note field and hint. Differences from the workout
+  screen only: the initial values are the **recorded** values (no
+  target pre-fill, no previous-RPE pre-fill, no draft restore), there
+  is no countdown timer, and the per-card save button writes through
+  the history record endpoint and keeps the exercise's stored
+  completion flag (the card has no completion checkbox). Saving
+  recomputes the session total and stats as before, and the entry
+  stays in edit mode so the remaining cards can be fixed too.
+  - Under the cards, a `編集を終わる` button (same pill style as
+    `記録を編集`) leaves edit mode and returns the entry to the list
+    form.
 
 ### Settings screen
 - Opened only via the gear button; it replaces the app area (header,
@@ -578,6 +655,13 @@ Shown verbatim at the bottom of every screen, after the app area:
   all columns (textareas, rows 2).
 - Each field: label above the control — label 13px `--sub`, 4px gap.
 - Save button (`.btn`): `保存`.
+- Heading `言語`, then a row of two `.btn` (`日本語` / `English`); the
+  current language's button carries the `.btn.active` style. Saving
+  is server-side (`POST /api/lang`) and re-renders in place.
+- Heading `テーマ`, then a row of three `.btn` (`ダーク` / `ライト` /
+  `システム`); the current setting's button carries `.btn.active`.
+  Saving is server-side (`POST /api/theme`) and the new theme applies
+  immediately, with no reload (see "Theme").
 - Profile history (only when at least one entry exists): heading
   `プロフィール履歴`, then the entries newest first, each separated by
   a 1px `--border` bottom border: the save moment in 13px `--sub`
@@ -618,9 +702,9 @@ Shown verbatim at the bottom of every screen, after the app area:
   iOS zoom), `box-sizing: border-box`. Textarea exception: height
   auto with min-height 42px, padding 9px 10px, line height 1.5,
   vertical resize only.
-- Generic set input (history edit cards): width 64px, centred text.
-  Generic RPE input: width 76px, centred text. Note inputs: full
-  width.
+- Note inputs: full width. (History editing uses the workout
+  exercise cards, whose fields follow the card geometry — there are
+  no separate generic set / RPE inputs anymore.)
 - Settings fields sit on the regular grid described above; no field is
   sized ad hoc.
 - The workout exercise cards deliberately use their own black-field
@@ -646,7 +730,7 @@ wait or a failure would otherwise leave a blank or unresponsive screen.
   placeholder and retries. Never a blank screen.
 - Every button that sends a request — the condition CTA in all its
   states, `今日のワークアウトを作る`, the per-exercise record buttons,
-  `今日のトレーニングを完了する`, `取り消す`, the history-edit save,
+  `今日のトレーニングを完了する`, `取り消す`, the history-edit card saves,
   the settings `保存`, and the reset confirmation — is disabled while
   its request runs, so nothing can be submitted twice. Disabled
   buttons render at **opacity 0.55** with the default cursor; no
@@ -656,7 +740,7 @@ wait or a failure would otherwise leave a blank or unresponsive screen.
   button is re-enabled. A failure is never silent and never leaves a
   button stuck. Two pre-existing error spots stay as they are instead:
   the workout empty state's error line carries generation failures,
-  and a blocked start via `ワークアウトを開始` shows its reason there.
+  and a blocked start via `保存してワークアウトを開始` shows its reason there.
 - A network-level failure (no response at all) is always worded
   `通信に失敗しました。接続を確認してもう一度お試しください。`; a server
   refusal shows the server's reason text.
@@ -673,7 +757,9 @@ silently clamped, truncated, or coerced into range.
 ### Validation rules (normative)
 
 - Set reps / seconds: integers **0–999** only. Negatives, decimals and
-  strings are refused.
+  strings are refused. A unilateral exercise's set is stored as a
+  left/right pair `{l, r}`; the same 0–999 integer rule applies to
+  **each side** (see "Left/right recording").
 - RPE: empty (not entered), or **6–10 in 0.5 steps** only.
 - Pain levels (soreness and joint pain): integers **0–5** only, checked
   on the server as well as in the tap UI.
@@ -717,13 +803,12 @@ and displayed as literal text; it never becomes markup and never runs.
 Numeric fields summon the numeric keypad via `inputmode` while staying
 `type="text"`:
 
-- Set inputs (workout cards and history edit): `type="text"` —
+- Set inputs (workout cards, including history editing): `type="text"` —
   deliberately **not** `type="number"`, which once displayed a typed
   `1` as `01` — with `inputmode="numeric"` and `pattern="[0-9]*"`.
 - Integer profile fields (age, height): `inputmode="numeric"` with
   `pattern="[0-9]*"`.
-- Decimal fields (weight; the history-edit RPE text input):
-  `inputmode="decimal"`.
+- Decimal fields (weight): `inputmode="decimal"`.
 
 ## Draft persistence (workout screen)
 
@@ -738,6 +823,9 @@ switch:
 - A draft is restored **only onto unrecorded cards**; saved server
   values always win. Restoring a draft never changes the card's
   recorded / unrecorded state or its button label.
+- A unilateral exercise's set drafts as a pair of raw strings
+  (`{l, r}`), mirroring the stored pair shape; the restore fills the
+  two side inputs.
 - A draft entry is dropped when its exercise is saved, the whole key
   when the session is completed or cancelled, and all keys on data
   reset or after a data import. On load, drafts belonging to another
@@ -766,6 +854,10 @@ switch:
   of every export; on import it is optional — files written before it
   existed import with an empty history, and a present history is
   type-checked like every other record.
+- Logged sets in an import may be plain numbers or left/right pairs
+  (a pair's sides are each checked as reps). The store's `theme` is
+  optional on import exactly like `lang`: absent is fine (it then
+  defaults to `システム`), present must be one of the three values.
 
 ## Data file safety — atomic writes, backups, recovery, server log
 
@@ -807,6 +899,57 @@ switch:
   that day; yesterday's check is history, used by the 24-hour rule
   and duration guidance.
 
+## Condition re-save rebuilds the planned session
+
+Saving the condition check is not only a record write: **every**
+pain save rebuilds the day's planned session against the newest
+assessment, treating what is already recorded as fixed premises
+("build the rest of the menu around the recorded workout"):
+
+- The target is the session the workout screen works on — today's
+  planned session, else the newest still-planned one. A **completed**
+  session is never changed by a pain save.
+- An exercise counts as **recorded** when it is completed, has an
+  RPE, has a non-empty note, or has any logged set ≠ 0. A recorded
+  exercise is fixed exactly as it stands — exercise, target, and
+  record all stay — and it is never removed from the composition and
+  never duplicated by a remaining slot.
+- Every unrecorded slot is re-planned with the normal generation
+  pipeline (rotation composition, body-part balance, the decision
+  engine), treating the recorded exercises as the slots they already
+  fill. The newest assessment applies to all remaining slots: an
+  exercise that is newly excluded drops out, one newly reduced gets
+  the reduced target, and one whose exclusion has cleared is planned
+  again. The focus note and the progression (adjustment) notes are
+  regenerated from the newest assessment.
+- If the new assessment is a warning-sign (care) day or a full-rest
+  day, every unrecorded exercise is removed — only the recorded part
+  stays — and the blocking reason is left in the progression notes,
+  so the workout screen shows why (the usual notes area).
+- The session's id, date, rotation, and intro flag never change.
+
+## Left/right recording (unilateral exercises)
+
+- An exercise definition may carry a **unilateral flag** (rep-based
+  exercises only — never a timed exercise). Currently flagged:
+  シングルレッグRDL (`rdl`) and リバースランジ (`reverseLunge`; its
+  variation ladder includes スプリットスクワット and
+  ブルガリアンスクワット).
+- Data format: a flagged exercise's logged set is stored as a
+  **left/right pair** `{l, r}` instead of a plain number. Plain
+  number arrays stay valid everywhere else, and a plain number
+  already stored on a flagged exercise keeps working — it displays
+  as that value on both sides (legacy compatibility). Export /
+  import validation accepts both shapes and checks each side as a
+  rep count (integer 0–999).
+- Display: the exercise total is the **sum of both sides**. The
+  report shows each set's sides (`左11 / 右10`; English `L11 / R10`).
+- Next-load adjustment: the achievement rate (actual ÷ target) is
+  computed from the **weaker side** — a pair set counts by its
+  smaller side — so a strong side cannot mask a lagging one.
+- Workout-card drafts store the pair's two raw input strings, like
+  the record itself.
+
 ## Navigation — browser history and scroll positions
 
 - Each view has a path: コンディション `/`, ワークアウト `/workout`,
@@ -828,9 +971,11 @@ switch:
 - When enabled, **every** page and API route is protected: an
   unauthenticated page request redirects to `/login`, and an
   unauthenticated API request is answered 401. `/login` shows a
-  minimal form in the app's own tokens (dark background, one password
-  field labelled `トークン`, a primary `ログイン` button). A wrong
-  token is refused with the single generic line `トークンが違います`.
+  minimal form in the app's own tokens, following the theme saved in
+  the store (for `システム`, via `prefers-color-scheme`), with one
+  password field labelled `トークン` and a primary `ログイン` button.
+  A wrong token is refused with the single generic line
+  `トークンが違います`.
 - A correct token sets an HttpOnly cookie (`SameSite=Lax`, 30 days)
   holding only a hash of the token; it opens all pages and APIs until
   it expires. There is no user account and no logout UI.
@@ -853,8 +998,11 @@ switch:
   background; the maskable variant keeps the motif inside the safe
   zone. The 192 icon doubles as the favicon.
 - The page head links the manifest and the apple-touch-icon, sets
-  `theme-color` to `#0f0f0f`, and declares the mobile-web-app-capable
-  metas with app title `自重トレ`.
+  `theme-color` to the resolved theme's page background (`#0f0f0f`
+  dark / `#f2f2f0` light — the meta starts at `#0f0f0f` and the theme
+  machinery keeps it in sync), and declares the
+  mobile-web-app-capable metas with app title `自重トレ`. The
+  manifest's own colours stay `#0f0f0f` in both themes.
 - There is deliberately **no Service Worker**: the app is useless
   without its server, and an offline shell would only pretend
   otherwise.
@@ -862,12 +1010,12 @@ switch:
 ## Accessibility (minimum)
 
 - Every input has an associated label without changing the visual
-  layout: the workout cards' RPE select and note already use
-  `label for`; set inputs (workout cards and history edit) carry an
-  `aria-label` of `{exercise} {n}セット目`; the history-edit note
-  carries `aria-label="この種目のメモ"`; the history-edit RPE input and
-  the completion checkbox sit inside their `label` elements; the
-  settings fields use `label for` with matching ids.
+  layout: the exercise cards' RPE select and note use `label for`
+  (the same cards serve history editing); set inputs carry an
+  `aria-label` of `{exercise} {n}セット目`, with the side appended
+  (`左` / `右`) on a unilateral exercise's pair inputs, which also
+  have a visible side label; the settings fields use `label for`
+  with matching ids.
 - Pain tiles are real `button` elements whose `aria-label` states the
   part and the current level, e.g. `胸：レベル2（普通）`. Warning-sign
   chips are buttons with `aria-pressed`.
@@ -938,8 +1086,9 @@ switch:
    2-column tiles (10 parts)
 7. `今日の関節痛は？（関節ごと）` — heading, description, legend badges,
    2-column tiles (7 joints)
-8. Primary CTA （コンディションを保存; ワークアウトを開始 once saved with no
-   further edits — it creates today's session first if none exists;
+8. Primary CTA （保存してワークアウトを開始 — it saves the condition
+   check, rebuilds the day's planned session, creates today's session
+   first if none exists, and goes to the workout screen;
    今日の結果を見る when today's session is completed)
 9. Assessment box (care warning / rest-day warning / OK box), when an
    assessment exists
@@ -978,11 +1127,13 @@ switch:
    its usual muted style
 2. Back button `← ホームに戻る` (top-left of the content)
 3. Heading `プロフィール（初回設定）`; the uniform form grid; `保存`
-4. Heading `プロフィール履歴` and the entries, when history exists
-5. Heading `データ`; the data note; `エクスポート` / `インポート` (with the
+4. Heading `言語`; the `日本語` / `English` buttons
+5. Heading `テーマ`; the `ダーク` / `ライト` / `システム` buttons
+6. Heading `プロフィール履歴` and the entries, when history exists
+7. Heading `データ`; the data note; `エクスポート` / `インポート` (with the
    import confirmation block when a file is chosen); `データを消す`; the
    confirmation block below it when open
-6. Footer note
+8. Footer note
 
 ## Scope boundary for design work
 
@@ -996,7 +1147,8 @@ switch:
 
 ## Do not
 
-- Do not use a light theme or a white background.
+- Do not add a third theme, per-screen theme overrides, or theme
+  colours outside the two token sets defined here.
 - Do not colour pain levels yellow → orange → red (no heat scale).
 - Do not introduce a second accent colour or decorative gradients.
 - Do not use red anywhere except warning / red-flag surfaces and

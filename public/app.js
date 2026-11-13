@@ -39,19 +39,13 @@ const STR = {
     jointDesc: "筋肉痛とは別に記録します。タップで強度が上がります（5の次は0に戻ります）。関節は筋肉より厳しめの基準です。",
     badgeNormal: "0–1 通常", badgeReduce: "2 軽減", badgeExclude: "3以上 除外",
     badgeRest: "4以上 ×2部位 休養", badgeSign: "サインあり 受診目安",
-    ctaResults: "今日の結果を見る", ctaStart: "ワークアウトを開始", ctaSaveCondition: "コンディションを保存",
+    ctaResults: "今日の結果を見る", ctaSaveStart: "保存してワークアウトを開始",
     carePrefix: "受診目安：", restPrefix: "完全休養日：", okPrefix: "開始できます。",
     overloadH: "24時間ルールの自動判定（次回に反映）",
     gaugeSub: "／ {total} 種目完了",
     metricExercises: "種目", metricSets: "セット", metricSessions: "累計回",
-    histTarget: "目標 {reps}{unit} × {sets}セット",
-    doneLabel: "実施：",
-    rpeHistLabel: "RPE（1〜10、あと何回できたか）",
-    doneCheck: "完了",
-    noteHistPlaceholder: "この種目のメモ（例：きつかった／できない／楽だった）",
-    noteAria: "この種目のメモ",
-    saveBtn: "記録する",
     setLabel: "{n}セット目",
+    sideLeft: "左", sideRight: "右",
     targetLine: "目標 {sets}セット × {reps}{unit}",
     totalLabelUnit: "合計{unit}",
     rpeLabel: "きつさ RPE",
@@ -81,7 +75,7 @@ const STR = {
     monthValue: "{n}回 ／ {vol}レップ", groupValue: "{n}回 ／ {vol}",
     noMatch: "該当する記録がありません。",
     notePrefix: "種目メモ： ", repsSuffix: "レップ",
-    editRecord: "記録を編集", saveChanges: "修正を保存",
+    editRecord: "記録を編集", editDoneBtn: "編集を終わる",
     rpeParen: "（RPE {rpe} {word}）",
     backHome: "← ホームに戻る",
     profileH: "プロフィール（初回設定）",
@@ -89,6 +83,7 @@ const STR = {
     fFat: "体脂肪などの補足", fHabit: "運動習慣の補足",
     saveProfileBtn: "保存",
     languageH: "言語",
+    themeH: "テーマ", themeDark: "ダーク", themeLight: "ライト", themeSystem: "システム",
     profileHistoryH: "プロフィール履歴",
     notEntered: "未入力",
     dataH: "データ",
@@ -135,19 +130,13 @@ const STR = {
     jointDesc: "Recorded separately from soreness. Tap to raise the level (after 5 it returns to 0). Joints are judged more strictly than muscles.",
     badgeNormal: "0–1 Normal", badgeReduce: "2 Reduced", badgeExclude: "3+ Excluded",
     badgeRest: "4+ in 2+ parts: rest", badgeSign: "Sign present: see a doctor",
-    ctaResults: "See today's results", ctaStart: "Start workout", ctaSaveCondition: "Save condition check",
+    ctaResults: "See today's results", ctaSaveStart: "Save and start workout",
     carePrefix: "See a doctor: ", restPrefix: "Full rest day: ", okPrefix: "You can start. ",
     overloadH: "24-hour rule (auto-judged, applies next time)",
     gaugeSub: "/ {total} exercises done",
     metricExercises: "Exercises", metricSets: "Sets", metricSessions: "Sessions",
-    histTarget: "Target {reps} {unit} × {sets} sets",
-    doneLabel: "Done: ",
-    rpeHistLabel: "RPE (1–10, how many more you could do)",
-    doneCheck: "Done",
-    noteHistPlaceholder: "Note for this exercise (e.g. hard / couldn't do it / easy)",
-    noteAria: "Note for this exercise",
-    saveBtn: "Save",
     setLabel: "Set {n}",
+    sideLeft: "L", sideRight: "R",
     targetLine: "Target {sets} sets × {reps} {unit}",
     totalLabelUnit: "Total {unit}",
     rpeLabel: "Effort (RPE)",
@@ -177,7 +166,7 @@ const STR = {
     monthValue: "{n} sessions / {vol} reps", groupValue: "{n} times / {vol}",
     noMatch: "No matching records.",
     notePrefix: "Note: ", repsSuffix: " reps",
-    editRecord: "Edit record", saveChanges: "Save changes",
+    editRecord: "Edit record", editDoneBtn: "Done editing",
     rpeParen: "(RPE {rpe} {word})",
     backHome: "← Back to home",
     profileH: "Profile (first-time setup)",
@@ -185,6 +174,7 @@ const STR = {
     fFat: "Body fat and other notes", fHabit: "Exercise habit notes",
     saveProfileBtn: "Save",
     languageH: "Language",
+    themeH: "Theme", themeDark: "Dark", themeLight: "Light", themeSystem: "System",
     profileHistoryH: "Profile history",
     notEntered: "Not entered",
     dataH: "Data",
@@ -289,6 +279,31 @@ function applyStatic() {
   if (gear) { gear.setAttribute("aria-label", t("gear")); gear.title = t("gear"); }
 }
 
+// ---------- colour theme (dark / light / system) ----------
+// The setting ("dark" | "light" | "system") lives in the server store
+// (state.theme; absent means "system") like the language. The resolved
+// theme is applied as <html data-theme="dark|light">, which selects
+// the CSS token set. The setting is mirrored to localStorage so
+// index.html can apply it before first paint (no flash); on load the
+// server value wins and re-syncs the mirror. While the setting is
+// "system", an OS colour-scheme change re-resolves immediately.
+let themeSetting = "system";
+const THEME_MIRROR_KEY = "btl-theme";
+function resolvedTheme() {
+  if (themeSetting === "dark" || themeSetting === "light") return themeSetting;
+  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+}
+function applyTheme() {
+  const r = resolvedTheme();
+  document.documentElement.dataset.theme = r;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = r === "dark" ? "#0f0f0f" : "#f2f2f0";
+  try { localStorage.setItem(THEME_MIRROR_KEY, themeSetting); } catch { /* mirror is best-effort */ }
+}
+window.matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", () => {
+  if (themeSetting === "system") applyTheme();
+});
+
 let state = null;
 let view = "pain";
 let resetArm = false; // settings: two-step delete confirmation state
@@ -392,18 +407,30 @@ function pruneDrafts() {
     if (menuSession()?.status === "completed") dropDraftSession();
   } catch { /* ignore */ }
 }
-// Capture edits on workout cards only (history-edit cards are not
-// .ex-card, settings fields are not in cards at all).
+// Capture edits on workout cards only: a card counts as a workout
+// card when it carries the menu save button (data-save-ex) — the
+// report's edit cards share the layout but are never drafted, and
+// settings fields are not in cards at all.
 function captureDraft(e) {
   const el = e.target;
   if (!(el instanceof Element) || !menuSession()) return;
   const card = el.closest(".ex-card"); if (!card) return;
+  if (!card.querySelector("[data-save-ex]")) return;
   const field = el.closest("[data-set],[data-rpe],[data-note]"); if (!field) return;
   const tag = field.dataset.set ?? field.dataset.rpe ?? field.dataset.note;
   const exId = Number(String(tag).split(":")[0]);
-  const sets = [...card.querySelectorAll("[data-set]")]
-    .map((i) => ({ idx: Number(i.dataset.set.split(":")[1]), v: i.value }))
-    .sort((a, b) => a.idx - b.idx).map((x) => x.v);
+  // Plain sets draft as raw strings; a unilateral set drafts as an
+  // {l, r} pair of raw strings, mirroring the stored pair shape.
+  const byIdx = new Map();
+  card.querySelectorAll("[data-set]").forEach((i) => {
+    const idx = Number(i.dataset.set.split(":")[1]);
+    if (i.dataset.side) {
+      const cur = byIdx.get(idx) ?? {};
+      cur[i.dataset.side] = i.value;
+      byIdx.set(idx, cur);
+    } else byIdx.set(idx, i.value);
+  });
+  const sets = [...byIdx.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v);
   const rpeEl = card.querySelector("[data-rpe]");
   const noteEl = card.querySelector("[data-note]");
   const d = readDrafts();
@@ -413,6 +440,16 @@ function captureDraft(e) {
 
 const $app = document.getElementById("app");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+// ---------- logged-set helpers (plain counts and left/right pairs) ----------
+// A stored set is a plain number, or — for unilateral exercises — a
+// {l, r} pair. The exercise total is the sum of both sides; a legacy
+// plain number on a unilateral card reads as that value on each side.
+const setSum = (v) => (typeof v === "number" ? v : v.l + v.r);
+const isUni = (ex) => (state?.catalog?.unilateral ?? []).includes(ex.baseId);
+const sideVal = (v, side) => (typeof v === "number" ? v : v[side]);
+// One set in report text: a pair shows as 左11 / 右10 (L / R in English).
+const setText = (ex, v) => (isUni(ex) && typeof v !== "number"
+  ? `${t("sideLeft")}${v.l} / ${t("sideRight")}${v.r}` : String(v));
 async function api(path, body) {
   let res;
   try {
@@ -422,6 +459,7 @@ async function api(path, body) {
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   if (data.today) state = data;
   if (data.lang) lang = data.lang;
+  if (data.theme) { themeSetting = data.theme; applyTheme(); }
   return data;
 }
 async function load() {
@@ -431,6 +469,8 @@ async function load() {
   if (!res.ok) throw new Error(data.error || t("loadFailedDefault"));
   state = data;
   lang = data.lang ?? "ja";
+  themeSetting = data.theme ?? "system";
+  applyTheme();
   if (state.pain) painSavedGen = painGen;
   pruneDrafts();
   // Deep link / reload on a view URL: adopt that view as the initial
@@ -568,7 +608,7 @@ function ringGauge(s) {
 // total sets / cumulative completed sessions.
 function menuMetrics(s) {
   const totalSets = s.exercises.reduce((a, e) => a + e.targetSets, 0);
-  const doneSets = s.exercises.reduce((a, e) => a + (e.completed ? e.targetSets : e.loggedSets.filter((v) => v > 0).length), 0);
+  const doneSets = s.exercises.reduce((a, e) => a + (e.completed ? e.targetSets : e.loggedSets.filter((v) => setSum(v) > 0).length), 0);
   return `<div class="menu-metrics">
     <div class="mmetric"><div class="m-num num">${s.exercises.length}</div><div class="m-label">${esc(t("metricExercises"))}</div></div>
     <div class="mmetric"><div class="m-num num">${doneSets}/${totalSets}</div><div class="m-label">${esc(t("metricSets"))}</div></div>
@@ -663,7 +703,7 @@ function renderPain() {
   const flags = pain?.redFlags ?? painDraft.redFlags;
   const a = state.assessment;
   const completedToday = state.todaySession?.status === "completed";
-  const painCta = completedToday ? t("ctaResults") : painIsSaved() ? t("ctaStart") : t("ctaSaveCondition");
+  const painCta = completedToday ? t("ctaResults") : t("ctaSaveStart");
   return `
   ${!state.profile ? `<div class="warn">${esc(t("profileMissing"))}</div>` : ""}
   <h2>${esc(t("warnSignsH"))}</h2>
@@ -684,34 +724,26 @@ function renderPain() {
   ${(state.guidance ?? []).map((g) => `<div class="caution">${esc(g.message)}</div>`).join("")}
   ${(state.overload ?? []).length ? `<div class="caution">${esc(t("overloadH"))}<ul>${state.overload.map((o) => `<li>${esc(o.reason)}</li>`).join("")}</ul></div>` : ""}`;
 }
-function exerciseCard(s, ex, editable) {
-  // Menu screen: an exercise that has not been recorded yet (nothing logged,
-  // no RPE, not completed) starts with the target reps/seconds pre-filled,
-  // so the user can keep them or overwrite them before saving.
-  const unrecorded = editable && !ex.completed && ex.rpe == null && ex.loggedSets.every((v) => v === 0);
-  const sets = ex.loggedSets.map((v, i) => {
-    const shown = unrecorded ? ex.targetReps : (v === 0 ? "" : v);
-    return `<input class="set-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-set="${ex.id}:${i}" value="${shown}" placeholder="0" aria-label="${esc(ex.name)} ${esc(t("setLabel", { n: i + 1 }))}">`;
-  }).join(" ");
-  return `<div class="card"><h3>${esc(ex.name)}（${esc(ex.variation)}）</h3>
-    <p class="small">${esc(groupLabel(ex.muscleGroup))} ／ ${esc(t("histTarget", { reps: ex.targetReps, unit: unitWord(ex.targetUnit), sets: ex.targetSets }))}<br>${esc(ex.cue)}</p>
-    <div>${esc(t("doneLabel"))}${sets}</div>
-    <label class="row">${esc(t("rpeHistLabel"))} <input class="rpe-input" type="text" inputmode="decimal" data-rpe="${ex.id}" value="${ex.rpe ?? ""}"></label>
-    <label class="row"><input type="checkbox" data-done="${ex.id}" ${ex.completed ? "checked" : ""}> ${esc(t("doneCheck"))}</label>
-    <input class="note-input" type="text" data-note="${ex.id}" placeholder="${esc(t("noteHistPlaceholder"))}" value="${esc(ex.note)}" aria-label="${esc(t("noteAria"))}">
-    ${editable && ex.targetUnit === "秒" ? timerHtml(ex) : ""}
-    ${editable ? `<p><button class="btn" data-save-ex="${s.id}:${ex.id}">${esc(t("saveBtn"))}</button></p>` : ""}
-  </div>`;
-}
 function collectExercise(root, ex) {
   const loggedSets = ex.loggedSets.map((_, i) => {
+    // Unilateral card: two inputs (data-side="l" / "r") per set, read
+    // back as a pair. A missing side keeps the stored side value.
+    if (isUni(ex)) {
+      const get = (side) => {
+        const el = root.querySelector(`[data-set="${ex.id}:${i}"][data-side="${side}"]`);
+        return el ? Number(sanitizeDigits(el.value) || 0) : sideVal(ex.loggedSets[i], side);
+      };
+      return { l: get("l"), r: get("r") };
+    }
     const el = root.querySelector(`[data-set="${ex.id}:${i}"]`);
     return el ? Number(sanitizeDigits(el.value) || 0) : ex.loggedSets[i];
   });
   const rpeEl = root.querySelector(`[data-rpe="${ex.id}"]`);
-  const doneEl = root.querySelector(`[data-done="${ex.id}"]`);
   const noteEl = root.querySelector(`[data-note="${ex.id}"]`);
-  return { loggedSets, rpe: rpeEl && rpeEl.value !== "" ? Number(rpeEl.value) : null, completed: doneEl ? doneEl.checked : ex.completed, note: noteEl ? noteEl.value : ex.note };
+  // The unified card has no completion checkbox: the menu save marks
+  // the exercise completed (its handler), a report edit keeps the
+  // stored flag.
+  return { loggedSets, rpe: rpeEl && rpeEl.value !== "" ? Number(rpeEl.value) : null, completed: ex.completed, note: noteEl ? noteEl.value : ex.note };
 }
 // Client-side mirror of the server validation (src/validate.ts). The server
 // re-checks everything and answers 400 with the reason; checking here first
@@ -720,7 +752,10 @@ function collectExercise(root, ex) {
 // The reason texts are the dictionary's, matching the server's per language.
 const NOTE_MAX_LEN = 200;
 function validateExerciseData(d) {
-  for (const v of d.loggedSets) if (!Number.isInteger(v) || v < 0 || v > 999) return t("vReps");
+  for (const v of d.loggedSets) {
+    const vals = typeof v === "number" ? [v] : (v && typeof v === "object" ? [v.l, v.r] : [NaN]);
+    for (const x of vals) if (!Number.isInteger(x) || x < 0 || x > 999) return t("vReps");
+  }
   if (d.rpe != null && !(typeof d.rpe === "number" && d.rpe >= 6 && d.rpe <= 10 && Number.isInteger(d.rpe * 2))) return t("vRpe");
   if (typeof d.note === "string" && d.note.length > NOTE_MAX_LEN) return t("vNote");
   return null;
@@ -758,18 +793,41 @@ function lastRpeFor(ex) {
   }
   return null;
 }
-function menuExerciseCard(s, ex) {
-  const recorded = ex.completed || ex.rpe != null || ex.loggedSets.some((v) => v !== 0);
-  // An unrecorded card restores its unsaved draft (see the draft helpers);
-  // a recorded card always shows the saved server values.
-  const draft = recorded ? null : readDrafts()[ex.id];
+// The one exercise-card renderer, shared by the workout screen and
+// the report's record editing: same heading / target / cue block, the
+// same "{n}セット目" black-box set inputs, the same ten-option RPE
+// select, and the same note field, with a per-card save button. In
+// history mode the initial values are the recorded ones, the timer is
+// not shown, and the save button writes through the record endpoint
+// (data-save-history-ex) instead of the workout one.
+function menuExerciseCard(s, ex, opts = {}) {
+  const historyMode = !!opts.history;
+  const recorded = ex.completed || ex.rpe != null || ex.loggedSets.some((v) => setSum(v) !== 0);
+  // An unrecorded workout card restores its unsaved draft (see the
+  // draft helpers); a recorded card — and every history-edit card —
+  // shows the saved server values.
+  const draft = recorded || historyMode ? null : readDrafts()[ex.id];
+  const uni = isUni(ex);
+  const setInput = (i, side, shown) => `<input class="set-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-set="${ex.id}:${i}"${side ? ` data-side="${side}"` : ""} value="${esc(shown)}" placeholder="0" aria-label="${esc(ex.variation || ex.name)} ${esc(t("setLabel", { n: i + 1 }))}${side ? ` ${esc(side === "l" ? t("sideLeft") : t("sideRight"))}` : ""}">`;
   const sets = ex.loggedSets.map((v, i) => {
+    const label = `<div class="set-label">${esc(t("setLabel", { n: i + 1 }))}</div>`;
+    if (uni) {
+      // Two inputs per set, left and right. A recorded pair shows its
+      // sides (a legacy plain number shows on both sides); an
+      // unrecorded set starts from the draft sides or the target.
+      const d = draft && i < draft.sets.length && draft.sets[i] && typeof draft.sets[i] === "object" ? draft.sets[i] : null;
+      const shownSide = (side) => recorded
+        ? (sideVal(v, side) === 0 ? "" : sideVal(v, side))
+        : (d && d[side] !== undefined ? d[side] : ex.targetReps);
+      return `<div class="set-cell">${label}<div class="set-pair"><label class="set-side"><span>${esc(t("sideLeft"))}</span>${setInput(i, "l", shownSide("l"))}</label><label class="set-side"><span>${esc(t("sideRight"))}</span>${setInput(i, "r", shownSide("r"))}</label></div></div>`;
+    }
     const shown = recorded ? (v === 0 ? "" : v) : (draft && i < draft.sets.length ? draft.sets[i] : ex.targetReps);
-    return `<div class="set-cell"><div class="set-label">${esc(t("setLabel", { n: i + 1 }))}</div><input class="set-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-set="${ex.id}:${i}" value="${esc(shown)}" placeholder="0" aria-label="${esc(ex.variation || ex.name)} ${esc(t("setLabel", { n: i + 1 }))}"></div>`;
+    return `<div class="set-cell">${label}${setInput(i, null, shown)}</div>`;
   }).join("");
   // Initial RPE selection: a draft wins, then the saved value, then —
-  // for an unrecorded card — the previous recorded RPE of this exercise.
-  const selRpe = draft ? (draft.rpe === "" ? null : Number(draft.rpe)) : (ex.rpe ?? lastRpeFor(ex));
+  // for an unrecorded workout card — the previous recorded RPE of this
+  // exercise. A history-edit card shows exactly the recorded value.
+  const selRpe = historyMode ? ex.rpe : (draft ? (draft.rpe === "" ? null : Number(draft.rpe)) : (ex.rpe ?? lastRpeFor(ex)));
   const words = RPE_WORDS[lang];
   const rpeOptions = [`<option value=""${selRpe == null ? " selected" : ""}>${esc(t("rpeNone"))}</option>`]
     .concat(RPE_VALUES.map((v) => `<option value="${v}"${selRpe === v ? " selected" : ""}>${v}（${words[v]}）</option>`)).join("");
@@ -788,8 +846,8 @@ function menuExerciseCard(s, ex) {
     <label class="note-label" for="note-${ex.id}">${esc(t("noteLabel"))}</label>
     <input class="note-input" id="note-${ex.id}" type="text" data-note="${ex.id}" placeholder="${esc(t("notePlaceholder"))}" value="${esc(draft ? draft.note : ex.note)}">
     <div class="note-hint">${esc(t("noteHint"))}</div>
-    ${ex.targetUnit === "秒" ? timerHtml(ex) : ""}
-    <button class="cta ex-save" data-save-ex="${s.id}:${ex.id}">${esc(recorded ? t("updateRecord") : t("saveAndDone"))}</button>
+    ${!historyMode && ex.targetUnit === "秒" ? timerHtml(ex) : ""}
+    <button class="cta ex-save" ${historyMode ? `data-save-history-ex="${s.id}:${ex.id}"` : `data-save-ex="${s.id}:${ex.id}"`}>${esc(recorded ? t("updateRecord") : t("saveAndDone"))}</button>
   </div>`;
 }
 function renderMenu() {
@@ -856,9 +914,9 @@ function historySummariesHtml() {
     .map(([k, m]) => `<div class="sum-row"><span>${esc(monthLabel(k))}</span><span class="sum-val">${esc(t("monthValue", { n: m.n, vol: m.vol }))}</span></div>`).join("");
   const groups = new Map();
   for (const s of state.sessions) for (const e of s.exercises) {
-    if (!e.completed && !e.loggedSets.some((v) => v > 0)) continue;
+    if (!e.completed && !e.loggedSets.some((v) => setSum(v) > 0)) continue;
     const g = groups.get(e.muscleGroup) ?? { n: 0, vol: 0 };
-    g.n++; g.vol += e.loggedSets.reduce((a, b) => a + b, 0); groups.set(e.muscleGroup, g);
+    g.n++; g.vol += e.loggedSets.reduce((a, v) => a + setSum(v), 0); groups.set(e.muscleGroup, g);
   }
   const groupRows = [...groups.entries()].sort((a, b) => b[1].vol - a[1].vol)
     .map(([g, v]) => `<div class="sum-row"><span>${esc(groupLabel(g))}</span><span class="sum-val">${esc(t("groupValue", { n: v.n, vol: v.vol }))}</span></div>`).join("");
@@ -890,10 +948,10 @@ function historyEntriesHtml() {
   return shown.map((s) => {
     const editing = editingHist.has(s.id);
     const body = editing
-      ? `${s.exercises.map((ex) => exerciseCard(s, ex, false)).join("")}<button class="edit-btn" data-save-history="${s.id}">${esc(t("saveChanges"))}</button>`
+      ? `${s.exercises.map((ex) => menuExerciseCard(s, ex, { history: true })).join("")}<button class="edit-btn" data-exit-history="${s.id}">${esc(t("editDoneBtn"))}</button>`
       : `${s.exercises.map((ex) => {
           const rpe = ex.rpe != null ? esc(t("rpeParen", { rpe: ex.rpe, word: rpeWord(ex.rpe) })) : "";
-          return `<div class="ex-row"><div class="ex-name">${esc(ex.name)}<span class="ex-sub">（${esc(ex.variation)}）${rpe}</span></div><div class="ex-sets">${ex.loggedSets.join(" / ")} ${esc(unitWord(ex.targetUnit))}</div></div>${ex.note ? `<div class="ex-memo">${esc(t("notePrefix"))}${esc(ex.note)}</div>` : ""}`;
+          return `<div class="ex-row"><div class="ex-name">${esc(ex.name)}<span class="ex-sub">（${esc(ex.variation)}）${rpe}</span></div><div class="ex-sets">${ex.loggedSets.map((v) => esc(setText(ex, v))).join(" / ")} ${esc(unitWord(ex.targetUnit))}</div></div>${ex.note ? `<div class="ex-memo">${esc(t("notePrefix"))}${esc(ex.note)}</div>` : ""}`;
         }).join("")}<button class="edit-btn" data-edit-history="${s.id}">${esc(t("editRecord"))}</button>`;
     return `<div class="hist"><div class="hist-head">
       <div class="hist-date num">${histDate(s.date)}</div>
@@ -938,6 +996,8 @@ function renderSettings() {
   <p><button class="btn" id="saveProfile">${esc(t("saveProfileBtn"))}</button></p>
   <h2>${esc(t("languageH"))}</h2>
   <p class="data-actions"><button class="btn${lang === "ja" ? " active" : ""}" data-lang="ja">日本語</button><button class="btn${lang === "en" ? " active" : ""}" data-lang="en">English</button></p>
+  <h2>${esc(t("themeH"))}</h2>
+  <p class="data-actions"><button class="btn${themeSetting === "dark" ? " active" : ""}" data-theme-set="dark">${esc(t("themeDark"))}</button><button class="btn${themeSetting === "light" ? " active" : ""}" data-theme-set="light">${esc(t("themeLight"))}</button><button class="btn${themeSetting === "system" ? " active" : ""}" data-theme-set="system">${esc(t("themeSystem"))}</button></p>
   ${(state.profileHistory ?? []).length ? `<h2>${esc(t("profileHistoryH"))}</h2>
   <div class="prof-history">${state.profileHistory.map((h) => `<div class="ph-entry"><div class="ph-date">${esc(profileHistoryWhen(h.at))}</div>${h.changes.map((c) => `<div class="ph-row">${esc(fieldLabel(c))}： ${esc(fmtHistVal(c.from))} → ${esc(fmtHistVal(c.to))}</div>`).join("")}</div>`).join("")}</div>` : ""}
   <h2>${esc(t("dataH"))}</h2><p class="small">${esc(t("dataNote"))}</p>
@@ -968,12 +1028,22 @@ function bindHistoryEntries() {
   const root = document.getElementById("histEntries") ?? $app;
   root.querySelectorAll(".set-input").forEach((el) => el.addEventListener("input", () => { el.value = sanitizeDigits(el.value); }));
   root.querySelectorAll("[data-edit-history]").forEach((el) => el.addEventListener("click", () => { editingHist.add(Number(el.dataset.editHistory)); render(); }));
-  root.querySelectorAll("[data-save-history]").forEach((el) => el.addEventListener("click", async () => {
-    const s = state.sessions.find((x) => x.id === Number(el.dataset.saveHistory));
-    const exercises = s.exercises.map((ex) => ({ exerciseId: ex.id, ...collectExercise($app, ex) }));
+  root.querySelectorAll("[data-exit-history]").forEach((el) => el.addEventListener("click", () => { editingHist.delete(Number(el.dataset.exitHistory)); render(); }));
+  // Per-card save, same style as the workout screen: one exercise at a
+  // time through the record endpoint, keeping the stored completion
+  // flag (the unified card has no checkbox). The entry stays in edit
+  // mode so the remaining cards can be fixed too; totals and stats
+  // are recomputed server-side as before.
+  root.querySelectorAll("[data-save-history-ex]").forEach((el) => el.addEventListener("click", async () => {
+    const [sid, eid] = el.dataset.saveHistoryEx.split(":").map(Number);
+    const s = state.sessions.find((x) => x.id === sid);
+    const ex = s?.exercises.find((x) => x.id === eid);
+    if (!s || !ex) return;
     await withBusy(el, async () => {
-      for (const u of exercises) { const err = validateExerciseData(u); if (err) throw new Error(err); }
-      await api(`/api/session/${s.id}/record`, { exercises }); editingHist.delete(s.id); render();
+      const data = collectExercise($app, ex);
+      const err = validateExerciseData(data); if (err) throw new Error(err);
+      await api(`/api/session/${sid}/record`, { exercises: [{ exerciseId: eid, ...data }] });
+      render();
     });
   }));
 }
@@ -1008,15 +1078,20 @@ function bind() {
       if (!painIsSaved() && !(await withBusy(savePain, savePainNow))) return; // failed: error line shown, stay here
       go("history"); return;
     }
-    if (painIsSaved()) { // 「ワークアウトを開始」: create today's session first if there is none yet
+    // 「保存してワークアウトを開始」: one button — save the condition
+    // check (the server rebuilds the day's planned session around the
+    // new assessment), generate today's session when there is none,
+    // then move to the workout screen. A blocked generation (red flag
+    // / rest day) still lands on the workout screen, whose empty state
+    // shows the reason.
+    const ok = await withBusy(savePain, async () => {
+      await savePainNow();
       if (!state.todaySession) {
-        savePain.disabled = true; // one generation attempt at a time
         try { await api("/api/session/generate", {}); menuGenError = ""; }
-        catch (e) { menuGenError = e.message; } // blocked (red flag / rest day): the menu empty state shows the reason
+        catch (e) { menuGenError = e.message; }
       }
-      go("menu"); return;
-    }
-    await withBusy(savePain, async () => { await savePainNow(); render(); }); // the CTA now reads ワークアウトを開始
+    });
+    if (ok) go("menu");
   });
   const backHome = document.getElementById("backHome");
   if (backHome) backHome.addEventListener("click", () => { go("pain"); });
@@ -1085,6 +1160,14 @@ function bind() {
     const next = el.dataset.lang;
     if (next === lang) return;
     await withBusy(el, async () => { await api("/api/lang", { lang: next }); render(); });
+  }));
+  // Theme switch: saved in the store via /api/theme; the response
+  // state carries the new setting and api() applies it at once — no
+  // reload, the whole screen repaints in the new theme.
+  $app.querySelectorAll("[data-theme-set]").forEach((el) => el.addEventListener("click", async () => {
+    const next = el.dataset.themeSet;
+    if (next === themeSetting) return;
+    await withBusy(el, async () => { await api("/api/theme", { theme: next }); render(); });
   }));
   const exportData = document.getElementById("exportData");
   if (exportData) exportData.addEventListener("click", () => { window.location.href = "/api/export"; });

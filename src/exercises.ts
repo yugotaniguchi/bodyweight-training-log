@@ -8,6 +8,9 @@ export interface ExerciseDef {
   /** joints this exercise loads; joint-pain assessment applies to these */
   jointParts: string[];
   unit: "回" | "秒";
+  /** Performed one side at a time: reps are recorded per side (left /
+   *  right pairs). Rep-count exercises only — never set on timed ones. */
+  unilateral?: boolean;
   baseTarget: number; // reps or seconds at the default variation
   baseSets: number;
   defaultLadder: number;
@@ -109,7 +112,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
   rdl: {
     baseId: "rdl", name: "シングルレッグRDL", muscleGroup: "脚（後ろ）・お尻", painPart: "脚（後ろ）・お尻",
     jointParts: ["腰","股関節","膝"],
-    unit: "回", baseTarget: 8, baseSets: 2, defaultLadder: 1,
+    unit: "回", unilateral: true, baseTarget: 8, baseSets: 2, defaultLadder: 1,
     ladder: ["両脚ヒップヒンジ", "シングルレッグRDL（支えあり）", "シングルレッグRDL"],
     cue: "背中をまっすぐに保ち、股関節から折りたたむ。左右それぞれ行う。",
   },
@@ -144,7 +147,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
   reverseLunge: {
     baseId: "reverseLunge", name: "リバースランジ", muscleGroup: "脚（前）", painPart: "脚（前）",
     jointParts: ["膝","股関節","足首"],
-    unit: "回", baseTarget: 8, baseSets: 2, defaultLadder: 1,
+    unit: "回", unilateral: true, baseTarget: 8, baseSets: 2, defaultLadder: 1,
     ladder: ["スプリットスクワット（浅め）", "リバースランジ", "ブルガリアンスクワット"],
     cue: "一歩後ろに引き、上体をまっすぐに保って下ろす。左右それぞれ行う。",
   },

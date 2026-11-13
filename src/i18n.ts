@@ -17,6 +17,15 @@ export const isLang = (v: unknown): v is Lang => v === "ja" || v === "en";
 /** The effective language of a store-shaped value (absent = Japanese). */
 export const langOf = (s: { lang?: Lang } | null | undefined): Lang => (s && isLang(s.lang) ? s.lang : "ja");
 
+// ---------- colour theme ----------
+// A store-carried preference like the language: "dark" | "light" |
+// "system" (follow the OS prefers-color-scheme). Absent means
+// "system", the default.
+export type Theme = "dark" | "light" | "system";
+export const isTheme = (v: unknown): v is Theme => v === "dark" || v === "light" || v === "system";
+/** The effective theme setting of a store-shaped value (absent = "system"). */
+export const themeOf = (s: { theme?: Theme } | null | undefined): Theme => (s && isTheme(s.theme) ? s.theme : "system");
+
 // ---------- display names (stored data keys stay Japanese) ----------
 export const PART_EN: Record<string, string> = {
   "胸": "Chest", "肩": "Shoulders", "上腕": "Upper arms", "前腕": "Forearms", "背中": "Back",
@@ -63,7 +72,7 @@ export interface ValidationTexts {
   textFormat: string; noteField: string;
   ageRequired: string; ageRange: string; heightRequired: string; heightRange: string;
   weightRequired: string; weightRange: string;
-  importInvalid: string; langInvalid: string;
+  importInvalid: string; langInvalid: string; themeInvalid: string;
 }
 export const VMSG: Record<Lang, ValidationTexts> = {
   ja: {
@@ -86,6 +95,7 @@ export const VMSG: Record<Lang, ValidationTexts> = {
     weightRange: "体重は20〜300kgで入力してください",
     importInvalid: "インポートファイルの形式が正しくありません",
     langInvalid: "言語の指定が正しくありません",
+    themeInvalid: "テーマの指定が正しくありません",
   },
   en: {
     reps: "Enter reps as an integer between 0 and 999",
@@ -107,6 +117,7 @@ export const VMSG: Record<Lang, ValidationTexts> = {
     weightRange: "Enter weight between 20 and 300 kg",
     importInvalid: "The import file format is not valid",
     langInvalid: "The language value is not valid",
+    themeInvalid: "The theme value is not valid",
   },
 };
 

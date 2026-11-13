@@ -1,10 +1,10 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
-import { assessPain, detectOverload, diffProfile, generateSession, painDurationGuidance, sessionTotal, type PainEntry, type SessionExercise } from "./src/logic";
+import { assessPain, detectOverload, diffProfile, generateSession, painDurationGuidance, refreshPlannedSession, sessionTotal, type PainEntry, type SessionExercise } from "./src/logic";
 import { MUSCLE_PARTS, JOINTS, RED_FLAGS, EXERCISES, ROTATIONS } from "./src/exercises";
 import { loadStore, saveStore, resetStore } from "./src/store";
-import { InvalidInput, parseProfile, parseStoreImport, validNote, validPainLevel, validReps, validRpe } from "./src/validate";
-import { SRV, VMSG, isLang, langOf, redFlagLabel, rotationTitle, type Lang } from "./src/i18n";
+import { InvalidInput, parseProfile, parseStoreImport, validNote, validPainLevel, validRpe, validSetLog } from "./src/validate";
+import { SRV, VMSG, isLang, isTheme, langOf, redFlagLabel, rotationTitle, themeOf, type Lang } from "./src/i18n";
 import { ICON_192_BASE64, ICON_512_BASE64, ICON_MASKABLE_512_BASE64, APPLE_TOUCH_ICON_BASE64 } from "./src/icons";
 import { logEvent } from "./src/log";
 
@@ -38,23 +38,36 @@ const isAuthed = (req: Request): boolean => {
   const cookie = req.headers.get("cookie") ?? "";
   return cookie.split(/;\s*/).some((p) => p === `${AUTH_COOKIE}=${AUTH_VALUE}`);
 };
-function loginPage(error: boolean, lang: Lang): Response {
+// The login page follows the theme saved in the store: a forced
+// dark / light choice is emitted as-is; "system" emits the light
+// tokens with a prefers-color-scheme override for dark, mirroring
+// the app's own CSS variables.
+const LOGIN_DARK = "--bg:#0f0f0f;--text:#f0f0f0;--sub:#9ca3af;--border:#2d2d2d;--input:#1a1a1a;--accent:#2dd4bf;--on-accent:#052e2b;--err:#f87171;color-scheme:dark";
+const LOGIN_LIGHT = "--bg:#f2f2f0;--text:#1c1e1c;--sub:#5b6066;--border:#d5d5d1;--input:#ffffff;--accent:#0f766e;--on-accent:#ffffff;--err:#b91c1c;color-scheme:light";
+function loginPage(error: boolean, lang: Lang, theme: "dark" | "light" | "system"): Response {
   const T = SRV[lang];
+  const vars = theme === "dark" ? `:root{${LOGIN_DARK}}`
+    : theme === "light" ? `:root{${LOGIN_LIGHT}}`
+    : `:root{${LOGIN_LIGHT}}@media (prefers-color-scheme: dark){:root{${LOGIN_DARK}}}`;
+  const themeColor = theme === "system"
+    ? `<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f0f0f"><meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f2f0">`
+    : `<meta name="theme-color" content="${theme === "dark" ? "#0f0f0f" : "#f2f2f0"}">`;
   const html = `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${T.loginButton} — 自重トレーニング記録</title>
-<meta name="theme-color" content="#0f0f0f">
+${themeColor}
 <style>
-body{font-family:system-ui,sans-serif;font-size:16px;background:#0f0f0f;color:#f0f0f0;max-width:680px;margin:0 auto;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));line-height:1.6}
+${vars}
+body{font-family:system-ui,sans-serif;font-size:16px;background:var(--bg);color:var(--text);max-width:680px;margin:0 auto;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));line-height:1.6}
 h1{font-size:20px;margin:22px 0 4px}
-.sub{color:#9ca3af;font-size:13px;margin:0 0 14px}
-label{display:block;font-size:13px;color:#9ca3af;margin-bottom:4px}
-input{height:42px;padding:0 10px;border-radius:8px;border:1px solid #2d2d2d;background:#1a1a1a;color:#f0f0f0;font-size:16px;box-sizing:border-box;font-family:inherit;width:100%}
-button{display:block;width:100%;box-sizing:border-box;margin-top:20px;padding:16px;border:none;border-radius:8px;background:#2dd4bf;color:#052e2b;font-size:16px;font-weight:700;cursor:pointer}
-.error{color:#f87171;font-size:14px}
+.sub{color:var(--sub);font-size:13px;margin:0 0 14px}
+label{display:block;font-size:13px;color:var(--sub);margin-bottom:4px}
+input{height:42px;padding:0 10px;border-radius:8px;border:1px solid var(--border);background:var(--input);color:var(--text);font-size:16px;box-sizing:border-box;font-family:inherit;width:100%}
+button{display:block;width:100%;box-sizing:border-box;margin-top:20px;padding:16px;border:none;border-radius:8px;background:var(--accent);color:var(--on-accent);font-size:16px;font-weight:700;cursor:pointer}
+.error{color:var(--err);font-size:14px}
 </style>
 </head>
 <body>
@@ -71,10 +84,12 @@ ${error ? `<p class="error">${T.loginError}</p>` : ""}
   return new Response(html, { status: error ? 401 : 200, headers: { "content-type": "text/html; charset=utf-8" } });
 }
 async function handleLogin(req: Request): Promise<Response> {
-  // The login page follows the language saved in the store, which the
-  // server knows even before anyone is logged in.
-  const lang = langOf(loadStore());
-  if (req.method === "GET") return loginPage(false, lang);
+  // The login page follows the language and theme saved in the store,
+  // which the server knows even before anyone is logged in.
+  const store = loadStore();
+  const lang = langOf(store);
+  const theme = themeOf(store);
+  if (req.method === "GET") return loginPage(false, lang, theme);
   if (req.method !== "POST") return new Response("method not allowed", { status: 405 });
   const form = await req.formData().catch(() => null);
   const given = String(form?.get("token") ?? "");
@@ -82,7 +97,7 @@ async function handleLogin(req: Request): Promise<Response> {
   const expectedHash = createHash("sha256").update(`btl:${TOKEN}`).digest();
   if (!timingSafeEqual(givenHash, expectedHash)) {
     logEvent("auth", "login failed (token mismatch)");
-    return loginPage(true, lang);
+    return loginPage(true, lang, theme);
   }
   logEvent("auth", "login succeeded");
   return new Response(null, {
@@ -110,7 +125,7 @@ function publicState() {
     ?? [...store.sessions].reverse().find((s) => s.status === "planned")
     ?? null;
   return {
-    today: date, profile: store.profile, pain, lang,
+    today: date, profile: store.profile, pain, lang, theme: themeOf(store),
     assessment: pain ? assessPain(pain, lang) : null,
     // Additive, backward-compatible state: duration guidance (caution only)
     // and the auto-judged 24-hour-rule overload flags for the next session.
@@ -132,6 +147,9 @@ function publicState() {
       muscleParts: MUSCLE_PARTS, joints: JOINTS,
       redFlags: RED_FLAGS.map((f) => ({ id: f.id, label: redFlagLabel(f.id, lang) })),
       rotations: ROTATIONS.map((r) => ({ id: r.id, title: rotationTitle(r.id, r.title, lang) })),
+      // Exercise ids recorded per side (left/right inputs); ids and
+      // names are language-neutral, only the UI labels translate.
+      unilateral: Object.values(EXERCISES).filter((e) => e.unilateral).map((e) => e.baseId),
     },
   };
 }
@@ -145,7 +163,7 @@ function applyExerciseUpdate(ex: SessionExercise, body: Record<string, unknown>,
   if (body.loggedSets !== undefined) {
     if (!Array.isArray(body.loggedSets)) throw new InvalidInput(m.repsFormat);
     if (body.loggedSets.length > 10) throw new InvalidInput(m.tooManySets);
-    loggedSets = body.loggedSets.map((v) => validReps(v, lang));
+    loggedSets = body.loggedSets.map((v) => validSetLog(v, lang));
   }
   let rpe = ex.rpe;
   if (body.rpe !== undefined) {
@@ -190,6 +208,16 @@ const server = Bun.serve({
         saveStore(store); return json(publicState());
       }
 
+      // Colour theme setting ("dark" | "light" | "system"): saved in
+      // the store like the language; absent means "system".
+      if (path === "/api/theme" && req.method === "POST") {
+        const b = await req.json();
+        const store = loadStore();
+        if (!isTheme(b?.theme)) { logEvent("api", `400 POST ${path}`); return json({ error: VMSG[langOf(store)].themeInvalid }, 400); }
+        store.theme = b.theme;
+        saveStore(store); return json(publicState());
+      }
+
       if (path === "/api/profile" && req.method === "POST") {
         const b = await req.json();
         const store = loadStore();
@@ -223,6 +251,19 @@ const server = Bun.serve({
           redFlags: Array.isArray(b.redFlags) ? b.redFlags.filter((x: unknown) => RED_FLAGS.some((f) => f.id === x)) : [],
         };
         store.pain = [...store.pain.filter((p) => p.date !== entry.date), entry];
+        // Re-saving the condition check rebuilds the day's planned
+        // session around what is already recorded: recorded exercises
+        // stay fixed, the remaining slots are re-planned under the new
+        // assessment (see refreshPlannedSession). The target is the
+        // same session the workout screen works on — today's planned
+        // session, else the newest still-planned one. Completed
+        // sessions are never touched.
+        const target = store.sessions.find((s) => s.date === entry.date && s.status === "planned")
+          ?? [...store.sessions].reverse().find((s) => s.status === "planned");
+        if (target) {
+          const idx = store.sessions.indexOf(target);
+          store.sessions[idx] = refreshPlannedSession(store, target, assessPain(entry, lang), lang);
+        }
         saveStore(store); return json(publicState());
       }
 

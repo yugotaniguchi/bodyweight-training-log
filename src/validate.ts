@@ -5,8 +5,8 @@
 // Reason texts come from the i18n tables (src/i18n.ts) in the store's
 // language; every function takes an optional language, default Japanese.
 import { RED_FLAGS } from "./exercises";
-import { isLang, VMSG, type Lang } from "./i18n";
-import { sessionTotal, type PainEntry, type Profile, type ProfileHistoryEntry, type Session, type SessionExercise, type Store } from "./logic";
+import { isLang, isTheme, VMSG, type Lang, type Theme } from "./i18n";
+import { sessionTotal, type PainEntry, type Profile, type ProfileHistoryEntry, type Session, type SessionExercise, type SetLog, type Store } from "./logic";
 
 export class InvalidInput extends Error {}
 
@@ -23,6 +23,14 @@ export const NOTE_MAX = 200;
 export function validReps(v: unknown, lang: Lang = "ja"): number {
   if (typeof v !== "number" || !Number.isInteger(v) || v < 0 || v > 999) fail(VMSG[lang].reps);
   return v as number;
+}
+
+/** One logged set as stored: a plain count, or a left/right pair {l, r}
+ *  for unilateral exercises. Each side goes through the same 0–999
+ *  integer check; a malformed pair fails with the reps message. */
+export function validSetLog(v: unknown, lang: Lang = "ja"): SetLog {
+  if (isObj(v)) return { l: validReps(v.l, lang), r: validReps(v.r, lang) };
+  return validReps(v, lang);
 }
 
 /** RPE: null / "" / undefined means "not entered"; otherwise 6–10 in 0.5 steps. */
@@ -134,7 +142,7 @@ function parseImportedExercise(v: unknown, lang: Lang): SessionExercise {
     baseId: impStr(v.baseId, lang, 100), name: impStr(v.name, lang), muscleGroup: impStr(v.muscleGroup, lang, 100),
     painPart: impStr(v.painPart, lang, 100), variation: impStr(v.variation, lang), ladderIndex: impInt(v.ladderIndex, lang, 0, 1000),
     targetSets: impInt(v.targetSets, lang, 1, 10), targetReps: validReps(v.targetReps, lang), targetUnit: unit as "回" | "秒",
-    cue: impStr(v.cue, lang), loggedSets: (v.loggedSets as unknown[]).map((x) => validReps(x, lang)),
+    cue: impStr(v.cue, lang), loggedSets: (v.loggedSets as unknown[]).map((x) => validSetLog(x, lang)),
     rpe: validRpe(v.rpe, lang), completed: v.completed as boolean, note: validNote(v.note, lang),
   };
 }
@@ -214,6 +222,12 @@ export function parseStoreImport(v: unknown, lang: Lang = "ja"): Store {
     if (!isLang(v.lang)) impFail(lang);
     importedLang = v.lang;
   }
+  // Same for the colour theme: optional, validated when present.
+  let importedTheme: Theme | undefined;
+  if (v.theme !== undefined) {
+    if (!isTheme(v.theme)) impFail(lang);
+    importedTheme = v.theme;
+  }
   const profile = v.profile === null ? null : isObj(v.profile) ? parseProfile(v.profile, lang) : impFail(lang);
   const sessions = (v.sessions as unknown[]).map((s) => parseImportedSession(s, lang));
   const maxSessionId = sessions.reduce((a, s) => Math.max(a, s.id), 0);
@@ -226,5 +240,6 @@ export function parseStoreImport(v: unknown, lang: Lang = "ja"): Store {
     nextExerciseId: Math.max(impInt(v.nextExerciseId, lang, 1, Number.MAX_SAFE_INTEGER), maxExerciseId + 1),
     profileHistory: parseImportedProfileHistory(v.profileHistory, lang),
     ...(importedLang ? { lang: importedLang } : {}),
+    ...(importedTheme ? { theme: importedTheme } : {}),
   };
 }

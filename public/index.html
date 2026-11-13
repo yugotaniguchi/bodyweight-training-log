@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>自重トレーニング記録</title>
 <meta name="theme-color" content="#0f0f0f">
+<script>
+/* Theme pre-application (no flash of the wrong theme): the setting
+   itself lives in the server store; localStorage only mirrors it.
+   Resolve dark / light / system here, before the stylesheet paints,
+   and app.js re-syncs with the server value on load. */
+(function(){var s="system";try{s=localStorage.getItem("btl-theme")||"system";}catch(e){}
+var light=s==="light"||(s==="system"&&window.matchMedia("(prefers-color-scheme: light)").matches);
+document.documentElement.dataset.theme=light?"light":"dark";
+var m=document.querySelector('meta[name="theme-color"]');if(m)m.content=light?"#f2f2f0":"#0f0f0f";})();
+</script>
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" type="image/png" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">

@@ -3,7 +3,7 @@ import {
   type ExerciseDef,
 } from "./exercises";
 import {
-  SRV, jointName, partName, redFlagLabel, subjectName, type Lang,
+  SRV, jointName, partName, redFlagLabel, subjectName, type Lang, type Theme,
 } from "./i18n";
 
 export interface Profile {
@@ -16,14 +16,30 @@ export interface PainEntry {
   jointPain: Record<string, number>;
   redFlags: string[]; // ids answered YES
 }
+/** One logged set: a plain count, or — for unilateral exercises, which
+ *  are performed one side at a time — a left/right pair. Plain numbers
+ *  stay valid everywhere (older data never has pairs). */
+export type SetLog = number | { l: number; r: number };
+/** A set's contribution to a total: a pair counts as left + right. */
+export const setSum = (v: SetLog): number => (typeof v === "number" ? v : v.l + v.r);
+/** A set's value for achievement: a pair counts by its weaker side. */
+export const setWeak = (v: SetLog): number => (typeof v === "number" ? v : Math.min(v.l, v.r));
+
 export interface SessionExercise {
   id: number; baseId: string; name: string; muscleGroup: string; painPart: string;
   variation: string; ladderIndex: number;
   targetSets: number; targetReps: number; targetUnit: "回" | "秒";
   cue: string;
-  loggedSets: number[]; rpe: number | null; completed: boolean;
+  loggedSets: SetLog[]; rpe: number | null; completed: boolean;
   /** Per-exercise memo only. There is intentionally no session-wide memo. */
   note: string;
+}
+/** An exercise counts as recorded once anything was actually logged for
+ *  it: a set above zero, an RPE, a note, or the completed flag. Recorded
+ *  exercises are fixed premises when a session plan is rebuilt. */
+export function isRecordedExercise(ex: SessionExercise): boolean {
+  return ex.completed || ex.rpe != null || (ex.note ?? "").trim() !== ""
+    || ex.loggedSets.some((v) => setSum(v) > 0);
 }
 export interface Session {
   id: number; date: string; rotation: string; title: string;
@@ -46,6 +62,9 @@ export interface Store {
   profileHistory: ProfileHistoryEntry[];
   /** UI language ("ja" | "en"); absent means Japanese (data saved before it existed). */
   lang?: Lang;
+  /** Colour theme ("dark" | "light" | "system"); absent means "system"
+   *  (follow the OS prefers-color-scheme), the default. */
+  theme?: Theme;
 }
 export const emptyStore = (): Store => ({ profile: null, pain: [], sessions: [], nextSessionId: 1, nextExerciseId: 1, profileHistory: [] });
 
@@ -135,7 +154,7 @@ export function detectOverload(store: Store, lang: Lang = "ja"): OverloadInfo[] 
   const completed = store.sessions.filter((s) => s.status === "completed").sort((a, b) => a.date.localeCompare(b.date));
   const last = completed[completed.length - 1];
   if (!last) return [];
-  const used = last.exercises.filter((e) => e.completed || e.loggedSets.some((v) => v > 0));
+  const used = last.exercises.filter((e) => e.completed || e.loggedSets.some((v) => setSum(v) > 0));
   const usedExercises = used.length ? used : last.exercises;
   if (!usedExercises.length) return [];
   const entries = [...store.pain].sort((a, b) => a.date.localeCompare(b.date));
@@ -213,7 +232,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 const round5 = (v: number) => Math.max(10, Math.round(v / 5) * 5);
 
 export function isCannotDo(prev: SessionExercise): boolean {
-  const allZero = prev.loggedSets.length > 0 && prev.loggedSets.every((v) => v === 0);
+  const allZero = prev.loggedSets.length > 0 && prev.loggedSets.every((v) => setSum(v) === 0);
   const memoCannot = /できない|1回もでき|一回もでき/.test(prev.note ?? "");
   return allZero || memoCannot;
 }
@@ -235,7 +254,10 @@ export function decideNext(def: ExerciseDef, prev: SessionExercise | null, intro
   ladder = prev.ladderIndex;
   targetSets = prev.targetSets;
   targetReps = prev.targetReps;
-  const loggedTotal = prev.loggedSets.reduce((a, b) => a + b, 0);
+  // Achievement (actual ÷ target) is judged on the weaker side for
+  // unilateral exercises: a set logged as a left/right pair counts by
+  // its smaller side, so a strong side cannot mask a lagging one.
+  const loggedTotal = prev.loggedSets.reduce((a: number, v) => a + setWeak(v), 0);
   const goalTotal = prev.targetReps * prev.targetSets;
   const achievement = goalTotal > 0 ? loggedTotal / goalTotal : 0;
   const memo = (prev.note ?? "").trim();
@@ -318,89 +340,183 @@ export function decideNext(def: ExerciseDef, prev: SessionExercise | null, intro
 }
 
 // ---------- session generation ----------
-export function generateSession(store: Store, date: string, assessment: Assessment, lang: Lang = "ja"): Session {
-  const T = SRV[lang];
-  const completedCount = store.sessions.filter((s) => s.status === "completed").length;
-  const intro = completedCount < INTRO_SESSIONS;
-  const rotation = ROTATIONS[store.sessions.length % ROTATIONS.length];
-  const notes: string[] = [];
-  const exercises: SessionExercise[] = [];
-  let excludedFlag = false;
-
-  // Pain application sets. A joint problem reaches an exercise two ways:
-  // directly (the exercise loads that joint) and through the explicit
-  // JOINT_TO_MUSCLE_PARTS mapping (the exercise trains a mapped muscle part).
+// Pain application sets. A joint problem reaches an exercise two ways:
+// directly (the exercise loads that joint) and through the explicit
+// JOINT_TO_MUSCLE_PARTS mapping (the exercise trains a mapped muscle part).
+interface PlanCtx {
+  excludedMuscles: Set<string>; reducedMuscles: Set<string>;
+  excludedJoints: Set<string>; reducedJoints: Set<string>;
+  overload: OverloadInfo[];
+  overloadMuscles: Set<string>; overloadJoints: Set<string>;
+  intro: boolean; lang: Lang;
+}
+function planCtx(store: Store, assessment: Assessment, intro: boolean, lang: Lang): PlanCtx {
   const painSet = (action: "exclude" | "reduce", kind: "muscle" | "joint") =>
     new Set(assessment.parts.filter((p) => p.action === action && p.kind === kind).map((p) => p.subject));
-  const excludedMuscles = painSet("exclude", "muscle"), reducedMuscles = painSet("reduce", "muscle");
-  const excludedJoints = painSet("exclude", "joint"), reducedJoints = painSet("reduce", "joint");
+  const overload = detectOverload(store, lang);
+  return {
+    excludedMuscles: painSet("exclude", "muscle"), reducedMuscles: painSet("reduce", "muscle"),
+    excludedJoints: painSet("exclude", "joint"), reducedJoints: painSet("reduce", "joint"),
+    overload,
+    overloadMuscles: new Set(overload.filter((o) => o.kind === "muscle").map((o) => o.subject)),
+    overloadJoints: new Set(overload.filter((o) => o.kind === "joint").map((o) => o.subject)),
+    intro, lang,
+  };
+}
+
+type PlanResult =
+  | { kind: "exercise"; exercise: SessionExercise; notes: string[] }
+  | { kind: "excluded"; notes: string[] };
+
+/** Plan one rotation slot against the pain assessment: the decision
+ *  engine (decideNext) first, then exclusion, reduction, and the
+ *  24-hour rule. Shared by fresh generation and by the rebuild of a
+ *  planned session's unrecorded remainder (refreshPlannedSession). */
+function planExercise(store: Store, baseId: string, ctx: PlanCtx): PlanResult {
+  const { lang } = ctx;
+  const T = SRV[lang];
+  const notes: string[] = [];
+  const def = EXERCISES[baseId];
+  // last completed record of this exercise (or of a substitute source)
+  const prev = [...store.sessions].reverse()
+    .flatMap((s) => s.exercises.map((e) => ({ s, e })))
+    .find(({ s, e }) => s.status === "completed" && e.baseId === baseId)?.e ?? null;
+
+  const decision = decideNext(def, prev, ctx.intro && !prev, lang);
+  const finalDef = EXERCISES[decision.baseId];
+  const jointDirect = (set: Set<string>) => finalDef.jointParts.filter((j) => set.has(j));
   const viaMap = (joints: Set<string>, part: string) =>
     [...joints].filter((j) => (JOINT_TO_MUSCLE_PARTS[j] ?? []).includes(part));
-  const overload = detectOverload(store, lang);
-  const overloadMuscles = new Set(overload.filter((o) => o.kind === "muscle").map((o) => o.subject));
-  const overloadJoints = new Set(overload.filter((o) => o.kind === "joint").map((o) => o.subject));
-
-  for (const baseId of rotation.exerciseIds) {
-    const def = EXERCISES[baseId];
-    // last completed record of this exercise (or of a substitute source)
-    const prev = [...store.sessions].reverse()
-      .flatMap((s) => s.exercises.map((e) => ({ s, e })))
-      .find(({ s, e }) => s.status === "completed" && e.baseId === baseId)?.e ?? null;
-
-    const decision = decideNext(def, prev, intro && !prev, lang);
-    const finalDef = EXERCISES[decision.baseId];
-    const jointDirect = (set: Set<string>) => finalDef.jointParts.filter((j) => set.has(j));
-    const excludeWhy: string[] = [];
-    if (excludedMuscles.has(finalDef.painPart)) excludeWhy.push(partName(finalDef.painPart, lang));
-    for (const j of jointDirect(excludedJoints)) excludeWhy.push(T.whyJoint(jointName(j, lang)));
-    for (const j of viaMap(excludedJoints, finalDef.painPart)) excludeWhy.push(T.whyJointMap(jointName(j, lang), partName(finalDef.painPart, lang)));
-    if (excludeWhy.length) {
-      excludedFlag = true;
-      notes.push(T.genExcluded(finalDef.name, [...new Set(excludeWhy)].join(" / ")));
-      continue;
-    }
-    let { targetReps, targetSets } = decision;
-    const reduceWhy: string[] = [];
-    if (reducedMuscles.has(finalDef.painPart)) reduceWhy.push(partName(finalDef.painPart, lang));
-    for (const j of jointDirect(reducedJoints)) reduceWhy.push(T.whyJoint(jointName(j, lang)));
-    for (const j of viaMap(reducedJoints, finalDef.painPart)) reduceWhy.push(T.whyJointMap(jointName(j, lang), partName(finalDef.painPart, lang)));
-    const reduce = (why: string) => {
-      targetReps = finalDef.unit === "秒" ? round5(targetReps * 0.8) : Math.max(1, Math.floor(targetReps * 0.8));
-      notes.push(why);
-    };
-    let reducedByPain = false;
-    if (reduceWhy.length) {
-      reduce(T.genReduced(finalDef.name, [...new Set(reduceWhy)].join(" / ")));
-      reducedByPain = true;
-    }
-    // 24-hour rule: an overloaded part is reduced and not progressed. If the
-    // pain criteria already reduced it, say so without reducing twice.
-    const overloadHit = overloadMuscles.has(finalDef.painPart)
-      ? overload.find((o) => o.kind === "muscle" && o.subject === finalDef.painPart)
-      : overload.find((o) => o.kind === "joint" && finalDef.jointParts.includes(o.subject));
-    if (overloadHit) {
-      if (reducedByPain) notes.push(T.genOverloadNote(finalDef.name, overloadHit.reason));
-      else reduce(T.genOverloadReduce(finalDef.name, overloadHit.reason));
-    }
-    notes.push(...decision.notes.map((n) => `${finalDef.name}: ${n}`));
-    exercises.push({
+  const excludeWhy: string[] = [];
+  if (ctx.excludedMuscles.has(finalDef.painPart)) excludeWhy.push(partName(finalDef.painPart, lang));
+  for (const j of jointDirect(ctx.excludedJoints)) excludeWhy.push(T.whyJoint(jointName(j, lang)));
+  for (const j of viaMap(ctx.excludedJoints, finalDef.painPart)) excludeWhy.push(T.whyJointMap(jointName(j, lang), partName(finalDef.painPart, lang)));
+  if (excludeWhy.length) {
+    notes.push(T.genExcluded(finalDef.name, [...new Set(excludeWhy)].join(" / ")));
+    return { kind: "excluded", notes };
+  }
+  let { targetReps, targetSets } = decision;
+  const reduceWhy: string[] = [];
+  if (ctx.reducedMuscles.has(finalDef.painPart)) reduceWhy.push(partName(finalDef.painPart, lang));
+  for (const j of jointDirect(ctx.reducedJoints)) reduceWhy.push(T.whyJoint(jointName(j, lang)));
+  for (const j of viaMap(ctx.reducedJoints, finalDef.painPart)) reduceWhy.push(T.whyJointMap(jointName(j, lang), partName(finalDef.painPart, lang)));
+  const reduce = (why: string) => {
+    targetReps = finalDef.unit === "秒" ? round5(targetReps * 0.8) : Math.max(1, Math.floor(targetReps * 0.8));
+    notes.push(why);
+  };
+  let reducedByPain = false;
+  if (reduceWhy.length) {
+    reduce(T.genReduced(finalDef.name, [...new Set(reduceWhy)].join(" / ")));
+    reducedByPain = true;
+  }
+  // 24-hour rule: an overloaded part is reduced and not progressed. If the
+  // pain criteria already reduced it, say so without reducing twice.
+  const overloadHit = ctx.overloadMuscles.has(finalDef.painPart)
+    ? ctx.overload.find((o) => o.kind === "muscle" && o.subject === finalDef.painPart)
+    : ctx.overload.find((o) => o.kind === "joint" && finalDef.jointParts.includes(o.subject));
+  if (overloadHit) {
+    if (reducedByPain) notes.push(T.genOverloadNote(finalDef.name, overloadHit.reason));
+    else reduce(T.genOverloadReduce(finalDef.name, overloadHit.reason));
+  }
+  notes.push(...decision.notes.map((n) => `${finalDef.name}: ${n}`));
+  return {
+    kind: "exercise",
+    notes,
+    exercise: {
       id: store.nextExerciseId++, baseId: finalDef.baseId, name: finalDef.name,
       muscleGroup: finalDef.muscleGroup, painPart: finalDef.painPart,
       variation: finalDef.ladder[decision.ladderIndex], ladderIndex: decision.ladderIndex,
       targetSets, targetReps, targetUnit: finalDef.unit, cue: finalDef.cue,
       loggedSets: Array(targetSets).fill(0), rpe: null, completed: false, note: "",
-    });
+    },
+  };
+}
+
+export function generateSession(store: Store, date: string, assessment: Assessment, lang: Lang = "ja"): Session {
+  const T = SRV[lang];
+  const completedCount = store.sessions.filter((s) => s.status === "completed").length;
+  const intro = completedCount < INTRO_SESSIONS;
+  const rotation = ROTATIONS[store.sessions.length % ROTATIONS.length];
+  const ctx = planCtx(store, assessment, intro, lang);
+  const notes: string[] = [];
+  const exercises: SessionExercise[] = [];
+  let excludedFlag = false;
+  for (const baseId of rotation.exerciseIds) {
+    const r = planExercise(store, baseId, ctx);
+    notes.push(...r.notes);
+    if (r.kind === "excluded") { excludedFlag = true; continue; }
+    exercises.push(r.exercise);
   }
-  const excludedAny = excludedFlag;
   return {
     id: store.nextSessionId++, date, rotation: rotation.id,
-    title: rotation.title + (excludedAny ? T.titleAltSuffix : ""),
+    title: rotation.title + (excludedFlag ? T.titleAltSuffix : ""),
     status: "planned", intro,
-    focusNote: excludedAny ? T.focusNoteAlt : "",
+    focusNote: excludedFlag ? T.focusNoteAlt : "",
     progressionNotes: notes, exercises, totalVolume: 0,
   };
 }
 
+// ---------- rebuild of a planned session on a condition change ----------
+// Re-saving the condition check rebuilds the session around what is
+// already recorded:
+// - a completed session is never touched;
+// - recorded exercises (isRecordedExercise) are fixed as they are —
+//   exercise, target, and log all stay, and no remaining slot may
+//   duplicate one of them;
+// - every remaining slot is re-planned from the rotation with the
+//   normal generation pipeline, treating the recorded exercises as
+//   the slots they already fill, and the newest assessment (exclude /
+//   reduce) applies to all of them — so an exercise excluded now drops
+//   out, and one that was excluded before comes back when it clears;
+// - if the new assessment is a warning-sign (care) or full-rest day,
+//   every unrecorded exercise is removed and only the recorded part
+//   stays, with the blocking reason left in the progression notes.
+// The session's id, date, rotation, and intro flag never change.
+export function refreshPlannedSession(store: Store, session: Session, assessment: Assessment, lang: Lang = "ja"): Session {
+  if (session.status !== "planned") return session;
+  const T = SRV[lang];
+  const recorded = session.exercises.filter(isRecordedExercise);
+  if (assessment.care || assessment.rest) {
+    const kept: Session = { ...session, exercises: recorded };
+    return {
+      ...kept,
+      progressionNotes: [assessment.care ? T.errBlockedRedFlag : T.errRestDay],
+      totalVolume: sessionTotal(kept),
+    };
+  }
+  const rotation = ROTATIONS.find((r) => r.id === session.rotation) ?? ROTATIONS[0];
+  const ctx = planCtx(store, assessment, session.intro, lang);
+  const recordedBaseIds = new Set(recorded.map((e) => e.baseId));
+  const recordedByBase = new Map(recorded.map((e) => [e.baseId, e]));
+  const placed = new Map<string, SessionExercise>();
+  const notes: string[] = [];
+  let excludedFlag = false;
+  for (const baseId of rotation.exerciseIds) {
+    const rec = recordedByBase.get(baseId);
+    if (rec) { placed.set(baseId, rec); continue; }
+    const r = planExercise(store, baseId, ctx);
+    notes.push(...r.notes);
+    if (r.kind === "excluded") { excludedFlag = true; continue; }
+    // Never duplicate a recorded exercise (a substitute may land on
+    // one), and never place the same exercise twice.
+    if (recordedBaseIds.has(r.exercise.baseId) || placed.has(r.exercise.baseId)) continue;
+    placed.set(r.exercise.baseId, r.exercise);
+  }
+  const exercises = [...placed.values()];
+  const placedIds = new Set(exercises.map((e) => e.id));
+  // Recorded exercises that are not rotation members (substitutes)
+  // stay as well, in their original relative order.
+  for (const e of recorded) if (!placedIds.has(e.id)) exercises.push(e);
+  const rebuilt: Session = {
+    ...session,
+    title: rotation.title + (excludedFlag ? T.titleAltSuffix : ""),
+    focusNote: excludedFlag ? T.focusNoteAlt : "",
+    progressionNotes: notes, exercises, totalVolume: 0,
+  };
+  rebuilt.totalVolume = sessionTotal(rebuilt);
+  return rebuilt;
+}
+
 export function sessionTotal(s: Session): number {
-  return s.exercises.reduce((sum, e) => sum + e.loggedSets.reduce((a, b) => a + b, 0), 0);
+  return s.exercises.reduce((sum: number, e) => sum + e.loggedSets.reduce((a: number, v) => a + setSum(v), 0), 0);
 }

@@ -1,5 +1,8 @@
 /* Design tokens measured from screenshots of the original space.
-   See DESIGN.md — dark theme only, one bright teal accent. */
+   See DESIGN.md — two themes (dark / light) over one teal family;
+   the dark set is the measured original. The resolved theme sits on
+   <html data-theme="...">, applied before first paint from the
+   mirrored setting (index.html) and kept in sync by app.js. */
 :root{
   color-scheme:dark;
   --bg:#0f0f0f;
@@ -12,6 +15,44 @@
   --text:#f0f0f0;
   --sub:#9ca3af;
   --tick-off:#292929;
+  --dot-off:#333;
+  --warn-border:#ef4444;
+  --warn-fill:#2a0f0f;
+  --warn-text:#fecaca;
+  --ok-fill:#0b2420;
+  --ok-text:#99f6e4;
+  --caution-border:#92400e;
+  --caution-fill:#241a08;
+  --caution-text:#fde68a;
+  --danger:#f87171;
+  --danger-solid:#ef4444;
+}
+/* Light theme: same teal family on white / near-white. The accent
+   deepens to #0f766e — the dark accent #2dd4bf is only ~1.9:1 on
+   white, far under the 4.5:1 text requirement (DESIGN.md). */
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#f2f2f0;
+  --surface:#ffffff;
+  --surface-2:#ffffff;
+  --border:#d5d5d1;
+  --accent:#0f766e;
+  --on-accent:#ffffff;
+  --badge:#115e59;
+  --text:#1c1e1c;
+  --sub:#5b6066;
+  --tick-off:#cfd2cd;
+  --dot-off:#b9bbb5;
+  --warn-border:#dc2626;
+  --warn-fill:#fdeeee;
+  --warn-text:#7f1d1d;
+  --ok-fill:#e6f4f1;
+  --ok-text:#0b4f45;
+  --caution-border:#b45309;
+  --caution-fill:#fdf3e0;
+  --caution-text:#7c2d12;
+  --danger:#b91c1c;
+  --danger-solid:#dc2626;
 }
 body{font-family:system-ui,sans-serif;font-size:16px;background:var(--bg);color:var(--text);max-width:680px;margin:0 auto;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));line-height:1.6}
 h2{font-size:17px;margin:22px 0 4px}
@@ -53,7 +94,7 @@ nav button.active{background:var(--accent);color:var(--on-accent)}
 
 /* Warning-sign chips */
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
-.chip{padding:7px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface-2);color:var(--sub);cursor:pointer;font-size:13px}
+.chip{padding:7px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);cursor:pointer;font-size:13px}
 .chip.on{border-color:var(--accent);background:var(--badge);color:#fff}
 
 /* Legend badges: dark teal pills with white text */
@@ -67,13 +108,27 @@ nav button.active{background:var(--accent);color:var(--on-accent)}
 .tap-row{display:flex;justify-content:space-between;align-items:flex-start}
 .tap-name{font-weight:700;font-size:15px}
 .tap-num{font-size:34px;line-height:1;color:var(--text)}
-.tap-word{color:var(--sub);font-size:12px}
+/* The level word is small text, so it takes the full text colour in
+   both themes (universal-design contrast, DESIGN.md); the measured
+   original used --sub here, which is under 4.5:1 on the deep ramp. */
+.tap-word{color:#ffffff;font-size:12px}
 .tap.lv1{background:#17312c}.tap.lv2{background:#17453c}.tap.lv3{background:#1a5a4c}.tap.lv4{background:#20806c}
 .tap.lv5{background:var(--accent)}.tap.lv5 .tap-num{color:var(--on-accent)}.tap.lv5 .tap-word{color:var(--on-accent)}
 .ticks{display:flex;gap:3px;align-items:flex-end}
 .ticks i{width:14px;height:5px;border-radius:2px;background:var(--tick-off)}
 .ticks i.on{background:var(--accent)}
 .tap.lv5 .ticks i{background:rgba(5,46,43,.25)}.tap.lv5 .ticks i.on{background:var(--on-accent)}
+/* Light-theme tile ramp: a shallower teal ramp on white, with the
+   near-black text colour; level 5 is the light accent with white. */
+:root[data-theme="light"] .tap-word{color:var(--text)}
+:root[data-theme="light"] .tap.lv1{background:#e2f2ec}
+:root[data-theme="light"] .tap.lv2{background:#c2e7d9}
+:root[data-theme="light"] .tap.lv3{background:#93cfb6}
+:root[data-theme="light"] .tap.lv4{background:#57ab8d}
+:root[data-theme="light"] .tap.lv5{background:var(--accent)}
+:root[data-theme="light"] .tap.lv5 .tap-word{color:var(--on-accent)}
+:root[data-theme="light"] .tap.lv5 .ticks i{background:rgba(255,255,255,.35)}
+:root[data-theme="light"] .tap.lv5 .ticks i.on{background:var(--on-accent)}
 
 /* Uniform form controls: same height, radius, padding and font size for
    every field type (text / number / select / textarea) on every screen. */
@@ -86,10 +141,10 @@ textarea{height:auto;min-height:42px;padding:9px 10px;line-height:1.5;resize:ver
 .field label{font-size:13px;color:var(--sub)}
 .field input,.field select,.field textarea{width:100%}
 .field.wide{grid-column:1/-1}
-.warn{border:1px solid #ef4444;background:#2a0f0f;color:#fecaca;padding:10px;border-radius:10px;margin:10px 0}
-.ok{border:1px solid var(--badge);background:#0b2420;color:#99f6e4;padding:10px;border-radius:10px;margin:10px 0}
-.caution{border:1px solid #92400e;background:#241a08;color:#fde68a;padding:10px;border-radius:10px;margin:8px 0}
-.refs,.small{font-size:13px;color:var(--sub)}.error{color:#f87171}
+.warn{border:1px solid var(--warn-border);background:var(--warn-fill);color:var(--warn-text);padding:10px;border-radius:10px;margin:10px 0}
+.ok{border:1px solid var(--badge);background:var(--ok-fill);color:var(--ok-text);padding:10px;border-radius:10px;margin:10px 0}
+.caution{border:1px solid var(--caution-border);background:var(--caution-fill);color:var(--caution-text);padding:10px;border-radius:10px;margin:8px 0}
+.refs,.small{font-size:13px;color:var(--sub)}.error{color:var(--danger)}
 /* Fallback UI: while a button's request runs it is disabled and dimmed;
    a failed request leaves an error line right after its button. */
 button:disabled{opacity:.55;cursor:default}
@@ -131,11 +186,11 @@ label.row{display:block;margin:6px 0}
 
 /* Reset confirmation: a separate block stacked UNDER the first button —
    normal flow only, never overlaid on it. */
-.reset-confirm{margin-top:14px;border:1px solid #ef4444;background:#2a0f0f;color:#fecaca;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;align-items:stretch}
+.reset-confirm{margin-top:14px;border:1px solid var(--warn-border);background:var(--warn-fill);color:var(--warn-text);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;align-items:stretch}
 .reset-confirm p{margin:0;font-size:13px}
 .reset-confirm .btn{text-align:center}
-.btn.danger{border-color:#ef4444;color:#f87171}
-.btn.danger-solid{background:#ef4444;border-color:#ef4444;color:#fff;font-weight:700}
+.btn.danger{border-color:var(--warn-border);color:var(--danger)}
+.btn.danger-solid{background:var(--danger-solid);border-color:var(--danger-solid);color:#fff;font-weight:700}
 
 /* Week dots (menu screen): Mon–Sun letters over dots, no day numbers.
    Done day = filled teal dot; today = teal bold letter + teal ring. */
@@ -143,7 +198,7 @@ label.row{display:block;margin:6px 0}
 .wdot{display:flex;flex-direction:column;align-items:center;gap:7px;width:34px}
 .wdot-label{color:var(--sub);font-size:12px;line-height:1}
 .wdot.today .wdot-label{color:var(--accent);font-weight:700}
-.wdot-dot{width:9px;height:9px;border-radius:50%;border:2px solid #333;box-sizing:border-box}
+.wdot-dot{width:9px;height:9px;border-radius:50%;border:2px solid var(--dot-off);box-sizing:border-box}
 .wdot-dot.done{background:var(--accent);border-color:var(--accent)}
 .wdot.today .wdot-dot{width:18px;height:18px;border:2px solid var(--accent);background:transparent}
 .wdot.today .wdot-dot.done{background:var(--accent)}
@@ -183,12 +238,17 @@ label.row{display:block;margin:6px 0}
 .ex-target-line{color:var(--sub);font-size:13px}
 .ex-cue{color:var(--sub);font-size:13px;line-height:1.55;margin:8px 0 0}
 .ex-total{flex:none;text-align:right}
-.ex-total .num{font-size:36px;line-height:1;color:var(--sub)}
+.ex-total .num{font-size:36px;line-height:1;color:var(--text)}
 .ex-total-label{color:var(--sub);font-size:11px;margin-top:2px}
 .set-grid{display:flex;gap:8px;margin-top:16px}
 .set-cell{flex:1;display:flex;flex-direction:column;gap:5px;min-width:0}
 .set-label{text-align:center;color:var(--sub);font-size:12px}
 .set-cell .set-input{width:100%;height:46px;background:var(--bg);border:none;border-radius:8px;text-align:center;font-size:17px;font-weight:700;color:var(--text)}
+/* Unilateral exercises: each set cell holds two side-by-side inputs
+   labelled 左 / 右 (L / R) instead of one. */
+.set-pair{display:flex;gap:6px}
+.set-side{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+.set-side>span{text-align:center;color:var(--sub);font-size:11px;line-height:1}
 .ex-divider{border:none;border-top:1px solid var(--border);margin:16px 0 12px}
 .rpe-row{display:flex;align-items:center;gap:10px}
 .rpe-row label{font-size:14px}
@@ -213,4 +273,4 @@ label.row{display:block;margin:6px 0}
 .timer-bar{height:8px;background:var(--border);border-radius:999px;overflow:hidden;margin:8px 0}
 .timer-fill{height:100%;background:var(--accent);transition:width .2s linear}
 .timer-btns{display:flex;gap:8px;flex-wrap:wrap}
-.timer.done{background:#0b2420;border:1px solid var(--accent)}
+.timer.done{background:var(--ok-fill);border:1px solid var(--accent)}

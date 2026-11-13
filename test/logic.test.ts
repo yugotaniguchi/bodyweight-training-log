@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { EXERCISES } from "../src/exercises";
 import {
-  assessPain, decideNext, detectOverload, generateSession, painDurationGuidance, emptyStore,
+  assessPain, decideNext, detectOverload, generateSession, painDurationGuidance, emptyStore, setSum,
   type PainEntry, type Session, type SessionExercise, type Store,
 } from "../src/logic";
 
@@ -69,7 +69,7 @@ test("knee joint pain level 3 excludes knee-loading exercises from the menu", ()
 // ---------- fixtures for history-based rules ----------
 const doneSession = (date: string, ex: SessionExercise): Session => ({
   id: 1, date, rotation: "A", title: "押す + 脚", status: "completed", intro: false,
-  focusNote: "", progressionNotes: [], exercises: [ex], totalVolume: ex.loggedSets.reduce((a, b) => a + b, 0),
+  focusNote: "", progressionNotes: [], exercises: [ex], totalVolume: ex.loggedSets.reduce((a: number, v) => a + setSum(v), 0),
 });
 const storeWith = (pain: PainEntry[], sessions: Session[]): Store => ({ ...emptyStore(), pain, sessions, nextSessionId: 9, nextExerciseId: 9 });
 
