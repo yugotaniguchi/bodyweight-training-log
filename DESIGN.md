@@ -103,7 +103,7 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Explanatory prose is allowed **only** where a decision needs it, in
   exactly two places:
   1. The one-line section descriptions (`.desc`, 13px, `--sub`) directly
-     under a pain-screen heading.
+     under a condition-screen heading.
   2. The single footer section `判定基準について` at the very bottom of
      the page (after the app area, on every screen): `h2` heading,
      paragraphs in 13px `--sub`, ending with the references line. Its
@@ -119,10 +119,10 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Header right: `Day` + numeral; under it `累計 {n} レップ`
 - Gear button: a thin line-drawn gear icon — inline SVG, gray stroke,
   no fill (aria-label / title: `設定`)
-- Nav segments, in order: `痛みの記録` / `ワークアウト` / `これまでの記録`
+- Nav segments, in order: `コンディション` / `ワークアウト` / `レポート`
 - Loading placeholder: `読み込み中…`
 
-### Pain screen
+### Condition screen （コンディション）
 - Headings: `まず、警告サインの確認` / `今日の筋肉痛は？（部位ごと）` /
   `今日の関節痛は？（関節ごと）`
 - Descriptions (verbatim):
@@ -142,13 +142,17 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Joints (7, in order): 腰・肩・肘・手首・股関節・膝・足首
 - Level words (0–5): `なし` `軽い` `普通` `強い` `かなり強い` `激しい`
 - Primary CTA, three states:
-  - `痛みの記録を保存` — while there are unsaved pain edits (or nothing
+  - `コンディションを保存` — while there are unsaved pain edits (or nothing
     saved yet today).
   - `ワークアウトを開始` — after a successful save, while no pain value
-    has been edited since. Tapping it goes to the ワークアウト screen.
-    Any pain edit after saving returns the label to `痛みの記録を保存`.
+    has been edited since. Tapping it creates today's session first if
+    none exists yet (an existing session is never recreated), then goes
+    to the ワークアウト screen. If creation is blocked (warning sign /
+    rest day), it still goes to the ワークアウト screen, whose empty
+    state shows the blocking reason. Any pain edit after saving returns
+    the label to `コンディションを保存`.
   - `今日の結果を見る` — when today's session is completed; tapping it
-    saves any unsaved edits first, then goes to これまでの記録.
+    saves any unsaved edits first, then goes to レポート.
 - Missing-profile notice (warning box, top of screen):
   `先に右上の歯車ボタンからプロフィールを入力してください（空でも記録はできます）。`
 - Assessment box, one of:
@@ -159,6 +163,10 @@ All three notice boxes share: 1px solid border, radius 10px, padding
   followed by the reasons as a bulleted list.
 
 ### Workout screen
+- Condition-missing state (no session yet AND no condition recorded
+  today; shown with priority over the empty state below): text
+  `今日のコンディションが未入力です。先に入力してください。`, then a primary CTA
+  `コンディションを入力` (goes to the コンディション screen).
 - Empty state text: `今日のセッションはまだありません。`
 - Empty state CTA: `今日のワークアウトを作る`
 - Gauge sub-label: `／ {total} 種目完了`
@@ -168,10 +176,14 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Per set: `{n}セット目`; target line: `目標 {sets}セット × {reps}{unit}`
   (unit is `回` or `秒`)
 - Total label: `合計回` or `合計秒`
-- RPE label: `きつさ RPE`; select options: `未入力`, `6 以下`, then
-  `6.5` `7` `7.5` `8` `8.5` `9` `9.5` `10`
+- RPE label: `きつさ RPE`; select options — exactly these ten, each
+  shown as `value（word）` (the selected option displays in the same
+  form; the saved value is the bare number): `未入力`, `6（かなり楽）`,
+  `6.5（楽）`, `7（やや楽）`, `7.5（少しきつい）`, `8（きつい）`,
+  `8.5（かなりきつい）`, `9（とてもきつい）`, `9.5（ほぼ限界）`, `10（限界）`.
+  There is no `6 以下` option.
 - Note label: `この種目のメモ（任意）`; placeholder:
-  `例：膝立ちが限界だった`; hint: `次回、この種目にだけ反映されます。`
+  `例：フォームが崩れた／左側がきつかった`; hint: `次回、この種目にだけ反映されます。`
 - Timer buttons: `開始` / `一時停止` / `リセット`; timer unit: ` 秒`
 - Save button: `記録して完了` (unrecorded) / `記録を更新` (recorded)
 - Finish button: `今日のトレーニングを完了する`
@@ -179,10 +191,12 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Cancel confirmation text:
   `このワークアウトを取り消しますか？今日のセッションと入力した内容が消えます。`
   Buttons: `取り消す` / `やめる`
-- Completed-session box (OK box): `完了済みです。これまでの記録で確認できます。`
+- Completed-session box (OK box): `完了済みです。レポートで確認できます。`,
+  followed by a primary CTA `レポートを見る` (goes to レポート).
 
-### History screen
-- Heading: `これまでの記録`; empty state: `記録はまだありません。`
+### Report screen
+- Heading: `レポート`; empty state: `記録はまだありません。`, followed by a
+  primary CTA `ワークアウトへ` (goes to the ワークアウト screen).
 - Entry date: a single line `MM/DD(曜)` (zero-padded month and day,
   weekday as one character in half-width parentheses), e.g. `11/13(金)`
 - Per-exercise note prefix: `種目メモ： {note}`
@@ -260,9 +274,9 @@ Shown verbatim at the bottom of every screen, after the app area:
   no change while the settings screen is open. The button is always
   the same muted gray; only its position and shape say it can be
   pressed.
-- **Visibility**: shown **only** on the pain screen (home) and on the
-  settings screen. It is hidden on the workout screen and on the
-  history screen.
+- **Visibility**: shown **only** on the condition screen (home) and on
+  the settings screen. It is hidden on the workout screen and on the
+  report screen.
 
 ### Segment navigation
 - A row of segment buttons: gap **6px**, margin 12px 0, wrap allowed.
@@ -270,8 +284,8 @@ Shown verbatim at the bottom of every screen, after the app area:
   radius **8px**, no border, font **14px weight 600** — **not** pills.
 - Active segment: `--accent` fill, `--on-accent` text.
 - Inactive segments: `--surface` fill, `--text`.
-- Exactly 3 segments: 痛みの記録 / ワークアウト / これまでの記録. There is no
-  Result segment (results are merged into これまでの記録） and no
+- Exactly 3 segments: コンディション / ワークアウト / レポート. There is no
+  Result segment (results are merged into レポート) and no
   Settings segment.
 
 ### Generic buttons and cards
@@ -378,12 +392,12 @@ Shown verbatim at the bottom of every screen, after the app area:
 - RPE row: flex, gap 10px, vertically centred. Label `きつさ RPE` at
   14px. Select: fill `--bg`, no border, **height 40px**, radius 8px,
   14px `--text`, padding 0 10px, min-width 150px. Options as listed
-  under "Exact UI text — labels"; the saved value is the number
-  (`6 以下` saves 6).
+  under "Exact UI text — labels" — exactly the ten `value（word）`
+  entries; the saved value is the bare number.
 - Note: label `この種目のメモ（任意）` as a block, 14px weight 700,
   margin 16px 0 6px. Input: full width, fill `--bg`, no border,
   **height 44px**, radius 8px, 16px, placeholder
-  `例：膝立ちが限界だった`. Hint under it: 12px `--sub`, margin-top 6px:
+  `例：フォームが崩れた／左側がきつかった`. Hint under it: 12px `--sub`, margin-top 6px:
   `次回、この種目にだけ反映されます。`
 - State — unrecorded vs recorded:
   - An exercise counts as **recorded** when it is completed, or has an
@@ -426,19 +440,26 @@ Shown verbatim at the bottom of every screen, after the app area:
   place, by a centred confirmation: the confirmation text in 13px
   `--sub`, then a centred button row (gap 8px, margin-top 10px) with
   `取り消す` (danger-solid) and `やめる` (`.btn`). No native dialog.
-  Confirming deletes today's session and returns to the pain-check
+  Confirming deletes today's session and returns to the condition
   state; `やめる` restores the link.
 - State — session completed: the finish card is replaced by an OK box:
-  `完了済みです。これまでの記録で確認できます。`
-- State — no session yet (workout screen): the text
+  `完了済みです。レポートで確認できます。`, followed by a primary CTA
+  `レポートを見る` (goes to レポート).
+- State — no session yet and no condition recorded today: the text
+  `今日のコンディションが未入力です。先に入力してください。`, then a primary CTA
+  `コンディションを入力` (goes to the コンディション screen). This state has
+  priority over the generate state below.
+- State — no session yet (condition recorded): the text
   `今日のセッションはまだありません。`, then a primary CTA
   `今日のワークアウトを作る`, then an error line (`.error`) under it.
+  When the user arrives here via `ワークアウトを開始` and creation was
+  blocked, the error line already shows the blocking reason.
 
 ### History entries (results merged in)
 - There is no separate Result screen. Completing today's session — and
-  the pain screen's `今日の結果を見る` CTA — lands on これまでの記録，
+  the condition screen's `今日の結果を見る` CTA — lands on レポート,
   which is both the result view and the history.
-- Heading `これまでの記録`. Entries newest first, separated by a 1px
+- Heading `レポート`. Entries newest first, separated by a 1px
   `--border` bottom border — **no card frames**, a quiet list. Entry
   padding 16px 0 14px.
 - Entry header (flex, gap 14px, top-aligned):
@@ -487,8 +508,8 @@ Shown verbatim at the bottom of every screen, after the app area:
   one muted style — it has no active state).
 - At the top-left of the content, the back button: `← ホームに戻る` —
   no background, no border, 14px `--sub`, a left arrow followed by the
-  label, quiet like a text link. Tapping it returns to the pain screen
-  (home).
+  label, quiet like a text link. Tapping it returns to the condition
+  screen (home).
 - Heading `プロフィール（初回設定）`, then the form grid: CSS grid,
   columns `repeat(auto-fit, minmax(150px, 1fr))`, gap **12px**, margin
   10px 0. Fields in order: 年齢 / 性別 / 身長（cm） / 体重（kg） (normal
@@ -540,10 +561,10 @@ Shown verbatim at the bottom of every screen, after the app area:
 
 ## Screen compositions
 
-### 1. Pain check （痛みの記録）
+### 1. Condition （コンディション）
 1. Missing-profile warning box (only when no profile is saved)
 2. Header (date + purpose / Day + cumulative reps)
-3. Segment navigation （痛みの記録 active)
+3. Segment navigation （コンディション active)
 4. Settings gear (fixed, top-right — shown on this screen and on the
    settings screen only)
 5. `まず、警告サインの確認` — heading, description, warning-sign chips
@@ -551,8 +572,9 @@ Shown verbatim at the bottom of every screen, after the app area:
    2-column tiles (10 parts)
 7. `今日の関節痛は？（関節ごと）` — heading, description, legend badges,
    2-column tiles (7 joints)
-8. Primary CTA （痛みの記録を保存； ワークアウトを開始 once saved with no
-   further edits; 今日の結果を見る when today's session is completed)
+8. Primary CTA （コンディションを保存; ワークアウトを開始 once saved with no
+   further edits — it creates today's session first if none exists;
+   今日の結果を見る when today's session is completed)
 9. Assessment box (care warning / rest-day warning / OK box), when an
    assessment exists
 10. Guidance caution boxes (duration notices), if any
@@ -568,14 +590,16 @@ Shown verbatim at the bottom of every screen, after the app area:
 5. Three metrics
 6. One exercise card per exercise (timer inside the card for timed
    exercises)
-7. Finish area — or the completed OK box — or, when there is no
-   session yet, the empty-state text + `今日のワークアウトを作る` CTA +
-   error line
+7. Finish area — or the completed OK box + `レポートを見る` CTA — or, when
+   there is no session yet, the condition-missing text +
+   `コンディションを入力` CTA (when no condition is recorded today; this
+   has priority), otherwise the empty-state text +
+   `今日のワークアウトを作る` CTA + error line
 8. Footer note
 
-### 3. History （これまでの記録）
-1. Header; segment navigation （これまでの記録 active); no gear
-2. Heading `これまでの記録` (or the empty-state text)
+### 3. Report （レポート）
+1. Header; segment navigation （レポート active); no gear
+2. Heading `レポート` (or the empty-state text + `ワークアウトへ` CTA)
 3. Entries, newest first, in the list form above; an entry in edit
    mode shows its edit cards in place
 4. Footer note

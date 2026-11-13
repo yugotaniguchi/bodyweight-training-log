@@ -9,6 +9,7 @@ let state = null;
 let view = "pain";
 let resetArm = false; // settings: two-step delete confirmation state
 let menuCancelArm = false; // menu: two-step "cancel this menu" confirmation state
+let menuGenError = ""; // last session-generation error, shown on the menu empty state
 const editingHist = new Set(); // session ids whose history entry is in edit mode
 const painDraft = { soreness: {}, jointPain: {}, redFlags: [] };
 // Pain save state: painGen increments on every pain edit, painSavedGen is
@@ -29,9 +30,9 @@ async function api(path, body) {
 async function load() { state = await (await fetch("/api/state")).json(); if (state.pain) painSavedGen = painGen; render(); }
 document.getElementById("tabs").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-view]"); if (!b) return;
-  view = b.dataset.view; menuCancelArm = false; render();
+  view = b.dataset.view; menuCancelArm = false; menuGenError = ""; render();
 });
-document.getElementById("gear").addEventListener("click", () => { view = "settings"; menuCancelArm = false; render(); });
+document.getElementById("gear").addEventListener("click", () => { view = "settings"; menuCancelArm = false; menuGenError = ""; render(); });
 
 const LEVEL_WORDS = ["なし", "軽い", "普通", "強い", "かなり強い", "激しい"];
 function tapGrid(kind, parts, current) {
@@ -181,7 +182,7 @@ function renderPain() {
   const flags = pain?.redFlags ?? painDraft.redFlags;
   const a = state.assessment;
   const completedToday = state.todaySession?.status === "completed";
-  const painCta = completedToday ? "今日の結果を見る" : painIsSaved() ? "ワークアウトを開始" : "痛みの記録を保存";
+  const painCta = completedToday ? "今日の結果を見る" : painIsSaved() ? "ワークアウトを開始" : "コンディションを保存";
   return `
   ${!state.profile ? `<div class="warn">先に右上の歯車ボタンからプロフィールを入力してください（空でも記録はできます）。</div>` : ""}
   <h2>まず、警告サインの確認</h2>
@@ -236,16 +237,17 @@ function collectExercise(root, ex) {
 // line and form cue in gray, the total target at the top-right. Set inputs
 // are black boxes in an even row; RPE is a black select; the per-exercise
 // note sits over a full-width teal record button.
-const RPE_OPTIONS = [6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
+// RPE select options: exactly these ten entries, each shown as
+// "value（word）" (also while selected); the saved value is the bare number.
+const RPE_SELECT = [[6, "かなり楽"], [6.5, "楽"], [7, "やや楽"], [7.5, "少しきつい"], [8, "きつい"], [8.5, "かなりきつい"], [9, "とてもきつい"], [9.5, "ほぼ限界"], [10, "限界"]];
 function menuExerciseCard(s, ex) {
   const recorded = ex.completed || ex.rpe != null || ex.loggedSets.some((v) => v !== 0);
   const sets = ex.loggedSets.map((v, i) => {
     const shown = recorded ? (v === 0 ? "" : v) : ex.targetReps;
     return `<div class="set-cell"><div class="set-label">${i + 1}セット目</div><input class="set-input" type="text" inputmode="numeric" autocomplete="off" data-set="${ex.id}:${i}" value="${shown}" placeholder="0"></div>`;
   }).join("");
-  const rpeValues = ex.rpe != null && !RPE_OPTIONS.includes(ex.rpe) ? [...RPE_OPTIONS, ex.rpe].sort((a, b) => a - b) : RPE_OPTIONS;
   const rpeOptions = [`<option value=""${ex.rpe == null ? " selected" : ""}>未入力</option>`]
-    .concat(rpeValues.map((v) => `<option value="${v}"${ex.rpe === v ? " selected" : ""}>${v === 6 ? "6 以下" : v}</option>`)).join("");
+    .concat(RPE_SELECT.map(([v, w]) => `<option value="${v}"${ex.rpe === v ? " selected" : ""}>${v}（${w}）</option>`)).join("");
   const totalTarget = ex.targetReps * ex.targetSets;
   return `<div class="card ex-card">
     <div class="ex-head"><div class="ex-head-left">
@@ -259,7 +261,7 @@ function menuExerciseCard(s, ex) {
     <hr class="ex-divider">
     <div class="rpe-row"><label for="rpe-${ex.id}">きつさ RPE</label><select class="rpe-select" id="rpe-${ex.id}" data-rpe="${ex.id}">${rpeOptions}</select></div>
     <label class="note-label" for="note-${ex.id}">この種目のメモ（任意）</label>
-    <input class="note-input" id="note-${ex.id}" type="text" data-note="${ex.id}" placeholder="例：膝立ちが限界だった" value="${esc(ex.note)}">
+    <input class="note-input" id="note-${ex.id}" type="text" data-note="${ex.id}" placeholder="例：フォームが崩れた／左側がきつかった" value="${esc(ex.note)}">
     <div class="note-hint">次回、この種目にだけ反映されます。</div>
     ${ex.targetUnit === "秒" ? timerHtml(ex) : ""}
     <button class="cta ex-save" data-save-ex="${s.id}:${ex.id}">${recorded ? "記録を更新" : "記録して完了"}</button>
@@ -267,7 +269,12 @@ function menuExerciseCard(s, ex) {
 }
 function renderMenu() {
   const s = state.todaySession;
-  if (!s) return `<p>今日のセッションはまだありません。</p><button class="cta" id="gen">今日のワークアウトを作る</button><p id="genErr" class="error"></p>`;
+  if (!s) {
+    // No condition recorded today yet: this guidance takes priority over
+    // the generate-session guidance.
+    if (!state.pain) return `<p>今日のコンディションが未入力です。先に入力してください。</p><button class="cta" id="goCond">コンディションを入力</button>`;
+    return `<p>今日のセッションはまだありません。</p><button class="cta" id="gen">今日のワークアウトを作る</button><p id="genErr" class="error">${esc(menuGenError)}</p>`;
+  }
   const remaining = s.exercises.filter((e) => !e.completed).length;
   return `${weekDots()}
   ${ringGauge(s)}
@@ -280,7 +287,7 @@ function renderMenu() {
   ${s.status !== "completed" ? `<div class="card finish-card"><button class="cta" id="complete">今日のトレーニングを完了する</button>
     ${menuCancelArm ? `<div class="cancel-confirm"><p>このワークアウトを取り消しますか？今日のセッションと入力した内容が消えます。</p><div class="cancel-btns"><button class="btn danger-solid" id="cancelExec">取り消す</button><button class="btn" id="cancelBack">やめる</button></div></div>`
       : `<button class="cancel-link" id="cancelMenu">このワークアウトを取り消す</button>`}</div>`
-    : `<div class="ok">完了済みです。これまでの記録で確認できます。</div>`}`;
+    : `<div class="ok">完了済みです。レポートで確認できます。</div><button class="cta" id="goReport">レポートを見る</button>`}`;
 }
 // RPE number -> the word the original space shows next to it.
 function rpeWord(rpe) {
@@ -301,7 +308,7 @@ const DOW_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 // the original's layout — big day number + month/weekday on the left,
 // rotation and exercise rows in the middle, session total on the right.
 function renderHistory() {
-  if (!state.sessions.length) return `<h2>これまでの記録</h2><p>記録はまだありません。</p>`;
+  if (!state.sessions.length) return `<h2>レポート</h2><p>記録はまだありません。</p><button class="cta" id="histGoMenu">ワークアウトへ</button>`;
   const entries = state.sessions.map((s) => {
     const n = dayNum(s.date);
     const dow = DOW_LABELS[(n + 4) % 7];
@@ -320,7 +327,7 @@ function renderHistory() {
       <div class="hist-total"><span class="num">${s.totalVolume}</span>レップ</div>
     </div></div>`;
   }).join("");
-  return `<h2>これまでの記録</h2>${entries}`;
+  return `<h2>レポート</h2>${entries}`;
 }
 function renderSettings() {
   const p = state.profile ?? { age: "", sex: "", heightCm: "", weightKg: "", bodyFatNote: "", habitNote: "" };
@@ -376,7 +383,13 @@ function bind() {
       }
       view = "history"; render(); return;
     }
-    if (painIsSaved()) { view = "menu"; render(); return; } // 「ワークアウトを開始」
+    if (painIsSaved()) { // 「ワークアウトを開始」: create today's session first if there is none yet
+      if (!state.todaySession) {
+        try { await api("/api/session/generate", {}); menuGenError = ""; }
+        catch (e) { menuGenError = e.message; } // blocked (red flag / rest day): the menu empty state shows the reason
+      }
+      view = "menu"; render(); return;
+    }
     await api("/api/pain", { soreness: state.pain?.soreness ?? painDraft.soreness, jointPain: state.pain?.jointPain ?? painDraft.jointPain, redFlags: state.pain?.redFlags ?? painDraft.redFlags });
     painSavedGen = painGen;
     Object.keys(painDraft.soreness).length = 0;
@@ -386,9 +399,15 @@ function bind() {
   if (backHome) backHome.addEventListener("click", () => { view = "pain"; render(); });
   const gen = document.getElementById("gen");
   if (gen) gen.addEventListener("click", async () => {
-    try { await api("/api/session/generate", {}); view = "menu"; render(); }
-    catch (e) { document.getElementById("genErr").textContent = e.message; }
+    try { await api("/api/session/generate", {}); menuGenError = ""; view = "menu"; render(); }
+    catch (e) { menuGenError = e.message; document.getElementById("genErr").textContent = e.message; }
   });
+  const goCond = document.getElementById("goCond");
+  if (goCond) goCond.addEventListener("click", () => { view = "pain"; render(); });
+  const goReport = document.getElementById("goReport");
+  if (goReport) goReport.addEventListener("click", () => { view = "history"; render(); });
+  const histGoMenu = document.getElementById("histGoMenu");
+  if (histGoMenu) histGoMenu.addEventListener("click", () => { view = "menu"; render(); });
   $app.querySelectorAll("[data-save-ex]").forEach((el) => el.addEventListener("click", async () => {
     const [sid, eid] = el.dataset.saveEx.split(":").map(Number);
     const s = state.sessions.find((x) => x.id === sid) ?? state.todaySession;

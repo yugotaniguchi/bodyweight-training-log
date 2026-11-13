@@ -33,13 +33,13 @@ bun --watch run server.ts
 
 ## How to use it
 
-1. **Settings**: Enter your profile (age, sex, height, weight, and so on) via the small gear button fixed at the top-right — a muted line icon, shown only on the pain-check and settings screens; settings is not a tab. A quiet **← ホームに戻る** button at the top-left of the settings screen takes you back. All the form fields share one size and style, labels above fields on a regular grid. The app ships with no one's data in it.
-2. **Pain check**: First tap any warning signs (red flags) that apply — they are chips at the top. Then set muscle soreness by body part and joint pain (lower back, shoulders, elbows, wrists, hips, knees, ankles) from 0 to 5 by tapping the tiles: each tile shows the level as a big numeral, a level word, and 5 tick segments that light up teal, and the tile background deepens through dark teal shades as the level rises. Dark-teal legend badges above each grid summarise the thresholds. If the same pain has been recorded for many days in a row, a caution or see-a-doctor note appears here (it never blocks a start — only red flags do). Tapping **痛みの記録を保存** saves the check; once saved, the button turns into **ワークアウトを開始**, which takes you to the workout tab. Changing any pain value after saving flips it back to 痛みの記録を保存, so unsaved changes are always visible.
-3. **Workout**: "Create today's workout" builds a session from today's condition and your history. Sessions rotate A (push + legs) → B (back + posterior legs + core) → C (full body). The first 6 sessions are an introductory period with easier variations and fewer sets. The workout screen opens with a **week dot row** (Mon–Sun: a filled teal dot for days with a completed session, a teal ring for today — no day numbers), a **ring gauge** (completed exercises as a big central numeral, with the total under it), the session title with how many exercises remain, and three metrics: exercise count, completed/total sets, and cumulative completed sessions.
-4. **Logging**: Each exercise is a card headed by its variation name, with the total target at the top-right. The set fields — black boxes in an even row — start out **pre-filled with the target** (reps, or seconds for timed exercises): keep them, or overwrite with what you actually did. RPE is a select (`未入力`, then 6 and up in 0.5 steps). Each exercise also has a note field that affects only that exercise; there is no session-wide note. The card's **記録して完了** button saves that exercise and advances the gauge; a recorded exercise's button becomes 記録を更新. Timed exercises (planks and the like) have a countdown timer on the card — start it at the target seconds, pause or reset as needed, and watch the remaining-time bar; it beeps and turns teal when time is up. The timer never writes to the record: what you type is what gets saved. At the bottom, **今日のトレーニングを完了する** finishes the day, and the underlined **このワークアウトを取り消す** link deletes today's session (after an inline confirmation) so you can start over from the pain check.
-5. **History (results live here too)**: There is no separate results screen. Finishing a session takes you to **これまでの記録**, a quiet list, newest first: the date in one line (`11/13(金)`) on the left, the rotation and one row per exercise in the middle (name in white, variation and RPE word in gray, logged sets right-aligned), any per-exercise notes in small gray, and the session's total reps as a big number on the right. Entries are separated by hairlines, not cards. The `記録を編集` button under each entry lets you fix sets, RPE, completion, and exercise notes afterwards; edits update the totals and feed into the next session's decisions.
+1. **Settings**: Enter your profile (age, sex, height, weight, and so on) via the small gear button fixed at the top-right — a muted line icon, shown only on the condition and settings screens; settings is not a tab. A quiet **← ホームに戻る** button at the top-left of the settings screen takes you back. All the form fields share one size and style, labels above fields on a regular grid. The app ships with no one's data in it.
+2. **Condition**: First tap any warning signs (red flags) that apply — they are chips at the top. Then set muscle soreness by body part and joint pain (lower back, shoulders, elbows, wrists, hips, knees, ankles) from 0 to 5 by tapping the tiles: each tile shows the level as a big numeral, a level word, and 5 tick segments that light up teal, and the tile background deepens through dark teal shades as the level rises. Dark-teal legend badges above each grid summarise the thresholds. If the same pain has been recorded for many days in a row, a caution or see-a-doctor note appears here (it never blocks a start — only red flags do). Tapping **コンディションを保存** saves the check; once saved, the button turns into **ワークアウトを開始**, which creates today's session on the spot if none exists yet and takes you to the workout tab (if creation is blocked by a warning sign or a rest day, the workout tab shows the reason). Changing any pain value after saving flips it back to コンディションを保存, so unsaved changes are always visible.
+3. **Workout**: "Create today's workout" builds a session from today's condition and your history. Sessions rotate A (push + legs) → B (back + posterior legs + core) → C (full body). The first 6 sessions are an introductory period with easier variations and fewer sets. If you open this tab before entering today's condition, it shows a short note and a **コンディションを入力** button back to the condition tab instead of the create button. The workout screen opens with a **week dot row** (Mon–Sun: a filled teal dot for days with a completed session, a teal ring for today — no day numbers), a **ring gauge** (completed exercises as a big central numeral, with the total under it), the session title with how many exercises remain, and three metrics: exercise count, completed/total sets, and cumulative completed sessions.
+4. **Logging**: Each exercise is a card headed by its variation name, with the total target at the top-right. The set fields — black boxes in an even row — start out **pre-filled with the target** (reps, or seconds for timed exercises): keep them, or overwrite with what you actually did. RPE is a select with exactly ten options — `未入力`, then `6（かなり楽）`, `6.5（楽）`, `7（やや楽）`, `7.5（少しきつい）`, `8（きつい）`, `8.5（かなりきつい）`, `9（とてもきつい）`, `9.5（ほぼ限界）`, `10（限界）` — and only the number is saved. Each exercise also has a note field that affects only that exercise; there is no session-wide note. The card's **記録して完了** button saves that exercise and advances the gauge; a recorded exercise's button becomes 記録を更新. Timed exercises (planks and the like) have a countdown timer on the card — start it at the target seconds, pause or reset as needed, and watch the remaining-time bar; it beeps and turns teal when time is up. The timer never writes to the record: what you type is what gets saved. At the bottom, **今日のトレーニングを完了する** finishes the day, and the underlined **このワークアウトを取り消す** link deletes today's session (after an inline confirmation) so you can start over from the pain check.
+5. **Report (results live here too)**: There is no separate results screen. Finishing a session takes you to **レポート**, a quiet list, newest first: the date in one line (`11/13(金)`) on the left, the rotation and one row per exercise in the middle (name in white, variation and RPE word in gray, logged sets right-aligned), any per-exercise notes in small gray, and the session's total reps as a big number on the right. Entries are separated by hairlines, not cards. The `記録を編集` button under each entry lets you fix sets, RPE, completion, and exercise notes afterwards; edits update the totals and feed into the next session's decisions.
 
-The app is **dark-themed** — near-black background, white text, gray secondary text, one bright teal accent — and follows the design rules in [DESIGN.md](DESIGN.md), which were measured from the original space. Every screen opens with a header: the date (only ever shown as `M/D（曜）`) and the purpose line (`器具なし / 筋力・筋肥大`) on the left, and on the right a huge **Day N** numeral (N = days since your first recorded session) over the cumulative rep count from your session history, with a small, muted **gear button** at the very top-right for settings (shown only on the pain-check and settings screens). The Workout screen carries a **week dot row** — seven dots for Mon–Sun with no day numbers (never week boxes). All large numerals (Day count, gauge, metrics, pain-tile levels, totals, timers, history dates) use the **Barlow Condensed** typeface, falling back to the system font when it cannot be loaded. Dates appear in only two places in the whole app: the header and the history list.
+The app is **dark-themed** — near-black background, white text, gray secondary text, one bright teal accent — and follows the design rules in [DESIGN.md](DESIGN.md), which were measured from the original space. Every screen opens with a header: the date (only ever shown as `M/D（曜）`) and the purpose line (`器具なし / 筋力・筋肥大`) on the left, and on the right a huge **Day N** numeral (N = days since your first recorded session) over the cumulative rep count from your session history, with a small, muted **gear button** at the very top-right for settings (shown only on the condition and settings screens). The Workout screen carries a **week dot row** — seven dots for Mon–Sun with no day numbers (never week boxes). All large numerals (Day count, gauge, metrics, pain-tile levels, totals, timers, history dates) use the **Barlow Condensed** typeface, falling back to the system font when it cannot be loaded. Dates appear in only two places in the whole app: the header and the history list.
 
 ## How the next workout is decided
 
@@ -117,18 +117,18 @@ Header (top of every screen):
   #2d2d2d border), fixed at the top-right of the viewport (position:
   fixed, top 10px, right 10px, stays while scrolling). It keeps the
   same muted style in every state — no hover or active colour change.
-  It is shown ONLY on the pain-check screen and the settings screen,
-  never on the workout or history screens. Settings is never a
+  It is shown ONLY on the condition screen and the settings screen,
+  never on the workout or report screens. Settings is never a
   navigation segment; the header keeps 44px of right padding clear of
   the gear. The settings screen has a quiet ← ホームに戻る button at
-  its top-left that returns to the pain check.
+  its top-left that returns to the condition screen.
 
 Navigation:
 - A row of exactly 3 segment buttons (radius 8px, gap 6px, padding
   10px 6px, 14px weight 600) — NOT pills and NOT a sidebar. Active
   segment: #2dd4bf fill with #052e2b bold text. Inactive: #232323 fill,
-  white text. Labels: 痛みの記録 / ワークアウト / これまでの記録. There is no
-  Result segment — results are merged into これまでの記録 (see Screens).
+  white text. Labels: コンディション / ワークアウト / レポート. There is no
+  Result segment — results are merged into レポート (see Screens).
 
 Typography:
 - Body: system-ui, sans-serif, 15–16px, line height about 1.6.
@@ -138,10 +138,10 @@ Typography:
 - Headings bold white (17px); descriptions 13px gray. Keep text
   minimal — show things as UI (badges, ticks, bars, gauges), explain
   only where a decision needs it, and only in the two places
-  DESIGN.md allows (the pain-screen description lines and the
+  DESIGN.md allows (the condition-screen description lines and the
   判定基準について footer section at the bottom of the page).
 
-Pain check screen (in this order):
+Condition screen (in this order):
 1. まず、警告サインの確認 — heading, gray description, then the red flags as
    CHIPS (not checkboxes): pill shape (radius 999px, padding 7px 12px),
    thin #2d2d2d outline, #1a1a1a fill, gray #9ca3af label text, 13px,
@@ -153,11 +153,14 @@ Pain check screen (in this order):
    joints use a stricter standard than muscle.
 4. A primary CTA at the bottom: full width, padding 16px (58px tall),
    radius 8px, #2dd4bf fill, bold 16px #052e2b text. It reads
-   痛みの記録を保存 while there are unsaved pain edits; once the save
-   succeeds it turns into ワークアウトを開始, which switches to the
-   ワークアウト tab, and editing any pain value after saving flips it
-   back to 痛みの記録を保存. When today's session is completed it reads
-   今日の結果を見る and leads to これまでの記録. Under it, the assessment
+   コンディションを保存 while there are unsaved pain edits; once the save
+   succeeds it turns into ワークアウトを開始, which creates today's
+   session first if none exists yet and then switches to the
+   ワークアウト tab (if creation is blocked by a warning sign or a
+   rest day, the ワークアウト tab's empty state shows the reason), and
+   editing any pain value after saving flips it back to
+   コンディションを保存. When today's session is completed it reads
+   今日の結果を見る and leads to レポート. Under it, the assessment
    box (care / rest-day / OK), then any guidance and 24-hour-rule
    notice boxes.
 
@@ -245,7 +248,12 @@ Decision engine (required, not optional decoration):
   parts, level 3+ excludes them, with the reason shown.
 
 Screens:
-- Workout: the week dot row, ring gauge, title, and metrics above, then
+- Workout: with no session yet, the screen shows either a short note
+  with a コンディションを入力 button (today's condition not entered yet —
+  this takes priority over the create guidance) or the text
+  今日のセッションはまだありません。 with a 今日のワークアウトを作る CTA and an
+  error line under it. Otherwise: the week dot row, ring gauge, title,
+  and metrics above, then
   one card per exercise on a #1a1a1a fill (darker than the pain tiles),
   radius 12px, no border, padding 18px 20px. Card layout: top-left the
   muscle group in small gray; under it the VARIATION name as the large
@@ -261,10 +269,13 @@ Screens:
   card. The set inputs of an exercise that has not been recorded yet
   are pre-filled with the target reps/seconds; the user keeps or
   overwrites them, and saving reads the input values. Then a hairline
-  divider; きつさ RPE as a label plus a black select — first option
-  未入力, then 6 以下 and 6.5 to 10 in 0.5 steps (the saved value is
-  the number); then この種目のメモ（任意） as a bold small label over a
-  black input (placeholder 例：膝立ちが限界だった）, with
+  divider; きつさ RPE as a label plus a black select with exactly ten
+  options — 未入力, 6（かなり楽）, 6.5（楽）, 7（やや楽）, 7.5（少しきつい）,
+  8（きつい）, 8.5（かなりきつい）, 9（とてもきつい）, 9.5（ほぼ限界）,
+  10（限界） — shown in the same value（word） form when selected, with
+  no 6 以下 option; the saved value is the bare number. Then
+  この種目のメモ（任意） as a bold small label over a
+  black input (placeholder 例：フォームが崩れた／左側がきつかった）, with
   次回、この種目にだけ反映されます。 in small gray under it. Timed
   exercises (seconds) also get a countdown timer on the card, styled
   as a black box: starts from the target seconds, start / pause /
@@ -278,9 +289,9 @@ Screens:
   a full-width #2dd4bf button 今日のトレーニングを完了する and, under
   it, a centred underlined gray link このワークアウトを取り消す; cancelling
   asks inline (取り消す / やめる in place, never a native dialog), then
-  deletes today's session and returns to the pain-check state.
-- History (results are merged into this screen — there is no separate
-  Result screen; completing a session and the pain screen's
+  deletes today's session and returns to the condition state.
+- Report (results are merged into this screen — there is no separate
+  Result screen; completing a session and the condition screen's
   今日の結果を見る CTA both land here): a quiet list, newest first,
   entries separated by hairlines, NOT cards. Each entry — left: the
   date as a single line, 11/13(金） (zero-padded month/day, weekday in
