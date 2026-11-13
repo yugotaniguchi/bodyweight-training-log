@@ -1,52 +1,107 @@
-:root{color-scheme:light dark}
-body{font-family:system-ui,sans-serif;max-width:820px;margin:0 auto;padding:16px;line-height:1.6}
-header h1{margin-bottom:0}.sub{opacity:.7;margin-top:4px}
+/* Design tokens measured from screenshots of the original space.
+   See DESIGN.md — dark theme only, one bright teal accent. */
+:root{
+  color-scheme:dark;
+  --bg:#0f0f0f;
+  --surface:#232323;
+  --surface-2:#1a1a1a;
+  --border:#2d2d2d;
+  --accent:#2dd4bf;
+  --on-accent:#052e2b;
+  --badge:#19534c;
+  --text:#f0f0f0;
+  --sub:#9ca3af;
+  --tick-off:#292929;
+}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);max-width:680px;margin:0 auto;padding:16px;line-height:1.6}
+h2{font-size:17px;margin:22px 0 4px}
+h3{margin:6px 0}
+.desc{color:var(--sub);font-size:13px;margin:0 0 10px}
 /* Big numerals use Barlow Condensed (loaded in index.html); offline it
    falls back to the system font. */
 .num{font-family:"Barlow Condensed",system-ui,sans-serif;letter-spacing:.02em;font-weight:600}
-nav{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
-nav button,.btn{padding:8px 14px;border-radius:999px;border:1px solid #8886;background:transparent;cursor:pointer;font-size:15px}
-nav button.active{background:#0f766e;color:#fff;border-color:#0f766e}
-.card{border:1px solid #8885;border-radius:12px;padding:14px;margin:12px 0}
-/* Pain tiles: teal shades, deepening with the level (not a heat scale). */
-.tap{display:inline-flex;flex-direction:column;align-items:center;gap:2px;margin:4px;padding:8px 10px;border-radius:10px;border:1px solid #8886;background:transparent;cursor:pointer;min-width:86px;color:#134e4a}
-.tap b{font-size:26px;line-height:1}
-.tap.lv1{background:#f0fdfa}.tap.lv2{background:#ccfbf1}.tap.lv3{background:#99f6e4}.tap.lv4{background:#5eead4}.tap.lv5{background:#0f766e;color:#fff}
-input[type=text],input[type=number],select,textarea{padding:7px;border-radius:8px;border:1px solid #8888;font-size:16px}
+
+/* Header: date + purpose on the left, Day + cumulative reps on the right */
+.app-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.ah-date{color:var(--sub);font-size:13px}
+.ah-purpose{font-weight:700;font-size:16px}
+.ah-right{text-align:right}
+.ah-day-label{color:var(--sub);font-weight:700;font-size:14px;margin-right:4px}
+.ah-day-num{font-size:52px;line-height:.95;color:var(--text)}
+.ah-total{color:var(--sub);font-size:12px}
+
+/* Segment navigation (not pills): active = bright teal, dark text */
+nav{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+nav button{flex:1 1 30%;padding:10px 6px;border-radius:8px;border:none;background:var(--surface);color:var(--text);cursor:pointer;font-size:14px;font-weight:600}
+nav button.active{background:var(--accent);color:var(--on-accent)}
+.btn{padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;font-size:15px}
+.btn.active{background:var(--badge);border-color:var(--badge);color:#fff}
+/* Primary call-to-action: full width, bright teal, dark bold text */
+.cta{display:block;width:100%;box-sizing:border-box;margin-top:20px;padding:16px;border:none;border-radius:8px;background:var(--accent);color:var(--on-accent);font-size:16px;font-weight:700;cursor:pointer}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin:12px 0}
+
+/* Warning-sign chips */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.chip{padding:7px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface-2);color:var(--sub);cursor:pointer;font-size:13px}
+.chip.on{border-color:var(--accent);background:var(--badge);color:#fff}
+
+/* Legend badges: dark teal pills with white text */
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px}
+.badge{background:var(--badge);color:#fff;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px}
+
+/* Pain tiles: 2-column grid; background deepens through teal shades with
+   the level (inferred ramp — see DESIGN.md). Never a heat scale. */
+.tapgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tap{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:11px;border:none;background:var(--surface);color:var(--text);cursor:pointer;text-align:left;min-height:74px}
+.tap-row{display:flex;justify-content:space-between;align-items:flex-start}
+.tap-name{font-weight:700;font-size:15px}
+.tap-num{font-size:34px;line-height:1;color:var(--text)}
+.tap-word{color:var(--sub);font-size:12px}
+.tap.lv1{background:#17312c}.tap.lv2{background:#17453c}.tap.lv3{background:#1a5a4c}.tap.lv4{background:#20806c}
+.tap.lv5{background:var(--accent)}.tap.lv5 .tap-num{color:var(--on-accent)}.tap.lv5 .tap-word{color:var(--on-accent)}
+.ticks{display:flex;gap:3px;align-items:flex-end}
+.ticks i{width:14px;height:5px;border-radius:2px;background:var(--tick-off)}
+.ticks i.on{background:var(--accent)}
+.tap.lv5 .ticks i{background:rgba(5,46,43,.25)}.tap.lv5 .ticks i.on{background:var(--on-accent)}
+
+input[type=text],input[type=number],select,textarea{padding:7px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:16px}
 .set-input{width:56px;text-align:center}.rpe-input{width:64px;text-align:center}.note-input{width:100%;box-sizing:border-box;margin-top:6px}
-.warn{border-color:#ef4444;background:#fef2f2;color:#7f1d1d;padding:10px;border-radius:10px}
-.ok{border-color:#0f766e;background:#f0fdfa;color:#134e4a;padding:10px;border-radius:10px}
-.caution{border:1px solid #d97706;background:#fffbeb;color:#92400e;padding:10px;border-radius:10px;margin:8px 0}
-@media(prefers-color-scheme:dark){.warn{background:#450a0a;color:#fecaca}.ok{background:#042f2e;color:#99f6e4}.caution{background:#451a03;color:#fde68a}}
-.refs,.small{font-size:13px;opacity:.75}.error{color:#dc2626}
+.warn{border:1px solid #ef4444;background:#2a0f0f;color:#fecaca;padding:10px;border-radius:10px;margin:10px 0}
+.ok{border:1px solid var(--badge);background:#0b2420;color:#99f6e4;padding:10px;border-radius:10px;margin:10px 0}
+.caution{border:1px solid #92400e;background:#241a08;color:#fde68a;padding:10px;border-radius:10px;margin:8px 0}
+.refs,.small{font-size:13px;color:var(--sub)}.error{color:#f87171}
 label.row{display:block;margin:6px 0}
-/* Week dots + Day label (top of the screen) */
+.note h2{color:var(--text)} .note p{color:var(--sub);font-size:13px}
+
+/* Week dots + Day label */
 .weekbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:10px 0 2px}
 .weekdots{display:flex;gap:6px}
-.dot{width:36px;height:44px;border-radius:12px;border:1.5px solid #8886;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;color:#134e4a}
-.dot .dow{font-size:11px;opacity:.75}
-.dot .dnum{font-size:18px}
-.dot.filled{background:#0f766e;border-color:#0f766e;color:#fff}
-.dot.today{box-shadow:0 0 0 2px #fff,0 0 0 4px #0f766e}
-.daylabel{font-size:22px;color:#0f766e;text-align:right}
-.daylabel small{display:block;font-family:system-ui,sans-serif;font-size:12px;font-weight:400;opacity:.7;letter-spacing:0}
+.dot{width:36px;height:44px;border-radius:12px;border:1.5px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;color:var(--sub)}
+.dot .dow{font-size:11px;opacity:.85}
+.dot .dnum{font-size:18px;color:var(--text)}
+.dot.filled{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.dot.filled .dnum{color:var(--on-accent)}
+.dot.today{box-shadow:0 0 0 2px var(--accent)}
+.daylabel{font-size:22px;color:var(--text);text-align:right}
+.daylabel small{display:block;font-family:system-ui,sans-serif;font-size:12px;font-weight:400;color:var(--sub);letter-spacing:0}
+
 /* Ring gauge + metrics */
 .gauge-wrap{display:flex;align-items:center;gap:18px;margin:12px 0}
 .gauge{position:relative;width:96px;height:96px;flex:none}
 .gauge svg{transform:rotate(-90deg)}
-.gauge .g-bg{stroke:#d1d5db}.gauge .g-fg{stroke:#0f766e}
-.gauge-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:30px;color:#0f766e}
+.gauge .g-bg{stroke:var(--border)}.gauge .g-fg{stroke:var(--accent)}
+.gauge-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:30px;color:var(--text)}
 .metrics{display:flex;gap:20px;flex-wrap:wrap}
 .metric{text-align:center}
-.metric .m-num{font-size:30px;line-height:1;color:#0f766e}
-.metric .m-label{font-size:12px;opacity:.75}
+.metric .m-num{font-size:30px;line-height:1;color:var(--text)}
+.metric .m-label{font-size:12px;color:var(--sub)}
+
 /* Countdown timer on timed-exercise cards */
-.timer{margin-top:10px;border-top:1px dashed #8885;padding-top:10px}
-.timer-display{font-size:38px;line-height:1;color:#0f766e}
-.timer-display small{font-size:14px}
-.timer-bar{height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin:8px 0}
-.timer-fill{height:100%;background:#0f766e;transition:width .2s linear}
+.timer{margin-top:10px;border-top:1px dashed var(--border);padding-top:10px}
+.timer-display{font-size:38px;line-height:1;color:var(--text)}
+.timer-display small{font-size:14px;color:var(--sub)}
+.timer-bar{height:8px;background:var(--border);border-radius:999px;overflow:hidden;margin:8px 0}
+.timer-fill{height:100%;background:var(--accent);transition:width .2s linear}
 .timer-btns{display:flex;gap:8px;flex-wrap:wrap}
-.timer.done{background:#f0fdfa;border:1px solid #0f766e;border-radius:10px;padding:10px}
-.timer.done .timer-display{color:#0f766e}
-@media(prefers-color-scheme:dark){.gauge .g-bg{stroke:#374151}.timer-bar{background:#374151}.timer.done{background:#042f2e}}
+.timer.done{background:#0b2420;border:1px solid var(--accent);border-radius:10px;padding:10px}

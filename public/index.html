@@ -10,7 +10,16 @@
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<header><h1>自重トレーニング記録</h1><p class="sub">器具なし・自重トレーニングの記録と自動メニュー生成</p></header>
+<header class="app-header">
+  <div class="ah-left">
+    <div class="ah-date" id="ah-date">—</div>
+    <div class="ah-purpose">器具なし / 筋力・筋肥大</div>
+  </div>
+  <div class="ah-right">
+    <div><span class="ah-day-label">Day</span><span class="num ah-day-num" id="ah-day">–</span></div>
+    <div class="ah-total">累計 <span id="ah-reps">0</span> レップ</div>
+  </div>
+</header>
 <nav id="tabs">
   <button data-view="pain">痛みの記録</button>
   <button data-view="menu">メニュー</button>

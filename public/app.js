@@ -24,11 +24,16 @@ document.getElementById("tabs").addEventListener("click", (e) => {
   view = b.dataset.view; render();
 });
 
+const LEVEL_WORDS = ["なし", "軽い", "普通", "強い", "かなり強い", "激しい"];
 function tapGrid(kind, parts, current) {
-  return parts.map((p) => {
+  return `<div class="tapgrid">${parts.map((p) => {
     const lv = current[p] || 0;
-    return `<button class="tap lv${lv}" data-tap="${kind}:${esc(p)}">${esc(p)}<b class="num">${lv}</b><small>タップで+1</small></button>`;
-  }).join("");
+    const ticks = Array.from({ length: 5 }, (_, i) => `<i class="${i < lv ? "on" : ""}"></i>`).join("");
+    return `<button class="tap lv${lv}" data-tap="${kind}:${esc(p)}">
+      <span class="tap-row"><span class="tap-name">${esc(p)}</span><b class="num tap-num">${lv}</b></span>
+      <span class="tap-row"><span class="tap-word">${LEVEL_WORDS[lv]}</span><span class="ticks">${ticks}</span></span>
+    </button>`;
+  }).join("")}</div>`;
 }
 
 // ---------- week dots + Day label ----------
@@ -37,6 +42,21 @@ function tapGrid(kind, parts, current) {
 const DAY_MS = 86400000;
 const dayNum = (d) => { const [y, m, dd] = d.split("-").map(Number); return Date.UTC(y, m - 1, dd) / DAY_MS; };
 const fmtDayNum = (n) => new Date(n * DAY_MS).toISOString().slice(0, 10);
+// ---------- app header (date + purpose / Day + cumulative reps) ----------
+function updateHeader() {
+  const dateEl = document.getElementById("ah-date");
+  if (!dateEl || !state) return;
+  const n = dayNum(state.today);
+  const dt = new Date(n * DAY_MS);
+  const dowLabel = ["日", "月", "火", "水", "木", "金", "土"][(n + 4) % 7]; // 0=Sunday
+  dateEl.textContent = `${dt.getUTCMonth() + 1}/${dt.getUTCDate()}（${dowLabel}）`;
+  const dates = state.sessions.map((s) => s.date).sort();
+  const dayCount = dates.length ? Math.round(n - dayNum(dates[0])) + 1 : 1;
+  document.getElementById("ah-day").textContent = dayCount;
+  // Cumulative reps = total logged volume across all recorded sessions.
+  document.getElementById("ah-reps").textContent = state.stats.totalVolume;
+}
+
 function updateWeekbar() {
   const el = document.getElementById("weekbar");
   if (!el || !state) return;
@@ -144,11 +164,18 @@ function renderPain() {
   const a = state.assessment;
   return `
   ${!state.profile ? `<div class="warn">先に「設定」タブでプロフィールを入力してください（空でも記録はできます）。</div>` : ""}
-  <h2>筋肉痛チェック（部位別 0〜5）</h2><div>${tapGrid("soreness", state.catalog.muscleParts, soreness)}</div>
-  <h2>関節痛チェック（0〜5）</h2><div>${tapGrid("jointPain", state.catalog.joints, jointPain)}</div>
-  <h2>警告サイン（当てはまるものにチェック）</h2>
-  ${state.catalog.redFlags.map((f) => `<label class="row"><input type="checkbox" data-flag="${f.id}" ${flags.includes(f.id) ? "checked" : ""}> ${esc(f.label)}</label>`).join("")}
-  <p><button class="btn" id="savePain">痛みの記録を保存</button></p>
+  <h2>まず、警告サインの確認</h2>
+  <p class="desc">当てはまるものがあれば押してください。1つでも当てはまれば、その日は中止・受診が目安です。</p>
+  <div class="chips">${state.catalog.redFlags.map((f) => `<button type="button" class="chip${flags.includes(f.id) ? " on" : ""}" data-flagchip="${f.id}">${esc(f.label)}</button>`).join("")}</div>
+  <h2>今日の筋肉痛は？（部位ごと）</h2>
+  <p class="desc">タップで強度が上がります（5の次は0に戻ります）。</p>
+  <div class="badges"><span class="badge">0–1 通常</span><span class="badge">2 軽減</span><span class="badge">3以上 除外</span><span class="badge">4以上 ×2部位 休養</span></div>
+  ${tapGrid("soreness", state.catalog.muscleParts, soreness)}
+  <h2>今日の関節痛は？（関節ごと）</h2>
+  <p class="desc">筋肉痛とは別に記録します。タップで強度が上がります（5の次は0に戻ります）。関節は筋肉より厳しめの基準です。</p>
+  <div class="badges"><span class="badge">0–1 通常</span><span class="badge">2 軽減</span><span class="badge">3以上 除外</span><span class="badge">サインあり 受診目安</span></div>
+  ${tapGrid("jointPain", state.catalog.joints, jointPain)}
+  <button class="cta" id="savePain">痛みの記録を保存</button>
   ${a ? (a.care ? `<div class="warn">受診目安：${a.careReasons.join(" / ")}</div>`
       : a.rest ? `<div class="warn">完全休養日：${esc(a.restReason)}</div>`
       : `<div class="ok">開始できます。${a.parts.flatMap((p) => p.reasons).join(" / ")}</div>`) : ""}
@@ -180,13 +207,13 @@ function collectExercise(root, ex) {
 }
 function renderMenu() {
   const s = state.todaySession;
-  if (!s) return `<p>今日のセッションはまだありません。</p><button class="btn" id="gen">今日のメニューを作る</button><p id="genErr" class="error"></p>`;
+  if (!s) return `<p>今日のセッションはまだありません。</p><button class="cta" id="gen">今日のメニューを作る</button><p id="genErr" class="error"></p>`;
   return `<h2>${esc(s.title)}（${esc(s.rotation)}）${s.intro ? "・導入期" : ""}</h2>
   ${ringGauge(s)}
   ${s.focusNote ? `<p>${esc(s.focusNote)}</p>` : ""}
   ${s.progressionNotes.length ? `<div class="card"><h3>前回の記録・メモ・RPEからの調整</h3><ul>${s.progressionNotes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>` : ""}
   ${s.exercises.map((ex) => exerciseCard(s, ex, true)).join("")}
-  ${s.status !== "completed" ? `<button class="btn" id="complete">トレーニングを完了する</button>` : `<div class="ok">完了済みです。結果タブで確認できます。</div>`}`;
+  ${s.status !== "completed" ? `<button class="cta" id="complete">トレーニングを完了する</button>` : `<div class="ok">完了済みです。結果タブで確認できます。</div>`}`;
 }
 function renderResult() {
   const s = state.todaySession;
@@ -218,6 +245,7 @@ function renderSettings() {
 function render() {
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
   $app.innerHTML = view === "pain" ? renderPain() : view === "menu" ? renderMenu() : view === "result" ? renderResult() : view === "history" ? renderHistory() : renderSettings();
+  updateHeader();
   updateWeekbar();
   bind();
 }
@@ -230,11 +258,12 @@ function bind() {
     state = { ...state, pain: { date: state.today, soreness: { ...(state.pain?.soreness ?? {}), ...painDraft.soreness }, jointPain: { ...(state.pain?.jointPain ?? {}), ...painDraft.jointPain }, redFlags: state.pain?.redFlags ?? painDraft.redFlags } };
     render();
   }));
-  $app.querySelectorAll("[data-flag]").forEach((el) => el.addEventListener("change", () => {
+  $app.querySelectorAll("[data-flagchip]").forEach((el) => el.addEventListener("click", () => {
     const flags = new Set(state.pain?.redFlags ?? painDraft.redFlags);
-    el.checked ? flags.add(el.dataset.flag) : flags.delete(el.dataset.flag);
+    flags.has(el.dataset.flagchip) ? flags.delete(el.dataset.flagchip) : flags.add(el.dataset.flagchip);
     painDraft.redFlags = [...flags];
     state = { ...state, pain: { ...(state.pain ?? { date: state.today, soreness: {}, jointPain: {} }), redFlags: painDraft.redFlags } };
+    render();
   }));
   $app.querySelectorAll(".set-input").forEach((el) => el.addEventListener("input", () => { el.value = sanitizeDigits(el.value); }));
   const savePain = document.getElementById("savePain");

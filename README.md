@@ -34,12 +34,12 @@ bun --watch run server.ts
 ## How to use it
 
 1. **Settings**: Enter your profile (age, sex, height, weight, and so on) in the Settings tab. The app ships with no one's data in it.
-2. **Pain check**: Set muscle soreness by body part and joint pain (lower back, shoulders, elbows, wrists, hips, knees, ankles) from 0 to 5 by tapping. The tiles deepen through teal shades as the level rises. Tick any warning signs (red flags) that apply. If the same pain has been recorded for many days in a row, a caution or see-a-doctor note appears here (it never blocks a start — only red flags do).
+2. **Pain check**: First tap any warning signs (red flags) that apply — they are chips at the top. Then set muscle soreness by body part and joint pain (lower back, shoulders, elbows, wrists, hips, knees, ankles) from 0 to 5 by tapping the tiles: each tile shows the level as a big numeral, a level word, and 5 tick segments that light up teal, and the tile background deepens through dark teal shades as the level rises. Dark-teal legend badges above each grid summarise the thresholds. If the same pain has been recorded for many days in a row, a caution or see-a-doctor note appears here (it never blocks a start — only red flags do).
 3. **Workout menu**: "Create today's workout" builds a session from today's condition and your history. Sessions rotate A (push + legs) → B (back + posterior legs + core) → C (full body). The first 6 sessions are an introductory period with easier variations and fewer sets.
 4. **Logging**: For each exercise, enter the reps you did (seconds for timed exercises), RPE, and completion. The rep fields do not keep a leading zero. Each exercise also has a note field that affects only that exercise; there is no session-wide note. Timed exercises (planks and the like) have a countdown timer on the card — start it at the target seconds, pause or reset as needed, and watch the remaining-time bar; it beeps and turns teal when time is up. The timer never writes to the record: what you type is what gets saved.
 5. **Results and history**: The Results tab shows the day's totals. In History you can open a past session and fix sets, RPE, completion, and exercise notes. Edits update the totals and feed into the next session's decisions.
 
-At the top of every screen, a row of **week dots (Mon–Sun, current week)** shows which days have a completed session (filled teal; today gets a strong outline), next to a **"Day N"** label counting days since your first recorded session. The Menu and Results screens open with a **ring gauge** — completed exercises out of the total, with the big number in the centre — and three metrics under it: exercise count, set count, and total reps. All large numerals (gauge, metrics, pain-tile levels, totals, timers, history dates) use the **Barlow Condensed** typeface, falling back to the system font when it cannot be loaded.
+The app is **dark-themed** — near-black background, white text, gray secondary text, one bright teal accent — and follows the design rules in [DESIGN.md](DESIGN.md), which were measured from the original space. Every screen opens with a header: the date and the purpose line (`器具なし / 筋力・筋肥大`) on the left, and on the right a huge **Day N** numeral (N = days since your first recorded session) over the cumulative rep count from your session history. Under it, a row of **week dots (Mon–Sun, current week)** shows which days have a completed session (filled teal; today gets a strong outline). The Menu and Results screens open with a **ring gauge** — completed exercises out of the total, with the big number in the centre — and three metrics under it: exercise count, set count, and total reps. All large numerals (Day count, gauge, metrics, pain-tile levels, totals, timers, history dates) use the **Barlow Condensed** typeface, falling back to the system font when it cannot be loaded.
 
 ## How the next workout is decided
 
@@ -85,97 +85,124 @@ Note: the numeric pain thresholds above convert ideas from general-audience sour
 
 ## Recreate the look in Muse
 
-The standalone app above is plain HTML/CSS. If you use [Muse](https://muse.ai) and want a space that looks like the original this project is based on, copy the prompt below and paste it into Muse together with your request to build the space. The specific values matter — without them you will get a generic fitness-app look instead.
+The standalone app above is plain HTML/CSS. Its look is specified in [DESIGN.md](DESIGN.md) — a dark theme with one bright teal accent, measured from screenshots of the original space. If you use [Muse](https://muse.ai) and want a space that looks like the original, copy the prompt below and paste it into Muse together with your request to build the space. The specific values matter — without them you will get a generic fitness-app look instead.
 
 ```text
 Build a bodyweight training log space. Match this design exactly:
+Follow DESIGN.md in this repository for the exact tokens — it was measured
+from the original space's screenshots and wins over anything below if they
+differ.
 
-Before designing, open https://recent.design in the live browser and check current
-minimal, light, single-accent app examples for direction. Use it as reference
-only — do not copy any featured images or artwork into the result.
+Theme (this is the most common mistake — do not get it wrong):
+- DARK theme only. Background #0f0f0f (near black), cards #232323, text
+  #f0f0f0 (white), secondary text #9ca3af (gray). Never a light theme or a
+  white background.
+- Exactly one accent: bright teal #2dd4bf. Text on the accent is #052e2b
+  (near-black). No second accent colour, no decorative gradients.
+- Pain levels are NEVER a yellow-to-red heat scale. Red appears only in
+  warning / red-flag surfaces.
 
-Visual design:
-- Light theme, minimal. Background white / very light neutral, text dark.
-  Do not use a dark, heavy "gym" look, gradients, or multiple accent colors.
-- Exactly one accent color: teal #0f766e. Use it for the active tab, primary
-  buttons, links, progress bars, and the OK/info box border and tint (#f0fdfa
-  background, #134e4a text). Everything else stays neutral gray.
-- Font: system-ui, sans-serif for body text (15–16px, line height about 1.6).
-  All large numerals — the ring-gauge centre, the metrics, pain-tile levels,
-  totals, timer digits, history dates — use Barlow Condensed (Google Fonts),
-  falling back to system-ui when it cannot be loaded. Numerals are large and
-  easy to scan.
-- Layout: single column, mobile-first (it is mainly used on an iPhone),
-  comfortable side padding, generous spacing between blocks.
-- Components: one card per block — thin neutral border (about #8885),
-  border radius 12px, padding about 14px. Navigation is a row of pill buttons
-  (border radius 999px, thin border); the active pill is filled teal with
-  white text. Inputs have radius 8px. Group the main action buttons at the
-  bottom of each screen.
-- Keep text minimal: show what can be shown as UI — icons, badges, bars,
-  buttons, gauges — instead of sentences. Add explanations only where they
-  are needed for a decision (the pain rules and references go in one short
-  section at the end, small type, muted).
+Header (top of every screen):
+- Left: the date in small gray (format 11/13（金）), under it the purpose
+  line in bold white: 器具なし / 筋力・筋肥大.
+- Right: the word "Day" in small bold gray, then the day count as a huge
+  Barlow Condensed numeral in white; under it, small gray
+  累計 ○○ レップ (cumulative reps summed from the session history).
 
-Flow (4 screens, in this order, plus History):
-1. Pain check → 2. Workout menu → 3. Result, and a separate History screen.
-   Move to the menu when the pain check is done, and to the result when the
-   workout is completed. Navigation buttons let the user move between screens
-   at any time.
+Navigation:
+- A row of segment buttons (radius about 8px, small gaps) — NOT pills and
+  NOT a sidebar. Active segment: #2dd4bf fill with #052e2b bold text.
+  Inactive: #232323 fill, white text. Labels: 痛みの記録 / メニュー /
+  これまでの記録 (plus 結果 / 設定 if the app has those views; wrapping is
+  fine).
 
-Required header and progress elements (do not omit these):
-- Week dots at the top of every screen: 7 dots for Mon–Sun of the current
-  week (Asia/Tokyo, week starting Monday). A day with a completed session is
-  filled teal; today gets a strong teal outline. Next to the dots, a "Day N"
-  label (N = days since the first recorded session) in Barlow Condensed,
-  with the total session count under it.
-- A ring gauge at the top of the Menu and Result screens: an SVG circle
-  showing completed exercises out of the total, the fraction in Barlow
-  Condensed at the centre, the arc in teal #0f766e. Under it, exactly three
-  metrics in the same numeral font: exercise count, set count, total reps.
+Typography:
+- Body: system-ui, sans-serif, 15–16px, line height about 1.6.
+- ALL large numerals use Barlow Condensed (Google Fonts; system-ui
+  fallback): the Day number, pain-tile level numbers, ring-gauge centre,
+  the three metrics, totals, timer digits, history dates.
+- Headings bold white (about 17px); descriptions small gray. Keep text
+  minimal — show things as UI (badges, ticks, bars, gauges), explain only
+  where a decision needs it.
+
+Pain check screen (in this order):
+1. まず、警告サインの確認 — heading, gray description, then the red flags as
+   CHIPS (not checkboxes): pill shape, thin #2d2d2d outline, #1a1a1a fill,
+   gray label text, wrapping in rows.
+2. 今日の筋肉痛は？（部位ごと）— heading, gray description
+   (タップで強度が上がります（5の次は0に戻ります）), legend badges, tile grid.
+3. 今日の関節痛は？（関節ごと）— same structure; the description notes
+   joints use a stricter standard than muscle.
+4. A primary CTA at the bottom: full width, large height, radius about
+   8px, #2dd4bf fill, bold #052e2b text (on this screen in the original
+   it reads 今日の結果を見る）.
+
+Legend badges (small dark-teal #19534c pills, white bold text, above each
+tile grid):
+- Muscle: 0–1 通常 / 2 軽減 / 3以上 除外 / 4以上 ×2部位 休養
+- Joints: 0–1 通常 / 2 軽減 / 3以上 除外 / サインあり 受診目安
+
+Pain tiles (2-column grid, gap about 8px):
+- Card #232323, radius about 10–12px; each tap adds 1 (0–5, then back
+  to 0). Muscle parts (10): 胸・肩・上腕・前腕・背中・脚（前）・脚（後ろ）・
+  お尻・ふくらはぎ・腹筋・体幹. Joints (7): 腰・肩・肘・手首・股関節・膝・足首.
+- Inside each tile: part name bold white at top-left; under it the level
+  word in small gray (0 なし / 1 軽い / 2 普通 / 3 強い / 4 かなり強い /
+  5 激しい）; top-right the level as a large Barlow Condensed numeral in
+  white; bottom-right 5 small tick segments — the first "level" ticks
+  light in #2dd4bf, the rest stay #292929.
+- Tile background deepens through dark teal shades with the level:
+  1 #17312c, 2 #17453c, 3 #1a5a4c, 4 #20806c, 5 #2dd4bf with #052e2b
+  text. Level 0 is the plain card colour.
+
+Required progress elements (do not omit):
+- Week dots under the header on every screen: 7 cells Mon–Sun of the
+  current week (Asia/Tokyo, Monday start), weekday + date number. A day
+  with a completed session is filled #2dd4bf (dark text); today gets an
+  accent outline.
+- A ring gauge at the top of the Menu and Result screens: SVG circle,
+  track #2d2d2d, arc #2dd4bf, completed/total fraction in Barlow Condensed
+  at the centre. Under it exactly three metrics in the same numeral font:
+  exercise count, set count, total reps.
+
+Other components:
+- Cards: #232323 fill, thin #2d2d2d outline, radius 12px, padding 14px.
+- Ordinary buttons: #232323 fill, white text, radius 8px.
+- Inputs: #1a1a1a fill, #2d2d2d outline, white text, radius 8px, 16px font.
+- Warning (red flag) box: red border #ef4444, dark red fill #2a0f0f,
+  pale red text #fecaca — the only red in the UI.
 
 Decision engine (required, not optional decoration):
 - Keep a dated pain history (per muscle part and per joint) and judge the
   24-hour rule automatically: if a part used by the last completed session
-  has not returned to its pre-session pain level by the next day, flag it as
-  overloaded — reduce it next session, do not progress it, and show the
-  reason in the adjustment notes.
-- Count consecutive unresolved days per part: muscle soreness at 5+ days and
-  joint pain at 14+ days show see-a-doctor guidance, joint pain at 7+ days
-  shows a caution. Guidance never blocks a start; only red flags do.
-- Apply joint pain through an explicit joint-to-muscle-part table as well as
-  the joints each exercise loads directly: lower back → legs and core
+  has not returned to its pre-session pain level by the next day, flag it
+  as overloaded — reduce it next session, do not progress it, and show
+  the reason in the adjustment notes.
+- Count consecutive unresolved days per part: muscle soreness at 5+ days
+  and joint pain at 14+ days show see-a-doctor guidance, joint pain at 7+
+  days shows a caution. Guidance never blocks a start; only red flags do.
+- Apply joint pain through an explicit joint-to-muscle-part table as well
+  as the joints each exercise loads directly: lower back → legs and core
   (squats, hinges, leg raises, planks); shoulders → all pushing; elbows →
   pushing and pulling; wrists → pushing and planks; hips, knees, ankles →
   legs (knees and ankles include calf jumps). Level 2 reduces the mapped
   parts, level 3+ excludes them, with the reason shown.
 
-Pain check UI:
-- Muscle soreness (by body part) and joint pain (lower back, shoulders,
-  elbows, wrists, hips, knees, ankles) are set by tapping: each tap adds 1,
-  from 0 to 5. Each part is a tappable tile showing the part name and the
-  current level as a big number.
-- The tile color deepens through TEAL shades with the level (never a
-  yellow-to-red heat scale): level 1 #f0fdfa, level 2 #ccfbf1, level 3
-  #99f6e4, level 4 #5eead4 (dark text), level 5 #0f766e with white text.
-  Level 0 is plain/transparent. Red is reserved for the warning box below.
-- Warning (red flag) state: a box with red border (#ef4444), pale red
-  background (#fef2f2), dark red text (#7f1d1d).
-
 Screens:
 - Menu: one card per exercise — name, variation, target sets × reps (or
   seconds), a short form cue, set inputs, an RPE input, and a per-exercise
-  note field. Adjustment reasons for the next session are shown as a short
-  note, not a paragraph. Timed exercises (seconds) also get a countdown
-  timer on the card: it starts from the target seconds, with start / pause /
-  reset buttons and a remaining-time bar; on zero it turns teal and beeps
-  (WebAudio). The timer never writes to the record — the inputs stay manual.
-- Result: the ring gauge and three metrics first, then the day's totals as
-  big numbers, per-exercise results, and the next rotation.
-- History: a quiet list by date; each session opens for viewing and editing.
+  note field. Adjustment reasons are shown as a short note, not a
+  paragraph. Timed exercises (seconds) also get a countdown timer on the
+  card: starts from the target seconds, start / pause / reset buttons and
+  a remaining-time bar; on zero it turns teal and beeps (WebAudio). The
+  timer never writes to the record — the inputs stay manual.
+- Result: the ring gauge and three metrics first, then the day's totals
+  as big numbers, per-exercise results, and the next rotation.
+- History: a quiet list by date (dates in Barlow Condensed); each session
+  opens for viewing and editing.
 
-Labels are in Japanese. Do not change the workout logic, the pain rules, or
-any saved data while doing design work.
+Labels are in Japanese. Do not change the workout logic, the pain rules,
+or any saved data while doing design work.
 ```
 
 ## License
