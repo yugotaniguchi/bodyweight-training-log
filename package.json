@@ -1,0 +1,1 @@
+{"dependencies":{},"description":"自重トレーニングの記録と自動メニュー生成（単体動作版、依存ゼロ）","license":"MIT","name":"bodyweight-training-log","private":false,"scripts":{"dev":"bun --watch run server.ts","start":"bun run server.ts","test":"bun test"},"type":"module","version":"0.1.0"}

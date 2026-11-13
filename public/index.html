@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>自重トレーニング記録</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header><h1>自重トレーニング記録</h1><p class="sub">器具なし・自重トレーニングの記録と自動メニュー生成</p></header>
+<nav id="tabs">
+  <button data-view="pain">痛みの記録</button>
+  <button data-view="menu">メニュー</button>
+  <button data-view="result">結果</button>
+  <button data-view="history">これまでの記録</button>
+  <button data-view="settings">設定</button>
+</nav>
+<main id="app"><p>読み込み中…</p></main>
+<section class="note">
+  <h2>判定基準について</h2>
+  <p>警告サイン（レッドフラッグ）がある日は開始できません。筋肉痛はレベル2で軽減・3以上で部位除外、関節痛はより厳しく（2で軽減・3以上で除外）判定します。完全休養はレベル4以上の筋肉痛が2部位以上の日だけです。</p>
+  <p>24時間ルール：運動中・運動後の痛みが翌朝までに元の水準へ戻らなければ、前回の負荷が高すぎたサインです。次回は下げて進行しません（Silbernagelらの痛みモニタリングモデル）。筋肉痛が5日、関節痛が1〜2週間改善しない場合は受診を目安にしてください。</p>
+  <p class="refs">参考文献：ACSM ポジションスタンド／ACSM 筋肉痛（DOMS）資料、Silbernagel et al. 2007 (Am J Sports Med)、NHS 関節痛・腰痛、CDC/NIOSH 横紋筋融解症。</p>
+</section>
+<script src="/app.js"></script>
+</body>
+</html>
