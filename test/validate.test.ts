@@ -64,7 +64,7 @@ describe("date strings", () => {
 });
 
 describe("parseProfile", () => {
-  const ok = { age: 28, sex: "男性", heightCm: 171, weightKg: 64, bodyFatNote: "", habitNote: "" };
+  const ok = { age: 28, sex: "男性", heightCm: 171, weightKg: 64, note: "" };
   test("accepts numbers and numeric strings (the client sends strings)", () => {
     expect(parseProfile(ok)).toMatchObject({ age: 28, heightCm: 171, weightKg: 64 });
     expect(parseProfile({ ...ok, age: "28", heightCm: "171", weightKg: "64.5" }).weightKg).toBe(64.5);
@@ -85,16 +85,32 @@ describe("parseProfile", () => {
     expect(parseProfile({ ...ok, age: 10, heightCm: 100, weightKg: 20 })).toBeTruthy();
     expect(parseProfile({ ...ok, age: 100, heightCm: 250, weightKg: 300 })).toBeTruthy();
   });
-  test("free-text fields are length-capped", () => {
-    expect(() => parseProfile({ ...ok, bodyFatNote: "x".repeat(201) })).toThrow(InvalidInput);
-    expect(parseProfile({ ...ok, habitNote: "週2回" }).habitNote).toBe("週2回");
+  test("the merged note is capped at 500 characters", () => {
+    expect(parseProfile({ ...ok, note: "x".repeat(500) }).note).toHaveLength(500);
+    expect(() => parseProfile({ ...ok, note: "x".repeat(501) })).toThrow(InvalidInput);
+    expect(parseProfile({ ...ok, note: "週2回" }).note).toBe("週2回");
+  });
+  test("legacy two-field notes merge into the single note without loss", () => {
+    const both = parseProfile({ ...ok, bodyFatNote: "体脂肪20%", habitNote: "週2回" } as Record<string, unknown>);
+    expect(both.note).toBe("体脂肪20%\n週2回");
+    // Only one legacy field filled: no stray newline.
+    expect(parseProfile({ ...ok, habitNote: "週2回" } as Record<string, unknown>).note).toBe("週2回");
+    expect(parseProfile({ ...ok, bodyFatNote: "体脂肪20%" } as Record<string, unknown>).note).toBe("体脂肪20%");
+  });
+  test("sex accepts only the select options", () => {
+    expect(parseProfile({ ...ok, sex: "女性" }).sex).toBe("女性");
+    expect(parseProfile({ ...ok, sex: "" }).sex).toBe(""); // 選択しない
+    expect(() => parseProfile({ ...ok, sex: "その他" })).toThrow(InvalidInput);
+    expect(() => parseProfile({ ...ok, sex: 42 })).toThrow(InvalidInput);
+    // Imported legacy data folds to 選択しない instead of refusing the file.
+    expect(parseProfile({ ...ok, sex: "その他" }, "ja", { foldLegacySex: true }).sex).toBe("");
   });
 });
 
 describe("parseStoreImport", () => {
   const sample = (): Store => {
     const s = emptyStore();
-    s.profile = { age: 28, sex: "男性", heightCm: 171, weightKg: 64, bodyFatNote: "", habitNote: "" };
+    s.profile = { age: 28, sex: "男性", heightCm: 171, weightKg: 64, note: "" };
     s.pain = [{ date: "2026-11-13", soreness: { "胸": 2 }, jointPain: { "膝": 1 }, redFlags: [] }];
     s.sessions = [{
       id: 1, date: "2026-11-13", rotation: "A", title: "押す + 脚", status: "completed", intro: true,

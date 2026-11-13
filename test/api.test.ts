@@ -50,7 +50,7 @@ describe("API input validation", () => {
   });
 
   test("profile: ranges enforced and required fields cannot be empty", async () => {
-    const base = { age: 28, sex: "男性", heightCm: 171, weightKg: 64, bodyFatNote: "", habitNote: "" };
+    const base = { age: 28, sex: "男性", heightCm: 171, weightKg: 64, note: "" };
     expect((await post("/api/profile", { ...base, age: 9 })).status).toBe(400);
     expect((await post("/api/profile", { ...base, age: "" })).status).toBe(400);
     expect((await post("/api/profile", { ...base, heightCm: 251 })).status).toBe(400);
@@ -59,6 +59,14 @@ describe("API input validation", () => {
     const st = await getState();
     expect(st.profile.age).toBe(28);
     expect(st.profile.weightKg).toBe(64);
+  });
+
+  test("profile: sex must be a select option; the merged note is capped at 500", async () => {
+    const base = { age: 28, sex: "男性", heightCm: 171, weightKg: 64, note: "" };
+    expect((await post("/api/profile", { ...base, sex: "その他" })).status).toBe(400);
+    expect((await post("/api/profile", { ...base, sex: "" })).status).toBe(200); // 選択しない
+    expect((await post("/api/profile", { ...base, note: "x".repeat(501) })).status).toBe(400);
+    expect((await post("/api/profile", { ...base, note: "x".repeat(500) })).status).toBe(200);
   });
 
   test("exercise update: bad reps / RPE / long note are 400 and store nothing", async () => {

@@ -49,7 +49,7 @@ afterAll(() => {
 describe("main flow scenario", () => {
   test("profile → condition → generate → record → complete → history", async () => {
     // 1. Profile save (first save is recorded in the profile history).
-    const prof = { age: 28, sex: "男性", heightCm: 171, weightKg: 64, bodyFatNote: "", habitNote: "" };
+    const prof = { age: 28, sex: "男性", heightCm: 171, weightKg: 64, note: "" };
     expect((await post("/api/profile", prof)).status).toBe(200);
     let st = await getState();
     expect(st.profile.age).toBe(28);

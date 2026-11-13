@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { EXERCISES } from "../src/exercises";
 import {
-  assessPain, decideNext, detectOverload, generateSession, painDurationGuidance, emptyStore, setSum,
-  type PainEntry, type Session, type SessionExercise, type Store,
+  assessPain, decideNext, detectOverload, diffProfile, generateSession, migrateProfile, painDurationGuidance, emptyStore, setSum,
+  type PainEntry, type Profile, type Session, type SessionExercise, type Store,
 } from "../src/logic";
 
 const prev = (over: Partial<SessionExercise>): SessionExercise => ({
@@ -163,4 +163,33 @@ test("empty store generates an intro session A without personal data", () => {
   expect(s.rotation).toBe("A"); expect(s.intro).toBe(true);
   expect(s.exercises.map((e) => e.baseId)).not.toContain("deadBug");
   expect(JSON.stringify(s)).not.toContain("memo\""); // no session-wide memo field
+});
+
+describe("profile migration (two note fields -> one, sex -> select values)", () => {
+  const legacy = (over: Record<string, unknown>): Profile =>
+    ({ age: 28, sex: "男性", heightCm: 171, weightKg: 64, ...over }) as unknown as Profile;
+  test("the two legacy notes merge with a newline, nothing lost", () => {
+    expect(migrateProfile(legacy({ bodyFatNote: "体脂肪20%", habitNote: "週2回" }))?.note).toBe("体脂肪20%\n週2回");
+    expect(migrateProfile(legacy({ bodyFatNote: "", habitNote: "週2回" }))?.note).toBe("週2回");
+    expect(migrateProfile(legacy({ bodyFatNote: "体脂肪20%", habitNote: "" }))?.note).toBe("体脂肪20%");
+    expect(migrateProfile(legacy({ bodyFatNote: "", habitNote: "" }))?.note).toBe("");
+  });
+  test("a free-text sex value folds to 選択しない (\"\"), the options survive", () => {
+    expect(migrateProfile(legacy({ sex: "その他" }))?.sex).toBe("");
+    expect(migrateProfile(legacy({ sex: "女性" }))?.sex).toBe("女性");
+    expect(migrateProfile(legacy({ sex: "男性" }))?.sex).toBe("男性");
+  });
+  test("idempotent on the new shape and null-safe", () => {
+    const cur: Profile = { age: 28, sex: "女性", heightCm: 160, weightKg: 55, note: "既往症なし" };
+    expect(migrateProfile(cur)).toEqual(cur);
+    expect(migrateProfile(migrateProfile(legacy({ bodyFatNote: "a", habitNote: "b" })))).toEqual(migrateProfile(legacy({ bodyFatNote: "a", habitNote: "b" })));
+    expect(migrateProfile(null)).toBeNull();
+  });
+  test("the history diff follows the merged field", () => {
+    const before: Profile = { age: 28, sex: "", heightCm: 171, weightKg: 64, note: "" };
+    const after: Profile = { ...before, note: "週2回" };
+    const diff = diffProfile(before, after);
+    expect(diff).toHaveLength(1);
+    expect(diff[0]).toMatchObject({ field: "note", label: "補足", from: "", to: "週2回" });
+  });
 });

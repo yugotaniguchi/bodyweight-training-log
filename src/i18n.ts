@@ -69,7 +69,7 @@ export const redFlagLabel = (id: string, lang: Lang): string =>
 export interface ValidationTexts {
   reps: string; rpe: string; pain: string; note: string; date: string;
   repsFormat: string; tooManySets: string; completedFlagFormat: string; painFormat: string;
-  textFormat: string; noteField: string;
+  textFormat: string; noteField: string; sexInvalid: string;
   ageRequired: string; ageRange: string; heightRequired: string; heightRange: string;
   weightRequired: string; weightRange: string;
   importInvalid: string; langInvalid: string; themeInvalid: string;
@@ -86,7 +86,8 @@ export const VMSG: Record<Lang, ValidationTexts> = {
     completedFlagFormat: "完了フラグの形式が正しくありません",
     painFormat: "痛みレベルの形式が正しくありません",
     textFormat: "テキストの形式が正しくありません",
-    noteField: "補足は200文字以内で入力してください",
+    noteField: "補足は500文字以内で入力してください",
+    sexInvalid: "性別は選択肢から選んでください",
     ageRequired: "年齢を入力してください",
     ageRange: "年齢は10〜100の整数で入力してください",
     heightRequired: "身長を入力してください",
@@ -108,7 +109,8 @@ export const VMSG: Record<Lang, ValidationTexts> = {
     completedFlagFormat: "The completion flag format is not valid",
     painFormat: "The pain level format is not valid",
     textFormat: "The text format is not valid",
-    noteField: "Keep the note within 200 characters",
+    noteField: "Keep the note within 500 characters",
+    sexInvalid: "Choose sex from the options",
     ageRequired: "Enter your age",
     ageRange: "Enter age as an integer between 10 and 100",
     heightRequired: "Enter your height",
@@ -163,7 +165,6 @@ export interface ServerTexts {
   genOverloadNote: (name: string, reason: string) => string;
   genOverloadReduce: (name: string, reason: string) => string;
   titleAltSuffix: string;
-  focusNoteAlt: string;
   errSessionExists: string;
   errBlockedRedFlag: string;
   errRestDay: string;
@@ -216,7 +217,6 @@ export const SRV: Record<Lang, ServerTexts> = {
     genOverloadNote: (name, reason) => `24時間ルール: ${name}（${reason}）`,
     genOverloadReduce: (name, reason) => `24時間ルールで軽減: ${name}（${reason}）`,
     titleAltSuffix: "（代替）",
-    focusNoteAlt: "痛みの基準で一部の部位を外した代替ワークアウト",
     errSessionExists: "今日のセッションは作成済みです",
     errBlockedRedFlag: "警告サインがあるため開始できません",
     errRestDay: "完全休養日です",
@@ -267,7 +267,6 @@ export const SRV: Record<Lang, ServerTexts> = {
     genOverloadNote: (name, reason) => `24-hour rule: ${name} (${reason})`,
     genOverloadReduce: (name, reason) => `Reduced by the 24-hour rule: ${name} (${reason})`,
     titleAltSuffix: " (alternative)",
-    focusNoteAlt: "Alternative workout: some parts were left out by the pain rules",
     errSessionExists: "Today's session has already been created",
     errBlockedRedFlag: "Cannot start: a warning sign is present",
     errRestDay: "Today is a full rest day",

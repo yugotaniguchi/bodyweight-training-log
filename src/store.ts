@@ -1,6 +1,6 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { emptyStore, type Store } from "./logic";
+import { emptyStore, migrateProfile, type Store } from "./logic";
 import { logEvent } from "./log";
 
 const DATA_FILE = process.env.DATA_FILE ?? join(process.cwd(), "data", "store.json");
@@ -46,7 +46,13 @@ export function saveStore(store: Store): void {
 function tryParse(raw: string): Store | null {
   try {
     const v = JSON.parse(raw) as unknown;
-    if (v && typeof v === "object" && !Array.isArray(v)) return { ...emptyStore(), ...(v as Partial<Store>) };
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      const s = { ...emptyStore(), ...(v as Partial<Store>) };
+      // Saved profiles from the two-note-fields era are carried over
+      // losslessly (merged note, sex folded to the select options).
+      s.profile = migrateProfile(s.profile);
+      return s;
+    }
   } catch { /* fall through */ }
   return null;
 }

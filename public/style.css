@@ -105,8 +105,9 @@ nav button.active{background:var(--accent);color:var(--on-accent)}
 .badges{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px}
 .badge{background:var(--badge);color:#fff;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px}
 
-/* Pain tiles: 2-column grid; background deepens through the teal level
-   ramp fixed in DESIGN.md. Never a heat scale. */
+/* Pain tiles: 2-column grid; the background stays the plain surface
+   colour through level 2 and deepens through the teal ramp only from
+   level 3 up (3 → 4 → 5), as fixed in DESIGN.md. Never a heat scale. */
 .tapgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .tap{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:11px;border:none;background:var(--surface);color:var(--text);cursor:pointer;text-align:left;min-height:74px}
 .tap-row{display:flex;justify-content:space-between;align-items:flex-start}
@@ -116,17 +117,15 @@ nav button.active{background:var(--accent);color:var(--on-accent)}
    both themes (universal-design contrast, DESIGN.md); the measured
    original used --sub here, which is under 4.5:1 on the deep ramp. */
 .tap-word{color:#ffffff;font-size:12px}
-.tap.lv1{background:#17312c}.tap.lv2{background:#17453c}.tap.lv3{background:#1a5a4c}.tap.lv4{background:#20806c}
+.tap.lv3{background:#1a5a4c}.tap.lv4{background:#20806c}
 .tap.lv5{background:var(--accent)}.tap.lv5 .tap-num{color:var(--on-accent)}.tap.lv5 .tap-word{color:var(--on-accent)}
 .ticks{display:flex;gap:3px;align-items:flex-end}
 .ticks i{width:14px;height:5px;border-radius:2px;background:var(--tick-off)}
 .ticks i.on{background:var(--accent)}
 .tap.lv5 .ticks i{background:rgba(5,46,43,.25)}.tap.lv5 .ticks i.on{background:var(--on-accent)}
-/* Light-theme tile ramp: a shallower teal ramp on white, with the
-   near-black text colour; level 5 is the light accent with white. */
+/* Light-theme tile ramp: levels 0–2 stay white, then a teal ramp from
+   level 3; near-black text at levels 0–4, white at level 5. */
 :root[data-theme="light"] .tap-word{color:var(--text)}
-:root[data-theme="light"] .tap.lv1{background:#e2f2ec}
-:root[data-theme="light"] .tap.lv2{background:#c2e7d9}
 :root[data-theme="light"] .tap.lv3{background:#93cfb6}
 :root[data-theme="light"] .tap.lv4{background:#57ab8d}
 :root[data-theme="light"] .tap.lv5{background:var(--accent)}
@@ -145,6 +144,12 @@ textarea{height:auto;min-height:42px;padding:9px 10px;line-height:1.5;resize:ver
 .field label{font-size:13px;color:var(--sub)}
 .field input,.field select,.field textarea{width:100%}
 .field.wide{grid-column:1/-1}
+.field-hint{font-size:12px;color:var(--sub);line-height:1.5}
+/* Profile autosave status: a small saved indicator and the error line,
+   in place under the form — there is no save button anymore. */
+.profile-save-line{margin:2px 0 0;font-size:13px;display:flex;gap:10px;align-items:baseline}
+.saved-ind{color:var(--accent);font-weight:700}
+.profile-save-line .error{font-size:13px}
 .warn{border:1px solid var(--warn-border);background:var(--warn-fill);color:var(--warn-text);padding:10px;border-radius:10px;margin:10px 0}
 .ok{border:1px solid var(--badge);background:var(--ok-fill);color:var(--ok-text);padding:10px;border-radius:10px;margin:10px 0}
 .caution{border:1px solid var(--caution-border);background:var(--caution-fill);color:var(--caution-text);padding:10px;border-radius:10px;margin:8px 0}
@@ -160,7 +165,11 @@ button:disabled{opacity:.55;cursor:default}
 .action-err{margin:8px 0 0;font-size:14px}
 .cancel-btns .action-err{flex:0 0 100%;margin:2px 0 0;text-align:center}
 label.row{display:block;margin:6px 0}
-.note h2{color:var(--text)} .note p{color:var(--sub);font-size:13px}
+.note h2{color:var(--text)}
+.note-sub{font-size:14px;color:var(--text);margin:14px 0 2px}
+.note-list{color:var(--sub);font-size:13px;line-height:1.7;margin:0;padding-left:18px}
+.note-list li{margin:2px 0}
+.note .refs{margin-top:12px}
 
 /* Merged history list (image-5 form): no card frames, hairline dividers */
 .hist{border-bottom:1px solid var(--border);padding:16px 0 14px}
@@ -168,7 +177,6 @@ label.row{display:block;margin:6px 0}
 .hist-date{flex:none;width:78px;font-size:17px;line-height:1.3;color:var(--text);padding-top:2px;white-space:nowrap}
 .hist-main{flex:1;min-width:0}
 .hist-rot{font-weight:700;font-size:16px;overflow-wrap:anywhere}
-.hist-note{color:var(--accent);font-size:12px;margin:1px 0 3px}
 .hist-total{flex:none;text-align:right;font-size:12px;color:var(--sub)}
 .hist-total .num{font-size:36px;line-height:1;color:var(--text);margin-right:2px}
 .ex-row{display:flex;justify-content:space-between;gap:12px;padding:1px 0}
@@ -220,9 +228,9 @@ label.row{display:block;margin:6px 0}
 .menu-session-title{font-size:20px;margin:0;color:var(--text);overflow-wrap:anywhere}
 .menu-date{color:var(--sub);font-size:12px;margin-top:3px}
 .menu-remain{color:var(--sub);font-size:13px;margin-top:3px}
-.menu-focus{color:var(--accent);font-size:12px;margin-top:3px}
-/* Adjustment notes: small and quiet, under the title */
-.adj-notes{max-width:540px;margin:10px auto 0;color:var(--sub);font-size:12px;line-height:1.55}
+/* Adjustment notes: small and quiet, at the very bottom of the menu
+   (after the exercise cards and the finish area). */
+.adj-notes{max-width:540px;margin:14px auto 0;color:var(--sub);font-size:12px;line-height:1.55}
 .adj-notes ul{margin:0;padding-left:18px}
 
 /* Three metrics divided by hairlines */

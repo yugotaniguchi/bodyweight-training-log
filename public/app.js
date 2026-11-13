@@ -80,15 +80,18 @@ const STR = {
     backHome: "← ホームに戻る",
     profileH: "プロフィール（初回設定）",
     fAge: "年齢", fSex: "性別", fHeight: "身長（cm）", fWeight: "体重（kg）",
-    fFat: "体脂肪などの補足", fHabit: "運動習慣の補足",
-    saveProfileBtn: "保存",
+    sexMale: "男性", sexFemale: "女性", sexNone: "選択しない",
+    fNote: "補足",
+    fNoteHint: "既往症・ケガの履歴、常用している薬、アレルギー、体脂肪、運動習慣など、判定やメニューに影響しうる情報を書いてください。",
+    savedIndicator: "保存済み",
     languageH: "言語",
     themeH: "テーマ", themeDark: "ダーク", themeLight: "ライト", themeSystem: "システム",
     profileHistoryH: "プロフィール履歴",
     notEntered: "未入力",
     dataH: "データ",
     dataNote: "保存先はサーバー側の data/store.json です。",
-    exportBtn: "エクスポート", importBtn: "インポート",
+    dataFormats: "エクスポート：JSON（全データ、復元用）／ CSV（セッション記録の一覧、閲覧用）。インポート：JSONのみ（CSVは取り込めません）。",
+    exportJsonBtn: "エクスポート（JSON）", exportCsvBtn: "エクスポート（CSV）", importBtn: "インポート",
     importConfirmText: "「{name}」で現在のデータをすべて置き換えます。元に戻せません。",
     importExec: "インポートする", cancelBtn: "キャンセル",
     fileFormatError: "ファイルの形式が正しくありません",
@@ -101,11 +104,20 @@ const STR = {
     vAgeRequired: "年齢を入力してください", vAgeRange: "年齢は10〜100の整数で入力してください",
     vHeightRequired: "身長を入力してください", vHeightRange: "身長は100〜250cmの整数で入力してください",
     vWeightRequired: "体重を入力してください", vWeightRange: "体重は20〜300kgで入力してください",
-    vNoteField: "補足は200文字以内で入力してください",
+    vNoteField: "補足は500文字以内で入力してください",
+    vSexInvalid: "性別は選択肢から選んでください",
     noteTitle: "判定基準について",
-    noteP1: "警告サイン（レッドフラッグ）がある日は開始できません。筋肉痛はレベル2で軽減・3以上で部位除外、関節痛はより厳しく（2で軽減・3以上で除外）判定します。完全休養はレベル4以上の筋肉痛が2部位以上の日だけです。",
-    noteP2: "24時間ルール：運動中・運動後の痛みが翌朝までに元の水準へ戻らなければ、前回の負荷が高すぎたサインです。痛みの記録から自動で判定し、過負荷の部位は次回軽減して進行しません（Silbernagelらの痛みモニタリングモデル）。",
-    noteP3: "継続日数チェック：同じ部位の筋肉痛が5日以上、関節痛が2週間改善しない場合は受診目安として注意表示します（関節痛は7日でも注意表示）。開始を止めるのは警告サインだけです。関節痛は部位にも効きます（腰→脚・体幹、肩→押す系、肘→押す系・引く系、手首→押す系・プランク系、股関節・膝・足首→脚系）。",
+    noteH1: "警告サインと休養",
+    noteP1a: "警告サイン（レッドフラッグ）がある日は開始できません。",
+    noteP1b: "筋肉痛はレベル2で軽減・3以上で部位除外、関節痛はより厳しく（2で軽減・3以上で除外）判定します。",
+    noteP1c: "完全休養はレベル4以上の筋肉痛が2部位以上の日だけです。",
+    noteH2: "24時間ルール",
+    noteP2a: "24時間ルール：運動中・運動後の痛みが翌朝までに元の水準へ戻らなければ、前回の負荷が高すぎたサインです。",
+    noteP2b: "痛みの記録から自動で判定し、過負荷の部位は次回軽減して進行しません（Silbernagelらの痛みモニタリングモデル）。",
+    noteH3: "継続日数と関節痛",
+    noteP3a: "継続日数チェック：同じ部位の筋肉痛が5日以上、関節痛が2週間改善しない場合は受診目安として注意表示します（関節痛は7日でも注意表示）。",
+    noteP3b: "開始を止めるのは警告サインだけです。",
+    noteP3c: "関節痛は部位にも効きます（腰→脚・体幹、肩→押す系、肘→押す系・引く系、手首→押す系・プランク系、股関節・膝・足首→脚系）。",
     noteRefs: "参考文献：ACSM ポジションスタンド／ACSM 筋肉痛（DOMS）資料、Silbernagel et al. 2007 (Am J Sports Med)、NHS 関節痛・腰痛、CDC/NIOSH 横紋筋融解症。",
   },
   en: {
@@ -171,15 +183,18 @@ const STR = {
     backHome: "← Back to home",
     profileH: "Profile (first-time setup)",
     fAge: "Age", fSex: "Sex", fHeight: "Height (cm)", fWeight: "Weight (kg)",
-    fFat: "Body fat and other notes", fHabit: "Exercise habit notes",
-    saveProfileBtn: "Save",
+    sexMale: "Male", sexFemale: "Female", sexNone: "Prefer not to say",
+    fNote: "Notes",
+    fNoteHint: "Write anything that could affect the decisions or the menu: past conditions and injuries, regular medication, allergies, body fat, exercise habits, and so on.",
+    savedIndicator: "Saved",
     languageH: "Language",
     themeH: "Theme", themeDark: "Dark", themeLight: "Light", themeSystem: "System",
     profileHistoryH: "Profile history",
     notEntered: "Not entered",
     dataH: "Data",
     dataNote: "Data is stored server-side in data/store.json.",
-    exportBtn: "Export", importBtn: "Import",
+    dataFormats: "Export: JSON (all data, for restoring) / CSV (session records as a table, for viewing). Import: JSON only (CSV cannot be imported).",
+    exportJsonBtn: "Export (JSON)", exportCsvBtn: "Export (CSV)", importBtn: "Import",
     importConfirmText: "Replace all current data with \"{name}\". This cannot be undone.",
     importExec: "Import", cancelBtn: "Cancel",
     fileFormatError: "The file format is not valid",
@@ -192,11 +207,20 @@ const STR = {
     vAgeRequired: "Enter your age", vAgeRange: "Enter age as an integer between 10 and 100",
     vHeightRequired: "Enter your height", vHeightRange: "Enter height as an integer between 100 and 250 cm",
     vWeightRequired: "Enter your weight", vWeightRange: "Enter weight between 20 and 300 kg",
-    vNoteField: "Keep the note within 200 characters",
+    vNoteField: "Keep the note within 500 characters",
+    vSexInvalid: "Choose sex from the options",
     noteTitle: "About the decision rules",
-    noteP1: "You cannot start on a day when a warning sign (red flag) applies. Muscle soreness reduces the load at level 2 and excludes the part at level 3 or higher; joint pain is judged more strictly (reduce at 2, exclude at 3 or higher). A full rest day happens only when soreness at level 4 or higher is present in 2 or more parts.",
-    noteP2: "24-hour rule: if pain during or after exercise has not returned to its baseline by the next morning, the previous load was probably too high. This is judged automatically from your pain records, and an overloaded part is reduced next time and not progressed (the pain-monitoring model of Silbernagel et al.).",
-    noteP3: "Duration check: soreness in the same part lasting 5 or more days, or joint pain that does not improve within 2 weeks, is shown as see-a-doctor guidance (joint pain is already flagged at 7 days). Only warning signs stop a start. Joint pain also reaches body parts (lower back → legs and core, shoulders → pushing, elbows → pushing and pulling, wrists → pushing and planks, hips, knees and ankles → legs).",
+    noteH1: "Warning signs and rest",
+    noteP1a: "You cannot start on a day when a warning sign (red flag) applies.",
+    noteP1b: "Muscle soreness reduces the load at level 2 and excludes the part at level 3 or higher; joint pain is judged more strictly (reduce at 2, exclude at 3 or higher).",
+    noteP1c: "A full rest day happens only when soreness at level 4 or higher is present in 2 or more parts.",
+    noteH2: "24-hour rule",
+    noteP2a: "24-hour rule: if pain during or after exercise has not returned to its baseline by the next morning, the previous load was probably too high.",
+    noteP2b: "This is judged automatically from your pain records, and an overloaded part is reduced next time and not progressed (the pain-monitoring model of Silbernagel et al.).",
+    noteH3: "Duration and joint pain",
+    noteP3a: "Duration check: soreness in the same part lasting 5 or more days, or joint pain that does not improve within 2 weeks, is shown as see-a-doctor guidance (joint pain is already flagged at 7 days).",
+    noteP3b: "Only warning signs stop a start.",
+    noteP3c: "Joint pain also reaches body parts (lower back → legs and core, shoulders → pushing, elbows → pushing and pulling, wrists → pushing and planks, hips, knees and ankles → legs).",
     noteRefs: "References: ACSM position stands / ACSM material on delayed onset muscle soreness (DOMS), Silbernagel et al. 2007 (Am J Sports Med), NHS joint pain and back pain, CDC/NIOSH rhabdomyolysis.",
   },
 };
@@ -238,27 +262,19 @@ const unitWord = (u) => (lang === "en" ? (u === "秒" ? "sec" : "reps") : u);
 // Profile field labels for the change history, keyed by the stored field
 // name (the label saved in the data is Japanese; display follows the UI).
 const FIELD_LABELS = {
-  ja: { age: "年齢", sex: "性別", heightCm: "身長", weightKg: "体重", bodyFatNote: "体脂肪などの補足", habitNote: "運動習慣の補足" },
-  en: { age: "Age", sex: "Sex", heightCm: "Height", weightKg: "Weight", bodyFatNote: "Body fat and other notes", habitNote: "Exercise habit notes" },
+  ja: { age: "年齢", sex: "性別", heightCm: "身長", weightKg: "体重", note: "補足", bodyFatNote: "体脂肪などの補足", habitNote: "運動習慣の補足" },
+  en: { age: "Age", sex: "Sex", heightCm: "Height", weightKg: "Weight", note: "Notes", bodyFatNote: "Body fat and other notes", habitNote: "Exercise habit notes" },
 };
 const fieldLabel = (c) => FIELD_LABELS[lang]?.[c.field] ?? c.label;
-// The one fixed focus note (set at generation when parts were excluded)
-// exists in both languages in stored data; display follows the UI.
-const FOCUS_ALT = { ja: "痛みの基準で一部の部位を外した代替ワークアウト", en: "Alternative workout: some parts were left out by the pain rules" };
-function focusNoteText(s) {
-  if (s.focusNote === FOCUS_ALT.ja || s.focusNote === FOCUS_ALT.en) {
-    return lang === "en" ? FOCUS_ALT.en : FOCUS_ALT.ja;
-  }
-  return s.focusNote;
-}
 // Session title: the rotation title comes from the catalog (already in
 // the UI language); the stored title only decides the "(alternative)"
-// suffix. In Japanese this reproduces the stored title exactly.
+// suffix. In Japanese this reproduces the stored title exactly. The
+// rotation letter (A / B / C) is internal data and is NOT shown.
 function sessionTitle(s) {
   const rot = state?.catalog?.rotations?.find((r) => r.id === s.rotation);
   const base = rot ? rot.title : s.title;
   const alt = s.title.endsWith("（代替）") || s.title.endsWith("(alternative)");
-  return `${s.rotation} ${base}${alt ? t("titleAltSuffix") : ""}`;
+  return `${base}${alt ? t("titleAltSuffix") : ""}`;
 }
 // Strings that live in index.html (tabs, header, footer note) are
 // re-applied on every render, so a language switch needs no reload.
@@ -271,9 +287,19 @@ function applyStatic() {
   setText("ah-total-label", "totalLabel");
   setText("ah-total-unit", "totalUnit");
   setText("note-title", "noteTitle");
-  setText("note-p1", "noteP1");
-  setText("note-p2", "noteP2");
-  setText("note-p3", "noteP3");
+  setText("note-h1", "noteH1");
+  setText("note-h2", "noteH2");
+  setText("note-h3", "noteH3");
+  // The footer note is a set of bullet lists (one item per original
+  // sentence — the wording itself never changes, only the layout).
+  const fillList = (id, keys) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.replaceChildren(...keys.map((k) => { const li = document.createElement("li"); li.textContent = t(k); return li; }));
+  };
+  fillList("note-l1", ["noteP1a", "noteP1b", "noteP1c"]);
+  fillList("note-l2", ["noteP2a", "noteP2b"]);
+  fillList("note-l3", ["noteP3a", "noteP3b", "noteP3c"]);
   setText("note-refs", "noteRefs");
   const gear = document.getElementById("gear");
   if (gear) { gear.setAttribute("aria-label", t("gear")); gear.title = t("gear"); }
@@ -321,6 +347,9 @@ let importPending = null; // parsed JSON waiting for import confirmation
 let importFileName = "";
 let importError = "";
 let histQuery = ""; // report screen: free-word filter over exercise names / notes
+let profileSaveTimer = null; // settings: pending profile-autosave debounce timer
+let profileError = ""; // settings: last autosave error, shown in place under the form
+let profileSavedShow = false; // settings: whether the 保存済み indicator is shown
 
 // ---------- browser history + per-view scroll positions ----------
 // Tab switches are real history entries (pushState / popstate), so the
@@ -335,6 +364,7 @@ let navKeySeq = 0;
 let navKey = 0;
 const scrollByKey = {};
 function go(v) {
+  flushProfileSave(); // a pending profile autosave fires before the form unmounts
   if (v === view) { render(); return; }
   scrollByKey[navKey] = window.scrollY;
   view = v; menuCancelArm = false; menuGenError = "";
@@ -345,6 +375,7 @@ function go(v) {
   syncGear();
 }
 window.addEventListener("popstate", (e) => {
+  flushProfileSave(); // same as go(): do not lose a pending autosave
   const v = e.state?.v ?? PATH_VIEWS[location.pathname] ?? "pain";
   scrollByKey[navKey] = window.scrollY;
   navKey = e.state?.k ?? 0;
@@ -770,6 +801,7 @@ function collectExercise(root, ex) {
 // Each returns a short reason string, or null when the input is valid.
 // The reason texts are the dictionary's, matching the server's per language.
 const NOTE_MAX_LEN = 200;
+const PROFILE_NOTE_MAX_LEN = 500; // the merged profile note's cap (server: NOTE_FIELD_MAX)
 function validateExerciseData(d) {
   for (const v of d.loggedSets) {
     const vals = typeof v === "number" ? [v] : (v && typeof v === "object" ? [v.l, v.r] : [NaN]);
@@ -790,8 +822,36 @@ function validateProfileData(v) {
   const w = num(v.weightKg);
   if (w === null || Number.isNaN(w)) return t("vWeightRequired");
   if (Number.isNaN(w) || w < 20 || w > 300) return t("vWeightRange");
-  if (v.bodyFatNote.length > NOTE_MAX_LEN || v.habitNote.length > NOTE_MAX_LEN) return t("vNoteField");
+  if (!["男性", "女性", ""].includes(v.sex)) return t("vSexInvalid");
+  if (v.note.length > PROFILE_NOTE_MAX_LEN) return t("vNoteField");
   return null;
+}
+// Profile autosave (settings): there is no save button — edits are
+// debounce-saved (see bind) and a view change flushes a pending save
+// (go / popstate call flushProfileSave before the form unmounts; the
+// values are read synchronously, before the first await). Validation
+// runs first: an invalid form is NOT saved and the reason shows in
+// place. On success only the small 保存済み indicator flips — the form
+// itself is never re-rendered, so focus and input are never lost.
+async function saveProfileAuto() {
+  const el = (id) => document.getElementById(id);
+  if (!el("pf-age")) return; // the settings view is gone; nothing to read
+  const values = { age: el("pf-age").value, sex: el("pf-sex").value, heightCm: el("pf-height").value, weightKg: el("pf-weight").value, note: el("pf-note").value };
+  const errEl = el("profileErr");
+  const showErr = (msg) => { profileError = msg; if (errEl) errEl.textContent = msg; };
+  const err = validateProfileData(values);
+  if (err) { showErr(err); return; }
+  try {
+    await api("/api/profile", values);
+    profileError = ""; profileSavedShow = true;
+    if (errEl) errEl.textContent = "";
+    const ind = el("profileSaved"); if (ind) ind.hidden = false;
+  } catch (e) { showErr(e.message); }
+}
+function flushProfileSave() {
+  if (profileSaveTimer === null) return;
+  clearTimeout(profileSaveTimer); profileSaveTimer = null;
+  void saveProfileAuto();
 }
 // Menu-screen exercise card, laid out like the original space: muscle
 // group small at the top-left, the variation as the big heading, target
@@ -887,15 +947,14 @@ function renderMenu() {
   ${ringGauge(s)}
   <div class="menu-title"><h2 class="menu-session-title">${esc(sessionTitle(s))}</h2>
   ${pastDate}
-  <div class="menu-remain">${remaining > 0 ? esc(t("remain", { n: remaining })) : esc(t("allDone"))}</div>
-  ${s.focusNote ? `<div class="menu-focus">${esc(focusNoteText(s))}</div>` : ""}</div>
-  ${s.progressionNotes.length ? `<div class="adj-notes"><ul>${s.progressionNotes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>` : ""}
+  <div class="menu-remain">${remaining > 0 ? esc(t("remain", { n: remaining })) : esc(t("allDone"))}</div></div>
   ${menuMetrics(s)}
   ${s.exercises.map((ex) => menuExerciseCard(s, ex)).join("")}
   ${s.status !== "completed" ? `<div class="card finish-card"><button class="cta" id="complete">${esc(t("completeBtn"))}</button>
     ${menuCancelArm ? `<div class="cancel-confirm"><p>${esc(t("cancelConfirm"))}</p><div class="cancel-btns"><button class="btn danger-solid" id="cancelExec">${esc(t("cancelExec"))}</button><button class="btn" id="cancelBack">${esc(t("cancelBack"))}</button></div></div>`
       : `<button class="cancel-link" id="cancelMenu">${esc(t("cancelLink"))}</button>`}</div>`
-    : `<div class="ok">${esc(t("completedBox"))}</div><button class="cta" id="goReport">${esc(t("viewReport"))}</button>`}`;
+    : `<div class="ok">${esc(t("completedBox"))}</div><button class="cta" id="goReport">${esc(t("viewReport"))}</button>`}
+  ${s.progressionNotes.length ? `<div class="adj-notes"><ul>${s.progressionNotes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>` : ""}`;
 }
 // RPE number -> the word the original space shows next to it.
 function rpeWord(rpe) {
@@ -975,7 +1034,6 @@ function historyEntriesHtml() {
     return `<div class="hist"><div class="hist-head">
       <div class="hist-date num">${histDate(s.date)}</div>
       <div class="hist-main"><div class="hist-rot">${esc(sessionTitle(s))}</div>
-      ${s.focusNote ? `<div class="hist-note">${esc(focusNoteText(s))}</div>` : ""}
       ${body}</div>
       <div class="hist-total"><span class="num">${s.totalVolume}</span>${esc(t("repsSuffix"))}</div>
     </div></div>`;
@@ -1001,18 +1059,17 @@ function profileHistoryWhen(at) {
   return `${headerDate(d)} ${time}`;
 }
 function renderSettings() {
-  const p = state.profile ?? { age: "", sex: "", heightCm: "", weightKg: "", bodyFatNote: "", habitNote: "" };
+  const p = state.profile ?? { age: "", sex: "", heightCm: "", weightKg: "", note: "" };
   return `<button class="back-btn" id="backHome">${esc(t("backHome"))}</button>
   <h2>${esc(t("profileH"))}</h2>
   <div class="form-grid">
     <div class="field"><label for="pf-age">${esc(t("fAge"))}</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="pf-age" value="${p.age ?? ""}"></div>
-    <div class="field"><label for="pf-sex">${esc(t("fSex"))}</label><input type="text" id="pf-sex" value="${esc(p.sex)}"></div>
+    <div class="field"><label for="pf-sex">${esc(t("fSex"))}</label><select id="pf-sex"><option value=""${p.sex === "" ? " selected" : ""}>${esc(t("sexNone"))}</option><option value="男性"${p.sex === "男性" ? " selected" : ""}>${esc(t("sexMale"))}</option><option value="女性"${p.sex === "女性" ? " selected" : ""}>${esc(t("sexFemale"))}</option></select></div>
     <div class="field"><label for="pf-height">${esc(t("fHeight"))}</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="pf-height" value="${p.heightCm ?? ""}"></div>
     <div class="field"><label for="pf-weight">${esc(t("fWeight"))}</label><input type="text" inputmode="decimal" id="pf-weight" value="${p.weightKg ?? ""}"></div>
-    <div class="field wide"><label for="pf-fat">${esc(t("fFat"))}</label><textarea id="pf-fat" rows="2">${esc(p.bodyFatNote)}</textarea></div>
-    <div class="field wide"><label for="pf-habit">${esc(t("fHabit"))}</label><textarea id="pf-habit" rows="2">${esc(p.habitNote)}</textarea></div>
+    <div class="field wide"><label for="pf-note">${esc(t("fNote"))}</label><textarea id="pf-note" rows="3">${esc(p.note)}</textarea><div class="field-hint">${esc(t("fNoteHint"))}</div></div>
   </div>
-  <p><button class="btn" id="saveProfile">${esc(t("saveProfileBtn"))}</button></p>
+  <p class="profile-save-line"><span id="profileSaved" class="saved-ind"${profileSavedShow ? "" : " hidden"}>${esc(t("savedIndicator"))}</span><span id="profileErr" class="error">${esc(profileError)}</span></p>
   <h2>${esc(t("languageH"))}</h2>
   <p class="data-actions"><button class="btn${lang === "ja" ? " active" : ""}" data-lang="ja">日本語</button><button class="btn${lang === "en" ? " active" : ""}" data-lang="en">English</button></p>
   <h2>${esc(t("themeH"))}</h2>
@@ -1020,7 +1077,8 @@ function renderSettings() {
   ${(state.profileHistory ?? []).length ? `<h2>${esc(t("profileHistoryH"))}</h2>
   <div class="prof-history">${state.profileHistory.map((h) => `<div class="ph-entry"><div class="ph-date">${esc(profileHistoryWhen(h.at))}</div>${h.changes.map((c) => `<div class="ph-row">${esc(fieldLabel(c))}： ${esc(fmtHistVal(c.from))} → ${esc(fmtHistVal(c.to))}</div>`).join("")}</div>`).join("")}</div>` : ""}
   <h2>${esc(t("dataH"))}</h2><p class="small">${esc(t("dataNote"))}</p>
-  <p class="data-actions"><button class="btn" id="exportData">${esc(t("exportBtn"))}</button><button class="btn" id="importData">${esc(t("importBtn"))}</button><input type="file" id="importFile" accept="application/json,.json" hidden></p>
+  <p class="small">${esc(t("dataFormats"))}</p>
+  <p class="data-actions"><button class="btn" id="exportJson">${esc(t("exportJsonBtn"))}</button><button class="btn" id="exportCsv">${esc(t("exportCsvBtn"))}</button><button class="btn" id="importData">${esc(t("importBtn"))}</button><input type="file" id="importFile" accept="application/json,.json" hidden></p>
   ${importError ? `<p class="error">${esc(importError)}</p>` : ""}
   ${importArm ? `<div class="reset-confirm"><p>${esc(t("importConfirmText", { name: importFileName }))}</p><button class="btn danger-solid" id="importConfirm">${esc(t("importExec"))}</button><button class="btn" id="importCancel">${esc(t("cancelBtn"))}</button></div>` : ""}
   <button class="btn danger" id="reset">${esc(t("deleteData"))}</button>
@@ -1163,15 +1221,23 @@ function bind() {
     });
   });
   bindHistoryEntries();
-  const saveProfile = document.getElementById("saveProfile");
-  if (saveProfile) saveProfile.addEventListener("click", async () => {
-    await withBusy(saveProfile, async () => {
-      const values = { age: document.getElementById("pf-age").value, sex: document.getElementById("pf-sex").value, heightCm: document.getElementById("pf-height").value, weightKg: document.getElementById("pf-weight").value, bodyFatNote: document.getElementById("pf-fat").value, habitNote: document.getElementById("pf-habit").value };
-      const err = validateProfileData(values); if (err) throw new Error(err);
-      await api("/api/profile", values);
-      render();
-    });
-  });
+  // Profile autosave: there is no save button — any edit to the
+  // profile form is debounce-saved to /api/profile 1.8s after the
+  // input stops (a view change flushes it sooner; see go/popstate).
+  // Language / theme switches below still save immediately.
+  if (document.getElementById("pf-age")) {
+    const onProfileInput = () => {
+      profileSavedShow = false;
+      const ind = document.getElementById("profileSaved"); if (ind) ind.hidden = true;
+      const errEl = document.getElementById("profileErr"); if (errEl) errEl.textContent = "";
+      if (profileSaveTimer !== null) clearTimeout(profileSaveTimer);
+      profileSaveTimer = setTimeout(() => { profileSaveTimer = null; void saveProfileAuto(); }, 1800);
+    };
+    for (const id of ["pf-age", "pf-sex", "pf-height", "pf-weight", "pf-note"]) {
+      const el = document.getElementById(id);
+      if (el) { el.addEventListener("input", onProfileInput); el.addEventListener("change", onProfileInput); }
+    }
+  }
   // Language switch: saved in the store via /api/lang; the response is
   // the fresh state (with the new language), so the whole UI — static
   // strings included — switches in place, without a reload.
@@ -1188,8 +1254,10 @@ function bind() {
     if (next === themeSetting) return;
     await withBusy(el, async () => { await api("/api/theme", { theme: next }); render(); });
   }));
-  const exportData = document.getElementById("exportData");
-  if (exportData) exportData.addEventListener("click", () => { window.location.href = "/api/export"; });
+  const exportJson = document.getElementById("exportJson");
+  if (exportJson) exportJson.addEventListener("click", () => { window.location.href = "/api/export"; });
+  const exportCsv = document.getElementById("exportCsv");
+  if (exportCsv) exportCsv.addEventListener("click", () => { window.location.href = "/api/export.csv"; });
   const importData = document.getElementById("importData");
   const importFile = document.getElementById("importFile");
   if (importData && importFile) {

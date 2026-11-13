@@ -83,20 +83,24 @@ the one fixed exception).
 
 ### Pain-tile level ramp (normative)
 
-The tile background deepens through teal shades as the level rises.
-These exact values are the specification. The level word is small
-text, so it takes a full-contrast colour in both themes — white on
-the dark ramp (the originally measured gray word colour reached
-only ~1.9:1 on the deepest step and is superseded by the contrast
-rule in "Theme"), near-black on the light ramp.
+The tile background stays at the plain level-0 colour through
+level 2 and deepens through teal shades only from level 3 up
+(3 → 4 → 5, one step each). These exact values are the
+specification. The level word is small text, so it takes a
+full-contrast colour in both themes — white on the dark ramp (the
+originally measured gray word colour reached only ~1.9:1 on the
+deepest step and is superseded by the contrast rule in "Theme"),
+near-black on the light ramp. (The judgement criteria are separate
+from the colours: level 2 still reduces and level 3+ still
+excludes — only the tile background no longer changes at 1–2.)
 
 Dark ramp:
 
 | Level | Tile background | Numeral | Level word | Lit tick | Unlit tick |
 |---|---|---|---|---|---|
 | 0 | `#232323` | `#f0f0f0` | `#ffffff` | — | `#292929` |
-| 1 | `#17312c` | `#f0f0f0` | `#ffffff` | `#2dd4bf` | `#292929` |
-| 2 | `#17453c` | `#f0f0f0` | `#ffffff` | `#2dd4bf` | `#292929` |
+| 1 | `#232323` | `#f0f0f0` | `#ffffff` | `#2dd4bf` | `#292929` |
+| 2 | `#232323` | `#f0f0f0` | `#ffffff` | `#2dd4bf` | `#292929` |
 | 3 | `#1a5a4c` | `#f0f0f0` | `#ffffff` | `#2dd4bf` | `#292929` |
 | 4 | `#20806c` | `#f0f0f0` | `#ffffff` | `#2dd4bf` | `#292929` |
 | 5 | `#2dd4bf` | `#052e2b` | `#052e2b` | `#052e2b` | `rgba(5,46,43,0.25)` |
@@ -106,8 +110,8 @@ Light ramp:
 | Level | Tile background | Numeral | Level word | Lit tick | Unlit tick |
 |---|---|---|---|---|---|
 | 0 | `#ffffff` | `#1c1e1c` | `#1c1e1c` | — | `#cfd2cd` |
-| 1 | `#e2f2ec` | `#1c1e1c` | `#1c1e1c` | `#0f766e` | `#cfd2cd` |
-| 2 | `#c2e7d9` | `#1c1e1c` | `#1c1e1c` | `#0f766e` | `#cfd2cd` |
+| 1 | `#ffffff` | `#1c1e1c` | `#1c1e1c` | `#0f766e` | `#cfd2cd` |
+| 2 | `#ffffff` | `#1c1e1c` | `#1c1e1c` | `#0f766e` | `#cfd2cd` |
 | 3 | `#93cfb6` | `#1c1e1c` | `#1c1e1c` | `#0f766e` | `#cfd2cd` |
 | 4 | `#57ab8d` | `#1c1e1c` | `#1c1e1c` | `#0f766e` | `#cfd2cd` |
 | 5 | `#0f766e` | `#ffffff` | `#ffffff` | `#ffffff` | `rgba(255,255,255,0.35)` |
@@ -162,8 +166,11 @@ All three notice boxes share: 1px solid border, radius 10px, padding
      under a condition-screen heading.
   2. The single footer section `判定基準について` at the very bottom of
      the page (after the app area, on every screen): `h2` heading,
-     paragraphs in 13px `--sub`, ending with the references line. Its
-     exact text is listed under "Exact UI text — footer note".
+     then three groups — a small sub-heading (14px `--text`) and a
+     bulleted list (13px `--sub`, line height 1.7) each — ending with
+     the references line. Its exact wording and structure are listed
+     under "Footer note (`判定基準について`) — wording fixed,
+     structure only".
 - Do not add explanatory paragraphs anywhere else. Status information is
   carried by the notice boxes and badges, not by new copy.
 
@@ -232,7 +239,8 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Empty state text: `今日のセッションはまだありません。`
 - Empty state CTA: `今日のワークアウトを作る`
 - Gauge sub-label: `／ {total} 種目完了`
-- Session title: `{rotation} {title}` (e.g. `B 背中 + 脚裏 + 体幹`)
+- Session title: `{title}` (e.g. `背中 + 脚裏 + 体幹`) — the rotation
+  letter (A / B / C) is internal data and never shown
 - Past-day session label (only when the shown session belongs to an
   earlier day — see "Dates and sessions"): `{M/D（曜）}のセッション`,
   in the header date form, directly under the session title.
@@ -301,16 +309,32 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Language buttons: `日本語` / `English`
 - Theme buttons: `ダーク` / `ライト` / `システム` (English: `Dark` /
   `Light` / `System`, under the heading `Theme`)
-- Field labels: `年齢` / `性別` / `身長（cm）` / `体重（kg）` /
-  `体脂肪などの補足` / `運動習慣の補足`
-- Save button: `保存`
+- Field labels: `年齢` / `性別` / `身長（cm）` / `体重（kg）` / `補足`
+- Sex is a select with exactly three options: `男性` / `女性` /
+  `選択しない` (English: `Male` / `Female` / `Prefer not to say`);
+  the stored values are `男性` / `女性` / `""` (選択しない)
+- Note hint (under the 補足 field, small `--sub` text):
+  `既往症・ケガの履歴、常用している薬、アレルギー、体脂肪、運動習慣など、判定やメニューに影響しうる情報を書いてください。`
+  (English: "Write anything that could affect the decisions or the
+  menu: past conditions and injuries, regular medication, allergies,
+  body fat, exercise habits, and so on.")
+- There is **no save button**: the profile form autosaves (see
+  "Settings screen"). The saved indicator reads `保存済み`
+  (English: `Saved`)
 - Profile-history heading (only when history exists):
   `プロフィール履歴`. Each entry: the save moment as
   `{M/D（曜）} {HH:MM}` (header date form plus the time, Asia/Tokyo),
   then one line per changed field: `{label}： {from} → {to}`, an
   unset value shown as `未入力`.
 - Data note: `保存先はサーバー側の data/store.json です。`
-- Export button: `エクスポート` (downloads the whole store as JSON)
+- Data formats line (small `--sub` text):
+  `エクスポート：JSON（全データ、復元用）／ CSV（セッション記録の一覧、閲覧用）。インポート：JSONのみ（CSVは取り込めません）。`
+  (English: "Export: JSON (all data, for restoring) / CSV (session
+  records as a table, for viewing). Import: JSON only (CSV cannot be
+  imported).")
+- Export buttons: `エクスポート（JSON）` (downloads the whole store as
+  JSON) and `エクスポート（CSV）` (downloads the session records as
+  CSV — see "Data export / import")
 - Import button: `インポート` (opens a JSON file picker)
 - Import confirmation text: `「{file name}」で現在のデータをすべて置き換えます。元に戻せません。`
 - Import confirmation buttons: `インポートする` / `キャンセル`
@@ -321,17 +345,31 @@ All three notice boxes share: 1px solid border, radius 10px, padding
   `本当に全データを消しますか？プロフィール・痛みの記録・セッション履歴がすべて消え、元に戻せません。`
 - Confirmation buttons: `本当に全データを消す` / `キャンセル`
 
-### Exact UI text — footer note (`判定基準について`)
+### Footer note (`判定基準について`) — wording fixed, structure only
 
-Shown verbatim at the bottom of every screen, after the app area:
+Shown at the bottom of every screen, after the app area. **The
+wording is fixed**: the sentences below are quoted exactly and must
+never be paraphrased, shortened, or added to. Only the layout may
+change — the text is grouped under three small sub-headings as
+bulleted lists, one bullet per original sentence (list markers and
+line breaks are the only additions). The English UI shows the
+English sentences (in the client dictionary) in the same structure.
 
 > 判定基準について
 >
-> 警告サイン（レッドフラッグ）がある日は開始できません。筋肉痛はレベル2で軽減・3以上で部位除外、関節痛はより厳しく（2で軽減・3以上で除外）判定します。完全休養はレベル4以上の筋肉痛が2部位以上の日だけです。
+> **警告サインと休養**
+> - 警告サイン（レッドフラッグ）がある日は開始できません。
+> - 筋肉痛はレベル2で軽減・3以上で部位除外、関節痛はより厳しく（2で軽減・3以上で除外）判定します。
+> - 完全休養はレベル4以上の筋肉痛が2部位以上の日だけです。
 >
-> 24時間ルール：運動中・運動後の痛みが翌朝までに元の水準へ戻らなければ、前回の負荷が高すぎたサインです。痛みの記録から自動で判定し、過負荷の部位は次回軽減して進行しません（Silbernagelらの痛みモニタリングモデル）。
+> **24時間ルール**
+> - 24時間ルール：運動中・運動後の痛みが翌朝までに元の水準へ戻らなければ、前回の負荷が高すぎたサインです。
+> - 痛みの記録から自動で判定し、過負荷の部位は次回軽減して進行しません（Silbernagelらの痛みモニタリングモデル）。
 >
-> 継続日数チェック：同じ部位の筋肉痛が5日以上、関節痛が2週間改善しない場合は受診目安として注意表示します（関節痛は7日でも注意表示）。開始を止めるのは警告サインだけです。関節痛は部位にも効きます（腰→脚・体幹、肩→押す系、肘→押す系・引く系、手首→押す系・プランク系、股関節・膝・足首→脚系）。
+> **継続日数と関節痛**
+> - 継続日数チェック：同じ部位の筋肉痛が5日以上、関節痛が2週間改善しない場合は受診目安として注意表示します（関節痛は7日でも注意表示）。
+> - 開始を止めるのは警告サインだけです。
+> - 関節痛は部位にも効きます（腰→脚・体幹、肩→押す系、肘→押す系・引く系、手首→押す系・プランク系、股関節・膝・足首→脚系）。
 >
 > 参考文献：ACSM ポジションスタンド／ACSM 筋肉痛（DOMS）資料、Silbernagel et al. 2007 (Am J Sports Med)、NHS 関節痛・腰痛、CDC/NIOSH 横紋筋融解症。
 
@@ -457,19 +495,21 @@ Shown verbatim at the bottom of every screen, after the app area:
 
 ### Session title block (workout screen)
 - Centred, margin-top 12px. Session title: 20px bold `--text`,
-  `{rotation} {title}`. Long titles wrap inside the block
+  `{title}` — the title only (e.g. `背中 + 脚裏 + 体幹`); the rotation
+  letter is never displayed. Long titles wrap inside the block
   (`overflow-wrap: anywhere`); the font size never changes.
 - When the shown session belongs to an earlier day, a 12px `--sub`
   line directly under the title names its date in the header form:
   `{M/D（曜）}のセッション` (see "Dates and sessions").
 - Under it, 13px `--sub`, margin-top 3px: `あと{n}種目` — or `全種目完了`
   when every exercise is completed.
-- Under that, the session's pain-adjustment note (focus note), when
-  present: 12px `--accent`, margin-top 3px.
-- Adjustment / progression notes: a bulleted list in a block of
-  max-width 540px, centred, margin-top 10px; 12px `--sub`, line height
-  1.55, list padding-left 18px. Quietly under the title — never above
-  the gauge.
+- Adjustment / progression notes sit at the **bottom of the whole
+  menu** (after the exercise cards and the finish area, just before
+  the footer note): a bulleted list in a block of max-width 540px,
+  centred, margin-top 14px; 12px `--sub`, line height 1.55, list
+  padding-left 18px. There is no focus-note line: no
+  alternative-workout wording is shown anywhere (the title's
+  `（代替）` suffix remains the only marker of an adjusted menu).
 
 ### Three metrics (workout screen)
 - A flex row, margin **20px 0 8px**; three equal cells, centred, padding
@@ -608,9 +648,9 @@ Shown verbatim at the bottom of every screen, after the app area:
     with 2px top padding, no wrapping. There is no stacked day-number
     block; the whole date string is one size, balanced against the
     16px list text.
-  - Centre (flexible): the rotation name in 16px weight 700 `--text`
-    (`{rotation} {title}`); any pain adjustment note in 12px
-    `--accent`, margin 1px 0 3px, one line.
+  - Centre (flexible): the session title in 16px weight 700 `--text`
+    (`{title}` — the title only, e.g. `押す + 脚`; the rotation letter
+    is never shown, and no adjustment-note line appears here).
   - Right: the session's total reps as a **36px Barlow Condensed
     numeral** in `--text` (line height 1), followed by `レップ` in 12px
     `--sub`.
@@ -657,11 +697,21 @@ Shown verbatim at the bottom of every screen, after the app area:
   screen (home).
 - Heading `プロフィール（初回設定）`, then the form grid: CSS grid,
   columns `repeat(auto-fit, minmax(150px, 1fr))`, gap **12px**, margin
-  10px 0. Fields in order: 年齢 / 性別 / 身長（cm） / 体重（kg） (normal
-  width), then 体脂肪などの補足 / 運動習慣の補足 as wide fields spanning
-  all columns (textareas, rows 2).
+  10px 0. Fields in order: 年齢 / 性別 (a select: 男性 / 女性 /
+  選択しない） / 身長（cm） / 体重（kg） (normal width), then 補足 as one
+  wide field spanning all columns (textarea, rows 3) with the
+  note-contents hint under it (12px `--sub`; see "Exact UI text —
+  Settings screen").
 - Each field: label above the control — label 13px `--sub`, 4px gap.
-- Save button (`.btn`): `保存`.
+- **Autosave — there is no save button.** Any edit to the profile
+  form is saved automatically about **1.8 seconds** after the input
+  stops (debounced `POST /api/profile`); leaving the screen flushes a
+  pending save first. The save never re-renders the form (focus and
+  input are kept). Under the grid, one quiet status line (13px): the
+  saved indicator `保存済み` in `--accent` bold, shown after a
+  successful save and hidden again on the next edit; when validation
+  fails, nothing is saved and the reason appears in that same line
+  as an error (`.error`) instead.
 - Heading `言語`, then a row of two `.btn` (`日本語` / `English`); the
   current language's button carries the `.btn.active` style. Saving
   is server-side (`POST /api/lang`) and re-renders in place.
@@ -676,11 +726,14 @@ Shown verbatim at the bottom of every screen, after the app area:
   (`{label}： {from} → {to}`, unset = `未入力`). Read-only — there is
   no history editing.
 - Heading `データ`; small text (13px `--sub`):
-  `保存先はサーバー側の data/store.json です。`
-- Export / import row: two `.btn` in a row (gap 8px, wrap allowed):
-  `エクスポート` downloads the whole store as a JSON file
+  `保存先はサーバー側の data/store.json です。`, then the formats line
+  (same size; see "Exact UI text — Settings screen").
+- Export / import row: `.btn` in a row (gap 8px, wrap allowed):
+  `エクスポート（JSON）` downloads the whole store as a JSON file
   (`GET /api/export`, sent with a download Content-Disposition);
-  `インポート` opens a JSON file picker.
+  `エクスポート（CSV）` downloads the session records as a CSV file
+  (`GET /api/export.csv` — see "Data export / import"); `インポート`
+  opens a JSON file picker (import is JSON only).
 - State — import chosen (a parseable file was picked): a confirmation
   block in the same style as the reset confirmation below (warning
   colours, stacked in normal flow, no native dialog): the text
@@ -774,10 +827,18 @@ silently clamped, truncated, or coerced into range.
   save error, never a silent truncation.
 - Profile: **age required, integer 10–100**; **height required,
   integer 100–250** (cm); **weight required, 20–300** (kg, decimals
-  allowed). A required field left empty is an error. The two profile
-  free-text fields （体脂肪などの補足 / 運動習慣の補足） are capped at 200
-  characters. (There is no numeric body-fat field; body fat is a
-  free-text note.)
+  allowed). A required field left empty is an error. **Sex** accepts
+  only the select's stored values (`男性` / `女性` / `""` for
+  選択しない）; anything else is refused. The single profile note
+  field （補足） is capped at **500 characters** (the cap grew when the
+  two former 200-character fields — 体脂肪などの補足 / 運動習慣の補足 —
+  merged into one). (There is no numeric body-fat field; body fat is
+  part of the free-text note.)
+- Profile data migration: a store saved with the old shape is
+  carried over losslessly on load — the two legacy note fields merge
+  into 補足 joined by a newline, and a legacy free-text sex value
+  that is not one of the options folds to `""` （選択しない）. Imports
+  in the old shape get the same treatment.
 - Dates: **YYYY-MM-DD only**, naming a real calendar day. No endpoint
   accepts a date from the client — the server derives "today"
   (Asia/Tokyo) itself; the format rule guards every date that is read
@@ -792,7 +853,8 @@ silently clamped, truncated, or coerced into range.
 - `年齢を入力してください` / `年齢は10〜100の整数で入力してください`
 - `身長を入力してください` / `身長は100〜250cmの整数で入力してください`
 - `体重を入力してください` / `体重は20〜300kgで入力してください`
-- `補足は200文字以内で入力してください`
+- `性別は選択肢から選んでください`
+- `補足は500文字以内で入力してください`
 - `日付はYYYY-MM-DD形式で入力してください`
 
 ### Escaping (XSS)
@@ -841,10 +903,23 @@ switch:
 
 ## Data export / import
 
-- Export (`GET /api/export`) returns the whole store as pretty-printed
-  JSON with `Content-Disposition: attachment`, filename
-  `bodyweight-training-log.json`.
-- Import (`POST /api/import`) replaces the whole store — but only
+Two export formats exist; import is JSON only:
+
+- **JSON export** (`GET /api/export`) returns the whole store as
+  pretty-printed JSON with `Content-Disposition: attachment`,
+  filename `bodyweight-training-log.json`. This is the backup /
+  restore format.
+- **CSV export** (`GET /api/export.csv`) returns the session records
+  as a human-readable table for viewing — one row per exercise per
+  session (chronological), columns: date, rotation, title, status,
+  exercise, muscle group, variation, target sets, target reps, unit,
+  logged sets (a unilateral pair as `左{l}/右{r}`), exercise total,
+  RPE, note. `Content-Type: text/csv; charset=utf-8`, filename
+  `bodyweight-training-log.csv`, **UTF-8 with a BOM** (so Excel opens
+  it without mojibake), CRLF line endings, RFC 4180 quoting; the
+  column headers follow the store's language. CSV is **viewing
+  only — it cannot be imported**.
+- Import (`POST /api/import`, **JSON only**) replaces the whole store — but only
   after the file passes a full structural check: all top-level keys
   present (`profile`, `pain`, `sessions`, `nextSessionId`,
   `nextExerciseId`), every record type-checked, and the validation
@@ -854,7 +929,9 @@ switch:
   Records are rebuilt field by field (unknown keys dropped), session
   totals are recomputed, and the id counters are raised past the
   largest imported id when needed so future sessions cannot collide
-  with imported ones.
+  with imported ones. An imported profile in the old two-note-field
+  shape is merged the same way saved data migrates (see "Validation
+  rules"), and a legacy free-text sex value folds to 選択しない.
 - On a successful import the client reloads its state from the
   response and re-renders.
 - The store also carries `profileHistory` (see Settings). It is part
@@ -927,8 +1004,10 @@ assessment, treating what is already recorded as fixed premises
   fill. The newest assessment applies to all remaining slots: an
   exercise that is newly excluded drops out, one newly reduced gets
   the reduced target, and one whose exclusion has cleared is planned
-  again. The focus note and the progression (adjustment) notes are
-  regenerated from the newest assessment.
+  again. The progression (adjustment) notes are regenerated from
+  the newest assessment. (The session data still carries a
+  `focusNote` field for compatibility, but it is always empty — no
+  focus-note text is generated or displayed.)
 - If the new assessment is a warning-sign (care) day or a full-rest
   day, every unrecorded exercise is removed — only the recorded part
   stays — and the blocking reason is left in the progression notes,
@@ -1108,8 +1187,7 @@ assessment, treating what is already recorded as fixed premises
    screen (visible only at the very top)
 2. Week dot row
 3. Ring gauge
-4. Session title block (title, remaining line, focus note,
-   adjustment-note list)
+4. Session title block (title, remaining line)
 5. Three metrics
 6. One exercise card per exercise (timer inside the card for timed
    exercises)
@@ -1118,7 +1196,9 @@ assessment, treating what is already recorded as fixed premises
    `コンディションを入力` CTA (when no condition is recorded today; this
    has priority), otherwise the empty-state text +
    `今日のワークアウトを作る` CTA + error line
-8. Footer note
+8. Adjustment / progression notes (bottom of the menu, after the
+   cards and the finish area)
+9. Footer note
 
 ### 3. Report （レポート）
 1. Header; segment navigation （レポート active); gear as on every
@@ -1135,11 +1215,14 @@ assessment, treating what is already recorded as fixed premises
 1. Header; segment navigation (no segment active); gear in its
    usual muted style (visible only at the very top, as everywhere)
 2. Back button `← ホームに戻る` (top-left of the content)
-3. Heading `プロフィール（初回設定）`; the uniform form grid; `保存`
+3. Heading `プロフィール（初回設定）`; the uniform form grid (autosaves —
+   no `保存` button; the `保存済み` indicator and any error line sit
+   under the grid)
 4. Heading `言語`; the `日本語` / `English` buttons
 5. Heading `テーマ`; the `ダーク` / `ライト` / `システム` buttons
 6. Heading `プロフィール履歴` and the entries, when history exists
-7. Heading `データ`; the data note; `エクスポート` / `インポート` (with the
+7. Heading `データ`; the data note and the formats line;
+   `エクスポート（JSON）` / `エクスポート（CSV）` / `インポート` (with the
    import confirmation block when a file is chosen); `データを消す`; the
    confirmation block below it when open
 8. Footer note

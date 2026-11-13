@@ -61,15 +61,15 @@ bun --watch run server.ts
 
 ## How to use it
 
-1. **Settings**: Enter your profile (age, sex, height, weight, and so on) via the small gear button fixed at the top-right — a muted line icon, present on every screen but visible only while the page is scrolled to the very top (it fades out as soon as you scroll); settings is not a tab. A quiet **← ホームに戻る** button at the top-left of the settings screen takes you back. All the form fields share one size and style, labels above fields on a regular grid. The app ships with no one's data in it. The settings screen also holds the UI language switch （日本語 / English) and the theme switch （ダーク / ライト / システム — see the theme paragraph below).
-2. **Condition**: First tap any warning signs (red flags) that apply — they are chips at the top. Then set muscle soreness by body part and joint pain (lower back, shoulders, elbows, wrists, hips, knees, ankles) from 0 to 5 by tapping the tiles: each tile shows the level as a big numeral, a level word, and 5 tick segments that light up teal, and the tile background deepens through dark teal shades as the level rises. Dark-teal legend badges above each grid summarise the thresholds. If the same pain has been recorded for many days in a row, a caution or see-a-doctor note appears here (it never blocks a start — only red flags do). The one primary button, **保存してワークアウトを開始**, does everything: it saves the check, creates today's session on the spot if none exists yet, and takes you to the workout tab (if creation is blocked by a warning sign or a rest day, the workout tab shows the reason). Saving is also how a changed check takes effect mid-workout: **every save rebuilds the day's planned session around what you have already recorded** — recorded exercises stay exactly as they are, and the remaining slots are re-planned under the new assessment (a newly excluded part drops out, a newly reduced one gets the reduced target, a cleared one comes back; on a warning-sign or full-rest day only the recorded part stays). A completed session is never rebuilt.
+1. **Settings**: Enter your profile (age, sex, height, weight, and so on) via the small gear button fixed at the top-right — a muted line icon, present on every screen but visible only while the page is scrolled to the very top (it fades out as soon as you scroll); settings is not a tab. A quiet **← ホームに戻る** button at the top-left of the settings screen takes you back. All the form fields share one size and style, labels above fields on a regular grid. Sex is a select （男性 / 女性 / 選択しない）, and there is a single 補足 note field whose hint lists what belongs in it — past conditions and injuries, regular medication, allergies, body fat, exercise habits, anything that could affect the decisions or the menu. There is no save button: the profile **autosaves** about two seconds after you stop typing (a small 保存済み indicator appears; an invalid value is not saved and the reason shows in place instead). The app ships with no one's data in it. The settings screen also holds the UI language switch （日本語 / English) and the theme switch （ダーク / ライト / システム — see the theme paragraph below).
+2. **Condition**: First tap any warning signs (red flags) that apply — they are chips at the top. Then set muscle soreness by body part and joint pain (lower back, shoulders, elbows, wrists, hips, knees, ankles) from 0 to 5 by tapping the tiles: each tile shows the level as a big numeral, a level word, and 5 tick segments that light up teal, and the tile background stays plain through level 2 and deepens through teal shades from level 3 up. Dark-teal legend badges above each grid summarise the thresholds. If the same pain has been recorded for many days in a row, a caution or see-a-doctor note appears here (it never blocks a start — only red flags do). The one primary button, **保存してワークアウトを開始**, does everything: it saves the check, creates today's session on the spot if none exists yet, and takes you to the workout tab (if creation is blocked by a warning sign or a rest day, the workout tab shows the reason). Saving is also how a changed check takes effect mid-workout: **every save rebuilds the day's planned session around what you have already recorded** — recorded exercises stay exactly as they are, and the remaining slots are re-planned under the new assessment (a newly excluded part drops out, a newly reduced one gets the reduced target, a cleared one comes back; on a warning-sign or full-rest day only the recorded part stays). A completed session is never rebuilt.
 3. **Workout**: "Create today's workout" builds a session from today's condition and your history. Sessions rotate A (push + legs) → B (back + posterior legs + core) → C (full body). The first 6 sessions are an introductory period with easier variations and fewer sets. A session belongs to the day it was started: if midnight passes with a session unfinished, this tab keeps showing that session — labelled with its own date — and you can record and finish it as that day's session; it never merges into the new day, whose condition check and session are separate. All dates are judged by the server's clock (Asia/Tokyo), never the device's. If you open this tab before entering today's condition, it shows a short note and a **コンディションを入力** button back to the condition tab instead of the create button. The workout screen opens with a **week dot row** (Mon–Sun: a filled teal dot for days with a completed session, a teal ring for today — no day numbers), a **ring gauge** (completed exercises as a big central numeral, with the total under it), the session title with how many exercises remain, and three metrics: exercise count, completed/total sets, and cumulative completed sessions. The tabs are real browser history entries with their own URLs (`/`, `/workout`, `/report`, `/settings`), so Back/Forward move between screens and each screen's scroll position is restored when you return to it.
 4. **Logging**: Each exercise is a card headed by its variation name, with the total target at the top-right. The set fields — black boxes in an even row — start out **pre-filled with the target** (reps, or seconds for timed exercises): keep them, or overwrite with what you actually did. The RPE select likewise starts at that exercise's most recent recorded RPE when one exists (the note field is never pre-filled). RPE is a select with exactly ten options — `未入力`, then `6（かなり楽）`, `6.5（楽）`, `7（やや楽）`, `7.5（少しきつい）`, `8（きつい）`, `8.5（かなりきつい）`, `9（とてもきつい）`, `9.5（ほぼ限界）`, `10（限界）` — and only the number is saved. Unilateral exercises (シングルレッグRDL and リバースランジ — the latter's variations include スプリットスクワット and ブルガリアンスクワット) show **two inputs per set, labelled 左 and 右**, and are recorded per side; the set is stored as a left/right pair, the exercise total is both sides added together, and the report shows each set's sides (左11 / 右10). Each exercise also has a note field that affects only that exercise; there is no session-wide note. Until you save a card, its typed values are kept as a **draft in the browser** (localStorage, keyed by date and session), so a reload or an accidental tab switch loses nothing; the draft is restored onto unrecorded cards only, and it disappears once the exercise is saved or the session is completed or cancelled. The card's **記録して完了** button saves that exercise and advances the gauge; a recorded exercise's button becomes 記録を更新. Timed exercises (planks and the like) have a countdown timer on the card — start it at the target seconds, pause or reset as needed, and watch the remaining-time bar; it beeps and turns teal when time is up. The timer is end-time based (it stores the finish moment and always recomputes the remainder), so locking the screen or backgrounding the tab cannot make it drift. The timer never writes to the record: what you type is what gets saved. At the bottom, **今日のトレーニングを完了する** finishes the day, and the underlined **このワークアウトを取り消す** link deletes today's session (after an inline confirmation) so you can start over from the pain check.
-5. **Report (results live here too)**: There is no separate results screen. Finishing a session takes you to **レポート**, a quiet list, newest first: the date in one line (`11/13(金)`) on the left, the rotation and one row per exercise in the middle (name in white, variation and RPE word in gray, logged sets right-aligned), any per-exercise notes in small gray, and the session's total reps as a big number on the right. Entries are separated by hairlines, not cards. Above the list sit two quiet summaries — **月別** (sessions and total reps per month, newest first) and **部位別** (performed count and logged total per muscle group) — and a **search field** that filters the entries by exercise name or exercise note (while you search, the summaries step aside). The `記録を編集` button under each entry reopens the entry **with the same exercise cards as the workout tab** — same heading and target block, same set inputs (left/right inputs for unilateral exercises included), the same ten-option RPE select, the same note field — pre-filled with the recorded values and saved per card （記録して完了 / 記録を更新）; `編集を終わる` returns the entry to the list. Edits update the totals and feed into the next session's decisions.
+5. **Report (results live here too)**: There is no separate results screen. Finishing a session takes you to **レポート**, a quiet list, newest first: the date in one line (`11/13(金)`) on the left, the session title (the title only — no rotation letter) and one row per exercise in the middle (name in white, variation and RPE word in gray, logged sets right-aligned), any per-exercise notes in small gray, and the session's total reps as a big number on the right. Entries are separated by hairlines, not cards. Above the list sit two quiet summaries — **月別** (sessions and total reps per month, newest first) and **部位別** (performed count and logged total per muscle group) — and a **search field** that filters the entries by exercise name or exercise note (while you search, the summaries step aside). The `記録を編集` button under each entry reopens the entry **with the same exercise cards as the workout tab** — same heading and target block, same set inputs (left/right inputs for unilateral exercises included), the same ten-option RPE select, the same note field — pre-filled with the recorded values and saved per card （記録して完了 / 記録を更新）; `編集を終わる` returns the entry to the list. Edits update the totals and feed into the next session's decisions.
 
 **Loading and failure states**: The app talks only to its own local server, so the fallback UI is deliberately small. The first load shows `読み込み中…`; if it fails, the reason appears with a hint that the server may not be running (including its start command, `bun run server.ts`) and a **再読み込み** button instead of a blank screen. Every button that sends data is disabled while its request runs, and if a save fails, the reason shows as a short error line right under the button and the button works again — nothing fails silently, gets stuck, or submits twice.
 
-**Input validation**: The same rules are checked in the browser before sending and again on the server for every write, so even a hand-crafted request cannot store a broken value — the server answers HTTP 400 with the reason and stores nothing (no silent clamping or truncation). Set reps are integers 0–999 (for a unilateral exercise, each side of a set pair is an integer 0–999); RPE is empty or 6–10 in 0.5 steps; pain levels are integers 0–5; an exercise note is at most 200 characters (longer is a save error); the profile requires an age (integer 10–100), a height (integer 100–250 cm), and a weight (20–300 kg), and its free-text fields are capped at 200 characters; dates are YYYY-MM-DD only. Numeric fields bring up the numeric keypad on iOS/Android (`inputmode="numeric"` / `"decimal"`) while staying `type="text"`, which avoids the old `type="number"` leading-zero display bug. There is no database or SQL, so SQL injection does not apply; user-entered text (notes, profile fields) is always escaped when rendered, so a tag typed into a note displays as literal text and never runs.
+**Input validation**: The same rules are checked in the browser before sending and again on the server for every write, so even a hand-crafted request cannot store a broken value — the server answers HTTP 400 with the reason and stores nothing (no silent clamping or truncation). Set reps are integers 0–999 (for a unilateral exercise, each side of a set pair is an integer 0–999); RPE is empty or 6–10 in 0.5 steps; pain levels are integers 0–5; an exercise note is at most 200 characters (longer is a save error); the profile requires an age (integer 10–100), a height (integer 100–250 cm), and a weight (20–300 kg); sex accepts only the select's values （男性 / 女性 / 選択しない）; and its single note field is capped at 500 characters; dates are YYYY-MM-DD only. Numeric fields bring up the numeric keypad on iOS/Android (`inputmode="numeric"` / `"decimal"`) while staying `type="text"`, which avoids the old `type="number"` leading-zero display bug. There is no database or SQL, so SQL injection does not apply; user-entered text (notes, profile fields) is always escaped when rendered, so a tag typed into a note displays as literal text and never runs.
 
 **Language**: Settings holds a language switch, 日本語 / English, with Japanese as the default. The choice is saved server-side in the store (`lang`), so it survives reloads and restarts and is the same in every browser — and switching re-renders the whole UI in place, without a reload. All client wording (tabs, headings, buttons, labels, placeholders, empty states, error and network-failure messages, confirm dialogs) comes from a string dictionary with both languages; the texts the server generates — assessment reasons, guidance, progression notes, validation and error reasons — are produced from matching server-side templates in the same language, and so is the login page when token auth is on. Dates keep their MM/DD(weekday) shape with the weekday localized (11/13（金） in Japanese, 11/13(Fri) in English); body-part, joint, muscle-group and difficulty-level words have English display equivalents, while exercise and variation names are training data and are deliberately not translated. Progression notes already saved inside a session keep the language they were generated in; new sessions use the current language.
 
@@ -119,8 +119,9 @@ Note: the numeric pain thresholds above convert ideas from general-audience sour
 - Writes are atomic (write to a temp file, then rename), and before each overwrite the previous contents are kept as backup generations next to the store: `data/store.backup.1.json` (newest) to `store.backup.3.json`. If the store file is ever found corrupted, the server restores the newest backup that parses and notes the recovery in its log. The server also keeps an event log at `data/server.log` (startup, recoveries, API errors, auth events — never your stored data), rotated at ~256 KB into a single `server.log.1`.
 - Every profile save also records its changes (field, before → after, with the time) in the store's profile history, shown read-only on the settings screen under **プロフィール履歴**; the history is part of exports and imports like everything else.
 - To reset, use the delete button on the settings screen (behind the gear button) — its confirmation appears as a separate block under the button — or delete `data/store.json` together with its `store.backup.*.json` files and restart.
-- To back up, just copy `data/store.json` — or use the settings screen's **エクスポート** button, which downloads the whole store as one JSON file.
-- To restore or move your data, use **インポート** on the same screen: pick the JSON file, confirm in the inline block (never a native dialog), and the store is replaced. The file is fully checked first — top-level keys, every record's types, and the same validation rules as normal writes — and a bad file is refused with a reason and replaces nothing. (Exports written before profile history existed import with an empty history; exports written before the theme setting existed import fine too — the theme is an optional field and then defaults to システム.)
+- To back up, just copy `data/store.json` — or use the settings screen's **エクスポート（JSON）** button, which downloads the whole store as one JSON file.
+- The settings screen also offers **エクスポート（CSV）**: the session records as a table (date, exercise, per-set results, RPE, and so on), UTF-8 with a BOM so Excel opens it without garbling. The formats, in short: **JSON — all data, for backup and restore. CSV — session records for viewing only; it cannot be imported.**
+- To restore or move your data, use **インポート** on the same screen: pick the JSON file (import accepts **JSON only**), confirm in the inline block (never a native dialog), and the store is replaced. The file is fully checked first — top-level keys, every record's types, and the same validation rules as normal writes — and a bad file is refused with a reason and replaces nothing. (Exports written before profile history existed import with an empty history; exports written before the theme setting existed import fine too — the theme is an optional field and then defaults to システム. Exports written when the profile had two separate note fields import with those fields merged into the single 補足 field, and a free-text sex value folds to 選択しない.)
 
 ## Recreate the look in Muse
 
@@ -245,14 +246,17 @@ Pain tiles (2-column grid, gap 8px):
   4 かなり強い / 5 激しい） at the left, and 5 tick segments at the
   right — each tick 14×5px, radius 2px, gap 3px; the first "level"
   ticks light in #2dd4bf, the rest stay #292929.
-- Tile background deepens through dark teal shades with the level:
-  0 #232323, 1 #17312c, 2 #17453c, 3 #1a5a4c, 4 #20806c, 5 #2dd4bf.
+- Tile background stays the plain level-0 colour through level 2
+  and deepens through dark teal shades only from level 3 up:
+  0 #232323, 1 #232323, 2 #232323, 3 #1a5a4c, 4 #20806c, 5 #2dd4bf.
   At level 5 the numeral and level word turn #052e2b, lit ticks turn
   #052e2b, and unlit ticks become rgba(5,46,43,0.25); the part name
   stays white at every level. Light-theme ramp: 0 #ffffff,
-  1 #e2f2ec, 2 #c2e7d9, 3 #93cfb6, 4 #57ab8d, 5 #0f766e, with
+  1 #ffffff, 2 #ffffff, 3 #93cfb6, 4 #57ab8d, 5 #0f766e, with
   near-black #1c1e1c numeral / word / part name at levels 0–4 and
-  white at level 5.
+  white at level 5. (The judgement criteria are unchanged: level 2
+  still reduces, level 3+ still excludes — only the colour starts
+  at 3.)
 
 Required progress elements (do not omit):
 - A week dot row at the top of the Workout screen: the seven weekday
@@ -269,12 +273,15 @@ Required progress elements (do not omit):
   centred, with the completed-exercise COUNT as a 62px Barlow
   Condensed numeral at the centre and "／ total 種目完了" in 12px gray
   under it. Then the session title centred in bold white
-  (rotation letter + title, e.g. B 背中 + 脚裏 + 体幹） with あと○種目
-  (exercises remaining) in small gray under it; adjustment notes sit
-  quietly under the title in small text. Then exactly three metrics in
+  (the title only, e.g. 背中 + 脚裏 + 体幹 — the rotation letter is
+  internal data and is never shown) with あと○種目
+  (exercises remaining) in small gray under it. Then exactly three metrics in
   the same numeral font, divided by hairlines: exercise count （種目）,
   completed sets / total sets （セット）, and cumulative completed
-  sessions （累計回）.
+  sessions （累計回）. The adjustment notes (exclusion / reduction
+  reasons, first-time lines) sit at the very BOTTOM of the menu,
+  after the exercise cards and the finish area — not under the
+  title.
 
 Other components:
 - Cards: #232323 fill, thin #2d2d2d outline, radius 12px, padding 14px.
@@ -364,16 +371,22 @@ Screens:
   a full-width #2dd4bf button 今日のトレーニングを完了する and, under
   it, a centred underlined gray link このワークアウトを取り消す; cancelling
   asks inline (取り消す / やめる in place, never a native dialog), then
-  deletes today's session and returns to the condition state.
+  deletes today's session and returns to the condition state. After
+  the finish area, at the very bottom of the menu, come the
+  adjustment notes (the exclusion / reduction reasons and
+  first-time lines) as a quiet small bulleted list — they are NOT
+  under the title. No "alternative workout" note line appears
+  anywhere; a session whose title carries the （代替）suffix is the
+  only marker.
 - Report (results are merged into this screen — there is no separate
   Result screen; completing a session and the condition screen's
   今日の結果を見る CTA both land here): a quiet list, newest first,
   entries separated by hairlines, NOT cards. Each entry — left: the
   date as a single line, 11/13(金） (zero-padded month/day, weekday in
   half-width parentheses; numerals in Barlow Condensed at 17px, sized
-  to sit with the 16px list text); centre: the rotation name in bold
-  white (e.g. A 押す + 脚）, any pain adjustment note in small #2dd4bf
-  text, then one row per exercise: name in white, variation and
+  to sit with the 16px list text); centre: the session title in bold
+  white (the title only, e.g. 押す + 脚 — no rotation letter, no
+  adjustment-note line), then one row per exercise: name in white, variation and
   （RPE 8 きつい） in gray on the same line, the logged sets right-aligned
   (6 / 6 回, 41 / 41 秒, sets joined with " / "), and any per-exercise
   note under its exercise in small gray as 種目メモ： …; right: the
@@ -389,10 +402,19 @@ Screens:
   6.5 楽， 7 やや楽， 7.5 少しきつい, 8 きつい, 8.5 かなりきつい, 9 とてもきつい,
   9.5 ほぼ限界， 10 限界.
 - Settings (via the gear button): a quiet ← ホームに戻る back button at
-  the top-left, then the profile form (uniform grid fields), the
+  the top-left, then the profile form (uniform grid fields — sex is
+  a select with exactly 男性 / 女性 / 選択しない， and there is ONE
+  補足 note field spanning the grid, with a small hint under it
+  listing what belongs there: 既往症・ケガの履歴、常用している薬、
+  アレルギー、体脂肪、運動習慣など）. The profile form has NO save
+  button: it autosaves about 1.8 seconds after typing stops, with a
+  small 保存済み indicator under the form (a validation error is not
+  saved and its reason shows in that spot instead). Then the
   言語 switch （日本語 / English) and the テーマ switch （ダーク / ライト /
   システム） as .btn rows with the current choice in the active
-  (badge-fill) style, and
+  (badge-fill) style — those two still save immediately — and
+  the data section （データ） stating its formats (export JSON / CSV,
+  import JSON only; see "Data export / import" below), and
   the data reset with the stacked confirmation described above.
 
 Fallback UI (loading and failure — keep it this small; the app talks
@@ -417,8 +439,13 @@ is an integer 0–999);
 RPE is empty or 6–10 in 0.5 steps; pain levels are integers 0–5;
 exercise notes are at most 200 characters (longer is a save error);
 profile age is required (integer 10–100), height required (integer
-100–250 cm), weight required (20–300 kg, decimals allowed), profile
-free-text fields at most 200 characters; dates are YYYY-MM-DD only.
+100–250 cm), weight required (20–300 kg, decimals allowed), sex
+accepts only the select's stored values （男性 / 女性 / "" for
+選択しない）, and the single profile note field （補足） is capped at
+500 characters; dates are YYYY-MM-DD only.
+A profile saved in the old shape (two note fields, free-text sex)
+is migrated on load without loss: the two notes merge into 補足
+joined by a newline, and a non-option sex value folds to 選択しない.
 User-entered text is always escaped when rendered (there is no SQL
 anywhere, so the injection risk is markup injection — a tag typed
 into a note must display as literal text, never run). Numeric fields
@@ -437,17 +464,25 @@ the data is reset or imported, or they belong to another day/session
 (pruned on load). A unilateral set drafts as an {l, r} pair of raw
 strings. The server data format does not change.
 
-Data export / import (settings, データ section): an エクスポート button
-downloads the whole store as JSON, and an インポート button picks a
+Data export / import (settings, データ section — the section states
+its formats in small text): an エクスポート（JSON） button
+downloads the whole store as JSON (all data, for backup / restore),
+an エクスポート（CSV） button downloads the session records as CSV
+(one row per exercise: date, rotation, title, status, exercise,
+muscle group, variation, targets, logged sets, total, RPE, note;
+UTF-8 with a BOM, CRLF, RFC 4180 quoting, headers in the UI
+language) — viewing only, CSV cannot be imported — and an
+インポート button picks a
 JSON file and — after an inline warning-coloured confirmation block
 (「{file name}」で現在のデータをすべて置き換えます。元に戻せません。 with
 インポートする / キャンセル, never a native dialog) — replaces the store.
-The imported file is fully validated first (all top-level keys, every
+Import is JSON only. The imported file is fully validated first (all top-level keys, every
 record's types, the validation rules above wherever they fit — logged
 sets may be plain numbers or {l, r} pairs); a bad file is refused
 with a reason and replaces nothing. The store's lang and theme are
 optional fields on import (absent is fine, an unknown value is
-refused).
+refused). An imported profile in the old two-note-field shape is
+merged into the single 補足 field the same way saved data migrates.
 
 PWA: serve a web app manifest (name 自重トレーニング記録, short name
 自重トレ, display standalone, background_color and theme_color

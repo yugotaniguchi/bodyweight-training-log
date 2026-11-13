@@ -18,6 +18,11 @@ export const PAIN_MESSAGE = VMSG.ja.pain;
 export const NOTE_MESSAGE = VMSG.ja.note;
 export const DATE_MESSAGE = VMSG.ja.date;
 export const NOTE_MAX = 200;
+/** The merged profile note's cap: two 200-char fields became one, so
+ *  the cap grew to 500 (see DESIGN.md validation rules). */
+export const NOTE_FIELD_MAX = 500;
+/** Profile sex is a select: these are the only stored values. */
+export const SEX_VALUES = ["男性", "女性", ""] as const;
 
 /** Set reps / seconds: an integer 0–999. Numbers only (no string coercion). */
 export function validReps(v: unknown, lang: Lang = "ja"): number {
@@ -83,7 +88,7 @@ function numField(v: unknown): number | null {
   return null;
 }
 
-export function parseProfile(b: Record<string, unknown>, lang: Lang = "ja"): Profile {
+export function parseProfile(b: Record<string, unknown>, lang: Lang = "ja", opts: { foldLegacySex?: boolean } = {}): Profile {
   const m = VMSG[lang];
   const age = numField(b.age);
   if (age === null) fail(m.ageRequired);
@@ -94,16 +99,30 @@ export function parseProfile(b: Record<string, unknown>, lang: Lang = "ja"): Pro
   const weightKg = numField(b.weightKg);
   if (weightKg === null) fail(m.weightRequired);
   if (weightKg < 20 || weightKg > 300) fail(m.weightRange);
-  const text = (v: unknown): string => {
+  // Sex is a select now: only the three option values are accepted
+  // ("" = prefer not to say); anything else is refused. The one
+  // exception is imported data written before the select existed
+  // (foldLegacySex, used by parseStoreImport): a legacy free-text
+  // value there folds to "" instead of refusing the whole file.
+  const sexRaw = b.sex === null || b.sex === undefined ? "" : b.sex;
+  if (typeof sexRaw !== "string") fail(m.textFormat);
+  let sex = sexRaw;
+  if (!(SEX_VALUES as readonly string[]).includes(sexRaw)) {
+    if (!opts.foldLegacySex) fail(m.sexInvalid);
+    sex = "";
+  }
+  // The note is one merged field. Imported / hand-sent data in the old
+  // two-field shape is accepted and merged the same way saved data
+  // migrates (newline join), so nothing is lost in either direction.
+  const noteText = (v: unknown): string => {
     if (v === null || v === undefined) return "";
     if (typeof v !== "string") fail(m.textFormat);
-    if (v.length > NOTE_MAX) fail(m.noteField);
     return v;
   };
-  return {
-    age, sex: text(b.sex), heightCm, weightKg,
-    bodyFatNote: text(b.bodyFatNote), habitNote: text(b.habitNote),
-  };
+  const note = [noteText(b.note), noteText(b.bodyFatNote), noteText(b.habitNote)]
+    .filter((s) => s !== "").join("\n");
+  if (note.length > NOTE_FIELD_MAX) fail(m.noteField);
+  return { age, sex, heightCm, weightKg, note };
 }
 
 // ---------- whole-store import (settings: data import) ----------
@@ -228,7 +247,7 @@ export function parseStoreImport(v: unknown, lang: Lang = "ja"): Store {
     if (!isTheme(v.theme)) impFail(lang);
     importedTheme = v.theme;
   }
-  const profile = v.profile === null ? null : isObj(v.profile) ? parseProfile(v.profile, lang) : impFail(lang);
+  const profile = v.profile === null ? null : isObj(v.profile) ? parseProfile(v.profile, lang, { foldLegacySex: true }) : impFail(lang);
   const sessions = (v.sessions as unknown[]).map((s) => parseImportedSession(s, lang));
   const maxSessionId = sessions.reduce((a, s) => Math.max(a, s.id), 0);
   const maxExerciseId = sessions.reduce((a, s) => s.exercises.reduce((b, e) => Math.max(b, e.id), a), 0);

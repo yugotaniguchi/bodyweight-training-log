@@ -8,7 +8,26 @@ import {
 
 export interface Profile {
   age: number | null; sex: string; heightCm: number | null; weightKg: number | null;
-  bodyFatNote: string; habitNote: string;
+  /** One merged free-text note (previously two fields, bodyFatNote /
+   *  habitNote — see migrateProfile for how saved data is carried over). */
+  note: string;
+}
+/** Carry a saved profile forward to the current shape, without losing
+ *  anything: the two legacy free-text fields (bodyFatNote / habitNote)
+ *  are merged into the single `note` field, joined with a newline when
+ *  both are non-empty, and a legacy free-text sex value that is not one
+ *  of the select options （男性 / 女性 / "" = prefer not to say) is folded
+ *  to "". Idempotent: a profile already in the new shape passes through
+ *  unchanged. Applied to every store load (src/store.ts), so on-disk
+ *  data upgrades itself the next time it is saved. */
+export function migrateProfile(p: Profile | null | undefined): Profile | null {
+  if (!p) return null;
+  const raw = p as Profile & { bodyFatNote?: unknown; habitNote?: unknown };
+  const parts = [raw.bodyFatNote, raw.habitNote].filter((v): v is string => typeof v === "string" && v !== "");
+  const legacy = parts.join("\n");
+  const note = typeof p.note === "string" && p.note !== "" ? p.note : legacy;
+  const sex = p.sex === "男性" || p.sex === "女性" ? p.sex : "";
+  return { age: p.age ?? null, sex, heightCm: p.heightCm ?? null, weightKg: p.weightKg ?? null, note };
 }
 export interface PainEntry {
   date: string;
@@ -78,8 +97,7 @@ const PROFILE_FIELDS: { key: keyof Profile; label: string }[] = [
   { key: "sex", label: "性別" },
   { key: "heightCm", label: "身長" },
   { key: "weightKg", label: "体重" },
-  { key: "bodyFatNote", label: "体脂肪などの補足" },
-  { key: "habitNote", label: "運動習慣の補足" },
+  { key: "note", label: "補足" },
 ];
 export function diffProfile(prev: Profile | null, next: Profile): ProfileChange[] {
   const out: ProfileChange[] = [];
@@ -451,7 +469,10 @@ export function generateSession(store: Store, date: string, assessment: Assessme
     id: store.nextSessionId++, date, rotation: rotation.id,
     title: rotation.title + (excludedFlag ? T.titleAltSuffix : ""),
     status: "planned", intro,
-    focusNote: excludedFlag ? T.focusNoteAlt : "",
+    // focusNote stays a data field for compatibility, but no text is
+    // generated for it anymore (the alternative-workout note was
+    // removed); the title's （代替）suffix still marks such sessions.
+    focusNote: "",
     progressionNotes: notes, exercises, totalVolume: 0,
   };
 }
@@ -510,7 +531,7 @@ export function refreshPlannedSession(store: Store, session: Session, assessment
   const rebuilt: Session = {
     ...session,
     title: rotation.title + (excludedFlag ? T.titleAltSuffix : ""),
-    focusNote: excludedFlag ? T.focusNoteAlt : "",
+    focusNote: "",
     progressionNotes: notes, exercises, totalVolume: 0,
   };
   rebuilt.totalVolume = sessionTotal(rebuilt);

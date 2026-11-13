@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
-import { assessPain, detectOverload, diffProfile, generateSession, painDurationGuidance, refreshPlannedSession, sessionTotal, type PainEntry, type SessionExercise } from "./src/logic";
+import { assessPain, detectOverload, diffProfile, generateSession, painDurationGuidance, refreshPlannedSession, sessionTotal, setSum, type PainEntry, type SessionExercise, type SetLog, type Store } from "./src/logic";
 import { MUSCLE_PARTS, JOINTS, RED_FLAGS, EXERCISES, ROTATIONS } from "./src/exercises";
 import { loadStore, saveStore, resetStore } from "./src/store";
 import { InvalidInput, parseProfile, parseStoreImport, validNote, validPainLevel, validRpe, validSetLog } from "./src/validate";
@@ -107,6 +107,37 @@ async function handleLogin(req: Request): Promise<Response> {
       "set-cookie": `${AUTH_COOKIE}=${AUTH_VALUE}; HttpOnly; Path=/; SameSite=Lax; Max-Age=2592000`,
     },
   });
+}
+
+// ---------- CSV export (session records, for viewing) ----------
+// RFC 4180 escaping: a field containing a comma, quote or newline is
+// wrapped in double quotes and its quotes doubled.
+const csvField = (v: string | number): string => {
+  const s = String(v);
+  return /[",\r\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s;
+};
+export function buildSessionsCsv(store: Store): string {
+  const lang = langOf(store);
+  const en = lang === "en";
+  const header = en
+    ? ["Date", "Rotation", "Title", "Status", "Exercise", "Muscle group", "Variation", "Target sets", "Target reps", "Unit", "Sets", "Total", "RPE", "Note"]
+    : ["日付", "ローテーション", "タイトル", "状態", "種目", "部位", "バリエーション", "目標セット", "目標回数", "単位", "セット実績", "合計", "RPE", "メモ"];
+  const setText = (v: SetLog): string => (typeof v === "number" ? String(v) : en ? `L${v.l}/R${v.r}` : `左${v.l}/右${v.r}`);
+  const rows: string[] = [header.map(csvField).join(",")];
+  for (const s of store.sessions) {
+    for (const ex of s.exercises) {
+      rows.push([
+        s.date, s.rotation, s.title,
+        s.status === "completed" ? (en ? "completed" : "完了") : (en ? "planned" : "予定"),
+        ex.name, ex.muscleGroup, ex.variation,
+        ex.targetSets, ex.targetReps, ex.targetUnit,
+        ex.loggedSets.map(setText).join(" / "),
+        ex.loggedSets.reduce((a, v) => a + setSum(v), 0),
+        ex.rpe ?? "", ex.note,
+      ].map(csvField).join(","));
+    }
+  }
+  return "\uFEFF" + rows.join("\r\n") + "\r\n";
 }
 
 function publicState() {
@@ -329,6 +360,19 @@ const server = Bun.serve({
           headers: {
             "content-type": "application/json; charset=utf-8",
             "content-disposition": 'attachment; filename="bodyweight-training-log.json"',
+          },
+        });
+      }
+      // CSV export: the session records as a human-readable table
+      // (viewing only — import accepts JSON only). UTF-8 with a BOM so
+      // Excel opens it without mojibake; the column headers follow the
+      // store's language. One row per exercise per session, newest
+      // session last (chronological, as recorded).
+      if (path === "/api/export.csv" && req.method === "GET") {
+        return new Response(buildSessionsCsv(loadStore()), {
+          headers: {
+            "content-type": "text/csv; charset=utf-8",
+            "content-disposition": 'attachment; filename="bodyweight-training-log.csv"',
           },
         });
       }
