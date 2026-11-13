@@ -39,12 +39,11 @@ function tapGrid(kind, parts, current) {
   }).join("")}</div>`;
 }
 
-// ---------- week boxes (Mon–Sun) ----------
+// ---------- dates ----------
 // Dates are YYYY-MM-DD (Asia/Tokyo). Weekday math is done on UTC day numbers
-// so the browser's own timezone cannot shift the week.
+// so the browser's own timezone cannot shift the day.
 const DAY_MS = 86400000;
 const dayNum = (d) => { const [y, m, dd] = d.split("-").map(Number); return Date.UTC(y, m - 1, dd) / DAY_MS; };
-const fmtDayNum = (n) => new Date(n * DAY_MS).toISOString().slice(0, 10);
 // ---------- app header (date + purpose / Day + cumulative reps) ----------
 function updateHeader() {
   const dateEl = document.getElementById("ah-date");
@@ -58,22 +57,6 @@ function updateHeader() {
   document.getElementById("ah-day").textContent = dayCount;
   // Cumulative reps = total logged volume across all recorded sessions.
   document.getElementById("ah-reps").textContent = state.stats.totalVolume;
-}
-
-function updateWeekbar() {
-  const el = document.getElementById("weekbar");
-  if (!el || !state) return;
-  const todayN = dayNum(state.today);
-  const dow = (todayN + 4) % 7; // 0=Sunday (1970-01-01 was a Thursday)
-  const mondayN = todayN - ((dow + 6) % 7);
-  const doneDates = new Set(state.sessions.filter((s) => s.status === "completed").map((s) => s.date));
-  const labels = ["月", "火", "水", "木", "金", "土", "日"];
-  const boxes = Array.from({ length: 7 }, (_, i) => {
-    const d = fmtDayNum(mondayN + i);
-    const cls = ["wbox", doneDates.has(d) ? "done" : "", d === state.today ? "today" : ""].join(" ");
-    return `<div class="${cls}"><span class="dow">${labels[i]}</span><span class="dnum num">${Number(d.slice(8, 10))}</span></div>`;
-  }).join("");
-  el.innerHTML = `<div class="weekboxes">${boxes}</div>`;
 }
 
 // ---------- ring gauge + metrics ----------
@@ -285,7 +268,6 @@ function render() {
   document.getElementById("gear").classList.toggle("active", view === "settings");
   $app.innerHTML = view === "pain" ? renderPain() : view === "menu" ? renderMenu() : view === "history" ? renderHistory() : renderSettings();
   updateHeader();
-  updateWeekbar();
   bind();
 }
 function bind() {

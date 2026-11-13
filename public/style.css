@@ -86,18 +86,6 @@ textarea{height:auto;min-height:42px;padding:9px 10px;line-height:1.5;resize:ver
 label.row{display:block;margin:6px 0}
 .note h2{color:var(--text)} .note p{color:var(--sub);font-size:13px}
 
-/* Week boxes (image-4 form): 7 equal boxes, weekday on top (gray, teal
-   today), big bold day number below (white; teal on done days). Today is
-   the only box with a teal outline. Dark fill, thin border, rounded. */
-.weekbar{margin:10px 0 2px}
-.weekboxes{display:flex;gap:6px}
-.wbox{flex:1 1 0;min-width:0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:6px 0 7px;display:flex;flex-direction:column;align-items:center;line-height:1.15}
-.wbox .dow{font-size:11px;color:var(--sub)}
-.wbox .dnum{font-size:21px;font-weight:700;color:var(--text)}
-.wbox.done .dnum{color:var(--accent)}
-.wbox.today{border-color:var(--accent)}
-.wbox.today .dow{color:var(--accent)}
-
 /* Merged history list (image-5 form): no card frames, hairline dividers */
 .hist{border-bottom:1px solid var(--border);padding:16px 0 14px}
 .hist-head{display:flex;gap:14px;align-items:flex-start}

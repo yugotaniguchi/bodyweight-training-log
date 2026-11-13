@@ -25,7 +25,7 @@ Screenshots measured: the pain-check screen of the original space
 | `--surface` | `#232323` | Cards, pain tiles (level 0), inactive nav segments |
 | `--surface-2` | `#1a1a1a` | Chip fill, input fill |
 | `--border` | `#2d2d2d` | Chip borders, hairlines, gauge track |
-| `--accent` | `#2dd4bf` | Active nav segment, primary CTA, lit ticks, gauge arc, week-box today outline / done-day numbers |
+| `--accent` | `#2dd4bf` | Active nav segment, primary CTA, lit ticks, gauge arc |
 | `--on-accent` | `#052e2b` | Text on top of `--accent` (near-black teal) |
 | `--badge` | `#19534c` | Legend badge fill (a `#17423c` variant also appears) |
 | `--text` | `#f0f0f0` | Primary text, large numerals |
@@ -133,16 +133,9 @@ text `#fecaca`. This is the one place red is allowed.
   in the same numeral font. (There is no separate result screen; the
   merged history list below carries the totals.)
 
-### Week boxes
-- 7 equal-width boxes in a row, Mon–Sun of the current week (Asia/Tokyo,
-  Monday start), matching the original's week strip: each box has a thin
-  `--border` outline, radius about 10px, dark `--surface-2` fill; the
-  weekday letter sits on top in small gray, and the day number below it
-  in large bold white (Barlow Condensed).
-- A day with a completed session shows its number in `--accent` (a quiet
-  distinction, no fill change). Today's box is the only one with an
-  `--accent` outline, and its weekday letter is also `--accent`.
-- No date label of any kind under or beside the boxes.
+### No week display
+- The app has no week display: no Mon–Sun week boxes or week strip on
+  any screen.
 
 ### History screen (results merged in)
 - There is no separate Result screen. Completing today's session — and
@@ -193,11 +186,10 @@ text `#fecaca`. This is the one place red is allowed.
   seconds for timed exercises). The user saves as-is or overwrites;
   saving reads the input values exactly as before.
 
-### Date display — only three forms
-- Dates may appear **only** in these three shapes: (a) the header's
-  `M/D（曜）`, (b) the day numbers inside the week boxes, (c) the history
-  list's day number + `M月` / `（曜）`. Full date strings (`YYYY-MM-DD`,
-  `○年○月○日`, long weekday forms, labels under the week boxes, dates
+### Date display — only two forms
+- Dates may appear **only** in these two shapes: (a) the header's
+  `M/D（曜）`, (b) the history list's day number + `M月` / `（曜）`. Full
+  date strings (`YYYY-MM-DD`, `○年○月○日`, long weekday forms, dates
   inside reason texts) are banned on every screen.
 
 ### Delete confirmation never overlaps
@@ -238,7 +230,6 @@ segment, and uniform dark form fields on settings.
 - Pain-tile level 1–5 background ramp (all tiles were level 0).
 - Selected state of the warning chips.
 - Warning-box colours (no active warning was shown).
-- Ring-gauge styling details (not on the pain screen). The week boxes
-  follow the original's week strip as later screenshotted (box form).
+- Ring-gauge styling details (not on the pain screen).
 - Exact pixel sizes for the CTA height and tile radius (estimated from
   proportions).

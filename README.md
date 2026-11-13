@@ -39,7 +39,7 @@ bun --watch run server.ts
 4. **Logging**: Each exercise's set fields start out **pre-filled with the target** (reps, or seconds for timed exercises) — keep them, or overwrite with what you actually did, then add RPE and completion. The rep fields do not keep a leading zero. Each exercise also has a note field that affects only that exercise; there is no session-wide note. Timed exercises (planks and the like) have a countdown timer on the card — start it at the target seconds, pause or reset as needed, and watch the remaining-time bar; it beeps and turns teal when time is up. The timer never writes to the record: what you type is what gets saved.
 5. **History (results live here too)**: There is no separate results screen. Finishing a session takes you to **これまでの記録**, a quiet list, newest first: a big day number with the month and weekday under it on the left, the rotation and one row per exercise in the middle (name in white, variation and RPE word in gray, logged sets right-aligned), any per-exercise notes in small gray, and the session's total reps as a big number on the right. Entries are separated by hairlines, not cards. The `記録を編集` button under each entry lets you fix sets, RPE, completion, and exercise notes afterwards; edits update the totals and feed into the next session's decisions.
 
-The app is **dark-themed** — near-black background, white text, gray secondary text, one bright teal accent — and follows the design rules in [DESIGN.md](DESIGN.md), which were measured from the original space. Every screen opens with a header: the date (only ever shown as `M/D（曜）`) and the purpose line (`器具なし / 筋力・筋肥大`) on the left, and on the right a huge **Day N** numeral (N = days since your first recorded session) over the cumulative rep count from your session history, with a **gear button (⚙)** fixed at the very top-right for settings. Under the header, a row of **week boxes (Mon–Sun, current week)** — equal boxes with the weekday on top in gray and a big bold day number below — marks days with a completed session by turning the number teal; today's box alone gets a teal outline and a teal weekday. The Menu screen opens with a **ring gauge** — completed exercises out of the total, with the big number in the centre — and three metrics under it: exercise count, set count, and total reps. All large numerals (Day count, gauge, metrics, pain-tile levels, totals, timers, history dates) use the **Barlow Condensed** typeface, falling back to the system font when it cannot be loaded. Dates appear in only three places in the whole app: the header, the week boxes, and the history list.
+The app is **dark-themed** — near-black background, white text, gray secondary text, one bright teal accent — and follows the design rules in [DESIGN.md](DESIGN.md), which were measured from the original space. Every screen opens with a header: the date (only ever shown as `M/D（曜）`) and the purpose line (`器具なし / 筋力・筋肥大`) on the left, and on the right a huge **Day N** numeral (N = days since your first recorded session) over the cumulative rep count from your session history, with a **gear button (⚙)** fixed at the very top-right for settings. There is no week display anywhere in the app. The Menu screen opens with a **ring gauge** — completed exercises out of the total, with the big number in the centre — and three metrics under it: exercise count, set count, and total reps. All large numerals (Day count, gauge, metrics, pain-tile levels, totals, timers, history dates) use the **Barlow Condensed** typeface, falling back to the system font when it cannot be loaded. Dates appear in only two places in the whole app: the header and the history list.
 
 ## How the next workout is decided
 
@@ -159,13 +159,7 @@ Pain tiles (2-column grid, gap about 8px):
   text. Level 0 is the plain card colour.
 
 Required progress elements (do not omit):
-- Week boxes under the header on every screen: 7 equal-width boxes for
-  Mon–Sun of the current week (Asia/Tokyo, Monday start). Each box: thin
-  #2d2d2d outline, radius about 10px, dark #1a1a1a fill, the weekday
-  letter on top in small gray, the day number below in large bold white.
-  A day with a completed session shows its number in #2dd4bf (no fill
-  change); today's box alone gets a #2dd4bf outline and its weekday
-  turns #2dd4bf too. No date label under the boxes.
+- No week display: do not add Mon–Sun week boxes or any week strip.
 - A ring gauge at the top of the Menu screen: SVG circle, track #2d2d2d,
   arc #2dd4bf, completed/total fraction in Barlow Condensed at the
   centre. Under it exactly three metrics in the same numeral font:
@@ -179,10 +173,9 @@ Other components:
   outline, white text and 16px font; labels sit above fields in a
   regular grid with even gaps. The menu's set and RPE inputs share the
   same height and styling too.
-- Dates appear ONLY in three shapes: the header's M/D（曜）, the day
-  numbers in the week boxes, and the history list's day number with
-  M月 / （曜） under it. Never print a full date (YYYY-MM-DD etc.)
-  anywhere, including inside reason texts.
+- Dates appear ONLY in two shapes: the header's M/D（曜） and the
+  history list's day number with M月 / （曜） under it. Never print a
+  full date (YYYY-MM-DD etc.) anywhere, including inside reason texts.
 - The settings screen's delete confirmation is a separate block stacked
   below the delete button in normal flow (with a cancel button) — never
   overlaid on the button, never a native confirm() dialog.
