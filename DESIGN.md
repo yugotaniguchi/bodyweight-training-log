@@ -25,7 +25,7 @@ Screenshots measured: the pain-check screen of the original space
 | `--surface` | `#232323` | Cards, pain tiles (level 0), inactive nav segments |
 | `--surface-2` | `#1a1a1a` | Chip fill, input fill |
 | `--border` | `#2d2d2d` | Chip borders, hairlines, gauge track |
-| `--accent` | `#2dd4bf` | Active nav segment, primary CTA, lit ticks, gauge arc, filled week dots |
+| `--accent` | `#2dd4bf` | Active nav segment, primary CTA, lit ticks, gauge arc, week-box today outline / done-day numbers |
 | `--on-accent` | `#052e2b` | Text on top of `--accent` (near-black teal) |
 | `--badge` | `#19534c` | Legend badge fill (a `#17423c` variant also appears) |
 | `--text` | `#f0f0f0` | Primary text, large numerals |
@@ -90,9 +90,16 @@ text `#fecaca`. This is the one place red is allowed.
   8px — **not** pills.
 - Active segment: `--accent` fill, `--on-accent` bold text.
 - Inactive segments: `--surface` fill, `--text`.
-- The original has 3 segments （痛みの記録 / メニュー / これまでの記録）; the
-  standalone keeps its 5 views （痛みの記録 / メニュー / 結果 / これまでの記録 /
-  設定） in the same segment style, wrapping if the width runs out.
+- Exactly 3 segments: 痛みの記録 / メニュー / これまでの記録. There is no
+  separate Result segment (results are merged into これまでの記録， below)
+  and no Settings segment.
+
+### Settings gear button
+- Settings is **not** a nav segment. A round gear button (⚙) is fixed at
+  the top-right of the viewport (`position: fixed`, stays while
+  scrolling) and opens the settings screen (profile + data reset). The
+  header keeps clear space on its right side so the Day numeral never
+  sits under the gear.
 
 ### Warning-sign chips
 - Red flags are **chips**, not checkboxes: pill shape, thin `--border`
@@ -120,16 +127,45 @@ text `#fecaca`. This is the one place red is allowed.
 
 ### Ring gauge and metrics (inferred placement)
 - Not visible in the pain-screen screenshots; kept from the original
-  space's menu/result screens: an SVG ring (track `--border`, arc
-  `--accent`) with the completed/total fraction in Barlow Condensed at
-  the centre, and three metrics under it — exercise count, set count,
-  total reps — in the same numeral font.
+  space's menu screen: an SVG ring (track `--border`, arc `--accent`)
+  with the completed/total fraction in Barlow Condensed at the centre,
+  and three metrics under it — exercise count, set count, total reps —
+  in the same numeral font. (There is no separate result screen; the
+  merged history list below carries the totals.)
 
-### Week dots (inferred styling)
-- Not visible in the screenshots; kept from the original space: 7 cells
-  Mon–Sun of the current week (Asia/Tokyo, Monday start), each with the
-  weekday and date number. A day with a completed session is filled
-  `--accent` (text `--on-accent`); today gets an accent outline.
+### Week boxes
+- 7 equal-width boxes in a row, Mon–Sun of the current week (Asia/Tokyo,
+  Monday start), matching the original's week strip: each box has a thin
+  `--border` outline, radius about 10px, dark `--surface-2` fill; the
+  weekday letter sits on top in small gray, and the day number below it
+  in large bold white (Barlow Condensed).
+- A day with a completed session shows its number in `--accent` (a quiet
+  distinction, no fill change). Today's box is the only one with an
+  `--accent` outline, and its weekday letter is also `--accent`.
+- No date label of any kind under or beside the boxes.
+
+### History screen (results merged in)
+- There is no separate Result screen. Completing today's session — and
+  the pain screen's `今日の結果を見る` CTA — lands on これまでの記録，
+  which is both the result view and the history.
+- Heading: `これまでの記録`. Entries newest first, separated by hairline
+  dividers (`--border`) — **no card frames**, a quiet list.
+- Each entry: left column with the day number as a huge Barlow Condensed
+  numeral in white, under it two small gray lines, `M月` then `（曜）`.
+  Centre: the rotation name in bold white (e.g. `A 押す + 脚`); any pain
+  adjustment note in small `--accent` text on one line under it. Each
+  exercise is one row: name in white, then variation and
+  `（RPE 8 きつい）` in gray in the same line; the logged sets are
+  right-aligned (`6 / 6 回`, `41 / 41 秒`, multi-set joined with ` / `).
+  A per-exercise note goes under its exercise as small gray
+  `種目メモ： …`. Top-right of the entry: the session's total reps as a
+  large Barlow Condensed numeral with a small `レップ` after it.
+- Under each entry, a small dark pill `記録を編集` button; it opens the
+  existing per-exercise editing (sets / RPE / completion / note) for
+  that session in place.
+- RPE words follow the original's mapping: 6 かなり楽， 6.5 楽， 7 やや楽，
+  7.5 少しきつい, 8 きつい, 8.5 かなりきつい, 9 とてもきつい, 9.5 ほぼ限界，
+  10 限界 (values in between take the next word up).
 
 ### Primary CTA
 - Full width, large height (about 56px), radius about 8px, `--accent`
@@ -142,6 +178,33 @@ text `#fecaca`. This is the one place red is allowed.
 - Ordinary buttons: `--surface` fill, `--text`, radius 8px.
 - Inputs: `--surface-2` fill, `--border` outline, `--text`, radius 8px,
   16px font (prevents iOS zoom).
+
+### Form uniformity
+- On any screen with several fields (profile/settings, and the menu's
+  set and RPE inputs), all fields share one geometry: same height
+  (42px), radius (8px), padding, border, fill and 16px font — text,
+  numeric, select and textarea alike (textarea keeps the same styling,
+  with a matching min-height). Labels sit above their fields in a
+  regular grid (equal columns, even gaps); no field is sized ad hoc.
+
+### Menu inputs start from the target
+- On the menu screen, each set input of an exercise that has not been
+  recorded yet is **pre-filled with the generated target** (reps, or
+  seconds for timed exercises). The user saves as-is or overwrites;
+  saving reads the input values exactly as before.
+
+### Date display — only three forms
+- Dates may appear **only** in these three shapes: (a) the header's
+  `M/D（曜）`, (b) the day numbers inside the week boxes, (c) the history
+  list's day number + `M月` / `（曜）`. Full date strings (`YYYY-MM-DD`,
+  `○年○月○日`, long weekday forms, labels under the week boxes, dates
+  inside reason texts) are banned on every screen.
+
+### Delete confirmation never overlaps
+- The settings screen's `データを消す` button opens its confirmation as
+  a separate block stacked **below** the button in normal flow (with
+  `本当に全データを消す` and a cancel button). No absolute positioning,
+  no overlay, no native `confirm()` dialog.
 
 ## Screen composition — pain check
 
@@ -156,9 +219,10 @@ text `#fecaca`. This is the one place red is allowed.
    腰・肩・肘・手首・股関節・膝・足首）
 6. Primary CTA at the bottom
 
-Menu, result, history, and settings screens reuse the same tokens:
-exercise cards, the ring gauge and metrics on menu/result, quiet
-date-led history cards, dark inputs on settings.
+Menu, history, and settings screens reuse the same tokens: exercise
+cards and the ring gauge with metrics on the menu, the quiet date-led
+history list (results merged in), a gear button instead of a settings
+segment, and uniform dark form fields on settings.
 
 ## Do not
 
@@ -174,6 +238,7 @@ date-led history cards, dark inputs on settings.
 - Pain-tile level 1–5 background ramp (all tiles were level 0).
 - Selected state of the warning chips.
 - Warning-box colours (no active warning was shown).
-- Ring-gauge and week-dot styling details (not on the pain screen).
+- Ring-gauge styling details (not on the pain screen). The week boxes
+  follow the original's week strip as later screenshotted (box form).
 - Exact pixel sizes for the CTA height and tile radius (estimated from
   proportions).

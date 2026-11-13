@@ -7,6 +7,8 @@ function sanitizeDigits(v) {
 }
 let state = null;
 let view = "pain";
+let resetArm = false; // settings: two-step delete confirmation state
+const editingHist = new Set(); // session ids whose history entry is in edit mode
 const painDraft = { soreness: {}, jointPain: {}, redFlags: [] };
 
 const $app = document.getElementById("app");
@@ -23,6 +25,7 @@ document.getElementById("tabs").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-view]"); if (!b) return;
   view = b.dataset.view; render();
 });
+document.getElementById("gear").addEventListener("click", () => { view = "settings"; render(); });
 
 const LEVEL_WORDS = ["なし", "軽い", "普通", "強い", "かなり強い", "激しい"];
 function tapGrid(kind, parts, current) {
@@ -36,7 +39,7 @@ function tapGrid(kind, parts, current) {
   }).join("")}</div>`;
 }
 
-// ---------- week dots + Day label ----------
+// ---------- week boxes (Mon–Sun) ----------
 // Dates are YYYY-MM-DD (Asia/Tokyo). Weekday math is done on UTC day numbers
 // so the browser's own timezone cannot shift the week.
 const DAY_MS = 86400000;
@@ -65,14 +68,12 @@ function updateWeekbar() {
   const mondayN = todayN - ((dow + 6) % 7);
   const doneDates = new Set(state.sessions.filter((s) => s.status === "completed").map((s) => s.date));
   const labels = ["月", "火", "水", "木", "金", "土", "日"];
-  const dots = Array.from({ length: 7 }, (_, i) => {
+  const boxes = Array.from({ length: 7 }, (_, i) => {
     const d = fmtDayNum(mondayN + i);
-    const cls = ["dot", doneDates.has(d) ? "filled" : "", d === state.today ? "today" : ""].join(" ");
+    const cls = ["wbox", doneDates.has(d) ? "done" : "", d === state.today ? "today" : ""].join(" ");
     return `<div class="${cls}"><span class="dow">${labels[i]}</span><span class="dnum num">${Number(d.slice(8, 10))}</span></div>`;
   }).join("");
-  const dates = state.sessions.map((s) => s.date).sort();
-  const dayCount = dates.length ? Math.round(todayN - dayNum(dates[0])) + 1 : 1;
-  el.innerHTML = `<div class="weekdots">${dots}</div><div class="daylabel"><span class="num">Day ${dayCount}</span><small>通算 ${state.stats.totalCompleted} セッション</small></div>`;
+  el.innerHTML = `<div class="weekboxes">${boxes}</div>`;
 }
 
 // ---------- ring gauge + metrics ----------
@@ -163,7 +164,7 @@ function renderPain() {
   const flags = pain?.redFlags ?? painDraft.redFlags;
   const a = state.assessment;
   return `
-  ${!state.profile ? `<div class="warn">先に「設定」タブでプロフィールを入力してください（空でも記録はできます）。</div>` : ""}
+  ${!state.profile ? `<div class="warn">先に右上の歯車ボタンからプロフィールを入力してください（空でも記録はできます）。</div>` : ""}
   <h2>まず、警告サインの確認</h2>
   <p class="desc">当てはまるものがあれば押してください。1つでも当てはまれば、その日は中止・受診が目安です。</p>
   <div class="chips">${state.catalog.redFlags.map((f) => `<button type="button" class="chip${flags.includes(f.id) ? " on" : ""}" data-flagchip="${f.id}">${esc(f.label)}</button>`).join("")}</div>
@@ -175,7 +176,7 @@ function renderPain() {
   <p class="desc">筋肉痛とは別に記録します。タップで強度が上がります（5の次は0に戻ります）。関節は筋肉より厳しめの基準です。</p>
   <div class="badges"><span class="badge">0–1 通常</span><span class="badge">2 軽減</span><span class="badge">3以上 除外</span><span class="badge">サインあり 受診目安</span></div>
   ${tapGrid("jointPain", state.catalog.joints, jointPain)}
-  <button class="cta" id="savePain">痛みの記録を保存</button>
+  <button class="cta" id="savePain">${state.todaySession?.status === "completed" ? "今日の結果を見る" : "痛みの記録を保存"}</button>
   ${a ? (a.care ? `<div class="warn">受診目安：${a.careReasons.join(" / ")}</div>`
       : a.rest ? `<div class="warn">完全休養日：${esc(a.restReason)}</div>`
       : `<div class="ok">開始できます。${a.parts.flatMap((p) => p.reasons).join(" / ")}</div>`) : ""}
@@ -183,8 +184,14 @@ function renderPain() {
   ${(state.overload ?? []).length ? `<div class="caution">24時間ルールの自動判定（次回に反映）<ul>${state.overload.map((o) => `<li>${esc(o.reason)}</li>`).join("")}</ul></div>` : ""}`;
 }
 function exerciseCard(s, ex, editable) {
-  const sets = ex.loggedSets.map((v, i) =>
-    `<input class="set-input" type="text" inputmode="numeric" autocomplete="off" data-set="${ex.id}:${i}" value="${v === 0 ? "" : v}" placeholder="0">`).join(" ");
+  // Menu screen: an exercise that has not been recorded yet (nothing logged,
+  // no RPE, not completed) starts with the target reps/seconds pre-filled,
+  // so the user can keep them or overwrite them before saving.
+  const unrecorded = editable && !ex.completed && ex.rpe == null && ex.loggedSets.every((v) => v === 0);
+  const sets = ex.loggedSets.map((v, i) => {
+    const shown = unrecorded ? ex.targetReps : (v === 0 ? "" : v);
+    return `<input class="set-input" type="text" inputmode="numeric" autocomplete="off" data-set="${ex.id}:${i}" value="${shown}" placeholder="0">`;
+  }).join(" ");
   return `<div class="card"><h3>${esc(ex.name)}（${esc(ex.variation)}）</h3>
     <p class="small">${esc(ex.muscleGroup)} ／ 目標 ${ex.targetReps}${ex.targetUnit} × ${ex.targetSets}セット<br>${esc(ex.cue)}</p>
     <div>実施：${sets}</div>
@@ -213,38 +220,70 @@ function renderMenu() {
   ${s.focusNote ? `<p>${esc(s.focusNote)}</p>` : ""}
   ${s.progressionNotes.length ? `<div class="card"><h3>前回の記録・メモ・RPEからの調整</h3><ul>${s.progressionNotes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>` : ""}
   ${s.exercises.map((ex) => exerciseCard(s, ex, true)).join("")}
-  ${s.status !== "completed" ? `<button class="cta" id="complete">トレーニングを完了する</button>` : `<div class="ok">完了済みです。結果タブで確認できます。</div>`}`;
+  ${s.status !== "completed" ? `<button class="cta" id="complete">トレーニングを完了する</button>` : `<div class="ok">完了済みです。これまでの記録で確認できます。</div>`}`;
 }
-function renderResult() {
-  const s = state.todaySession;
-  if (!s) return `<p>今日のセッションはまだありません。</p>`;
-  const done = s.exercises.filter((e) => e.completed).length;
-  return `<h2>結果</h2>${ringGauge(s)}<div class="card"><p>${esc(s.title)} ／ 合計 <span class="num">${s.totalVolume}</span> ／ 完了 <span class="num">${done}/${s.exercises.length}</span>種目</p>
-  <ul>${s.exercises.map((e) => `<li>${esc(e.name)}：${e.loggedSets.join(" / ") || "-"}${e.targetUnit}（RPE ${e.rpe ?? "-"}）${e.note ? `・メモ：${esc(e.note)}` : ""}</li>`).join("")}</ul>
-  <p class="small">累計：完了 <span class="num">${state.stats.totalCompleted}</span>回 ／ 総量 <span class="num">${state.stats.totalVolume}</span></p></div>`;
+// RPE number -> the word the original space shows next to it.
+function rpeWord(rpe) {
+  if (rpe == null) return "";
+  if (rpe >= 10) return "限界";
+  if (rpe >= 9.5) return "ほぼ限界";
+  if (rpe >= 9) return "とてもきつい";
+  if (rpe >= 8.5) return "かなりきつい";
+  if (rpe >= 8) return "きつい";
+  if (rpe >= 7.5) return "少しきつい";
+  if (rpe >= 7) return "やや楽";
+  if (rpe >= 6.5) return "楽";
+  if (rpe >= 6) return "かなり楽";
+  return "とても楽";
 }
+const DOW_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
+// The old Result view is merged into History: one list, newest first, in
+// the original's layout — big day number + month/weekday on the left,
+// rotation and exercise rows in the middle, session total on the right.
 function renderHistory() {
-  if (!state.sessions.length) return `<p>記録はまだありません。</p>`;
-  return state.sessions.map((s) => `<div class="card"><h3><span class="num">${esc(s.date)}</span>：${esc(s.title)}（合計 <span class="num">${s.totalVolume}</span>）</h3>
-    ${s.exercises.map((ex) => exerciseCard(s, ex, false)).join("")}
-    <button class="btn" data-save-history="${s.id}">この記録を修正して保存</button></div>`).join("");
+  if (!state.sessions.length) return `<h2>これまでの記録</h2><p>記録はまだありません。</p>`;
+  const entries = state.sessions.map((s) => {
+    const n = dayNum(s.date);
+    const day = Number(s.date.slice(8, 10));
+    const month = Number(s.date.slice(5, 7));
+    const dow = DOW_LABELS[(n + 4) % 7];
+    const editing = editingHist.has(s.id);
+    const body = editing
+      ? `${s.exercises.map((ex) => exerciseCard(s, ex, false)).join("")}<button class="edit-btn" data-save-history="${s.id}">修正を保存</button>`
+      : `${s.exercises.map((ex) => {
+          const rpe = ex.rpe != null ? `（RPE ${ex.rpe} ${rpeWord(ex.rpe)}）` : "";
+          return `<div class="ex-row"><div class="ex-name">${esc(ex.name)}<span class="ex-sub">（${esc(ex.variation)}）${rpe}</span></div><div class="ex-sets">${ex.loggedSets.join(" / ")} ${ex.targetUnit}</div></div>${ex.note ? `<div class="ex-memo">種目メモ： ${esc(ex.note)}</div>` : ""}`;
+        }).join("")}<button class="edit-btn" data-edit-history="${s.id}">記録を編集</button>`;
+    return `<div class="hist"><div class="hist-head">
+      <div class="hist-date"><div class="num hist-day">${day}</div><div class="hist-my">${month}月<br>（${dow}）</div></div>
+      <div class="hist-main"><div class="hist-rot">${esc(s.rotation)} ${esc(s.title)}</div>
+      ${s.focusNote ? `<div class="hist-note">${esc(s.focusNote)}</div>` : ""}
+      ${body}</div>
+      <div class="hist-total"><span class="num">${s.totalVolume}</span>レップ</div>
+    </div></div>`;
+  }).join("");
+  return `<h2>これまでの記録</h2>${entries}`;
 }
 function renderSettings() {
   const p = state.profile ?? { age: "", sex: "", heightCm: "", weightKg: "", bodyFatNote: "", habitNote: "" };
   return `<h2>プロフィール（初回設定）</h2>
-  <label class="row">年齢 <input type="text" inputmode="numeric" id="pf-age" value="${p.age ?? ""}"></label>
-  <label class="row">性別 <input type="text" id="pf-sex" value="${esc(p.sex)}"></label>
-  <label class="row">身長(cm) <input type="text" inputmode="decimal" id="pf-height" value="${p.heightCm ?? ""}"></label>
-  <label class="row">体重(kg) <input type="text" inputmode="decimal" id="pf-weight" value="${p.weightKg ?? ""}"></label>
-  <label class="row">体脂肪などの補足 <input type="text" id="pf-fat" value="${esc(p.bodyFatNote)}"></label>
-  <label class="row">運動習慣の補足 <input type="text" id="pf-habit" value="${esc(p.habitNote)}"></label>
+  <div class="form-grid">
+    <div class="field"><label for="pf-age">年齢</label><input type="text" inputmode="numeric" id="pf-age" value="${p.age ?? ""}"></div>
+    <div class="field"><label for="pf-sex">性別</label><input type="text" id="pf-sex" value="${esc(p.sex)}"></div>
+    <div class="field"><label for="pf-height">身長（cm）</label><input type="text" inputmode="decimal" id="pf-height" value="${p.heightCm ?? ""}"></div>
+    <div class="field"><label for="pf-weight">体重（kg）</label><input type="text" inputmode="decimal" id="pf-weight" value="${p.weightKg ?? ""}"></div>
+    <div class="field wide"><label for="pf-fat">体脂肪などの補足</label><textarea id="pf-fat" rows="2">${esc(p.bodyFatNote)}</textarea></div>
+    <div class="field wide"><label for="pf-habit">運動習慣の補足</label><textarea id="pf-habit" rows="2">${esc(p.habitNote)}</textarea></div>
+  </div>
   <p><button class="btn" id="saveProfile">保存</button></p>
-  <h2>データ</h2><p class="small">保存先はサーバー側の data/store.json です。全データを消す場合はリセットしてください。</p>
-  <button class="btn" id="reset">全データをリセット</button>`;
+  <h2>データ</h2><p class="small">保存先はサーバー側の data/store.json です。</p>
+  <button class="btn danger" id="reset">データを消す</button>
+  ${resetArm ? `<div class="reset-confirm"><p>本当に全データを消しますか？プロフィール・痛みの記録・セッション履歴がすべて消え、元に戻せません。</p><button class="btn danger-solid" id="resetConfirm">本当に全データを消す</button><button class="btn" id="resetCancel">キャンセル</button></div>` : ""}`;
 }
 function render() {
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
-  $app.innerHTML = view === "pain" ? renderPain() : view === "menu" ? renderMenu() : view === "result" ? renderResult() : view === "history" ? renderHistory() : renderSettings();
+  document.getElementById("gear").classList.toggle("active", view === "settings");
+  $app.innerHTML = view === "pain" ? renderPain() : view === "menu" ? renderMenu() : view === "history" ? renderHistory() : renderSettings();
   updateHeader();
   updateWeekbar();
   bind();
@@ -269,7 +308,9 @@ function bind() {
   const savePain = document.getElementById("savePain");
   if (savePain) savePain.addEventListener("click", async () => {
     await api("/api/pain", { soreness: state.pain?.soreness ?? painDraft.soreness, jointPain: state.pain?.jointPain ?? painDraft.jointPain, redFlags: state.pain?.redFlags ?? painDraft.redFlags });
-    Object.keys(painDraft.soreness).length = 0; render();
+    Object.keys(painDraft.soreness).length = 0;
+    if (state.todaySession?.status === "completed") view = "history"; // 「今日の結果を見る」
+    render();
   });
   const gen = document.getElementById("gen");
   if (gen) gen.addEventListener("click", async () => {
@@ -287,11 +328,12 @@ function bind() {
   $app.querySelectorAll("[data-timer-pause]").forEach((el) => el.addEventListener("click", () => { const ex = findTodayEx(Number(el.dataset.timerPause)); if (ex) pauseTimer(ex); }));
   $app.querySelectorAll("[data-timer-reset]").forEach((el) => el.addEventListener("click", () => { const ex = findTodayEx(Number(el.dataset.timerReset)); if (ex) resetTimer(ex); }));
   const complete = document.getElementById("complete");
-  if (complete) complete.addEventListener("click", async () => { await api(`/api/session/${state.todaySession.id}/complete`, {}); view = "result"; render(); });
+  if (complete) complete.addEventListener("click", async () => { await api(`/api/session/${state.todaySession.id}/complete`, {}); view = "history"; render(); });
+  $app.querySelectorAll("[data-edit-history]").forEach((el) => el.addEventListener("click", () => { editingHist.add(Number(el.dataset.editHistory)); render(); }));
   $app.querySelectorAll("[data-save-history]").forEach((el) => el.addEventListener("click", async () => {
     const s = state.sessions.find((x) => x.id === Number(el.dataset.saveHistory));
     const exercises = s.exercises.map((ex) => ({ exerciseId: ex.id, ...collectExercise($app, ex) }));
-    await api(`/api/session/${s.id}/record`, { exercises }); render();
+    await api(`/api/session/${s.id}/record`, { exercises }); editingHist.delete(s.id); render();
   }));
   const saveProfile = document.getElementById("saveProfile");
   if (saveProfile) saveProfile.addEventListener("click", async () => {
@@ -299,6 +341,10 @@ function bind() {
     render();
   });
   const reset = document.getElementById("reset");
-  if (reset) reset.addEventListener("click", async () => { if (confirm("全データを消しますか？")) { await api("/api/reset", {}); render(); } });
+  if (reset) reset.addEventListener("click", () => { resetArm = true; render(); });
+  const resetCancel = document.getElementById("resetCancel");
+  if (resetCancel) resetCancel.addEventListener("click", () => { resetArm = false; render(); });
+  const resetConfirm = document.getElementById("resetConfirm");
+  if (resetConfirm) resetConfirm.addEventListener("click", async () => { await api("/api/reset", {}); resetArm = false; view = "pain"; render(); });
 }
 load().catch((e) => { $app.innerHTML = `<p class="error">${esc(e.message)}</p>`; });

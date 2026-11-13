@@ -22,7 +22,10 @@ h3{margin:6px 0}
 .num{font-family:"Barlow Condensed",system-ui,sans-serif;letter-spacing:.02em;font-weight:600}
 
 /* Header: date + purpose on the left, Day + cumulative reps on the right */
-.app-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.app-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px;padding-right:54px}
+/* Settings gear: fixed at the top-right, stays while scrolling */
+.gear{position:fixed;top:10px;right:10px;z-index:60;width:44px;height:44px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:21px;line-height:1;cursor:pointer}
+.gear.active{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .ah-date{color:var(--sub);font-size:13px}
 .ah-purpose{font-weight:700;font-size:16px}
 .ah-right{text-align:right}
@@ -65,8 +68,17 @@ nav button.active{background:var(--accent);color:var(--on-accent)}
 .ticks i.on{background:var(--accent)}
 .tap.lv5 .ticks i{background:rgba(5,46,43,.25)}.tap.lv5 .ticks i.on{background:var(--on-accent)}
 
-input[type=text],input[type=number],select,textarea{padding:7px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:16px}
-.set-input{width:56px;text-align:center}.rpe-input{width:64px;text-align:center}.note-input{width:100%;box-sizing:border-box;margin-top:6px}
+/* Uniform form controls: same height, radius, padding and font size for
+   every field type (text / number / select / textarea) on every screen. */
+input[type=text],input[type=number],select,textarea{height:42px;padding:0 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:16px;box-sizing:border-box;font-family:inherit}
+textarea{height:auto;min-height:42px;padding:9px 10px;line-height:1.5;resize:vertical}
+.set-input{width:64px;text-align:center}.rpe-input{width:76px;text-align:center}.note-input{width:100%;box-sizing:border-box;margin-top:6px}
+/* Settings-style forms: labels and fields on a regular grid */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:10px 0}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label{font-size:13px;color:var(--sub)}
+.field input,.field select,.field textarea{width:100%}
+.field.wide{grid-column:1/-1}
 .warn{border:1px solid #ef4444;background:#2a0f0f;color:#fecaca;padding:10px;border-radius:10px;margin:10px 0}
 .ok{border:1px solid var(--badge);background:#0b2420;color:#99f6e4;padding:10px;border-radius:10px;margin:10px 0}
 .caution{border:1px solid #92400e;background:#241a08;color:#fde68a;padding:10px;border-radius:10px;margin:8px 0}
@@ -74,17 +86,43 @@ input[type=text],input[type=number],select,textarea{padding:7px;border-radius:8p
 label.row{display:block;margin:6px 0}
 .note h2{color:var(--text)} .note p{color:var(--sub);font-size:13px}
 
-/* Week dots + Day label */
-.weekbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:10px 0 2px}
-.weekdots{display:flex;gap:6px}
-.dot{width:36px;height:44px;border-radius:12px;border:1.5px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;color:var(--sub)}
-.dot .dow{font-size:11px;opacity:.85}
-.dot .dnum{font-size:18px;color:var(--text)}
-.dot.filled{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
-.dot.filled .dnum{color:var(--on-accent)}
-.dot.today{box-shadow:0 0 0 2px var(--accent)}
-.daylabel{font-size:22px;color:var(--text);text-align:right}
-.daylabel small{display:block;font-family:system-ui,sans-serif;font-size:12px;font-weight:400;color:var(--sub);letter-spacing:0}
+/* Week boxes (image-4 form): 7 equal boxes, weekday on top (gray, teal
+   today), big bold day number below (white; teal on done days). Today is
+   the only box with a teal outline. Dark fill, thin border, rounded. */
+.weekbar{margin:10px 0 2px}
+.weekboxes{display:flex;gap:6px}
+.wbox{flex:1 1 0;min-width:0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:6px 0 7px;display:flex;flex-direction:column;align-items:center;line-height:1.15}
+.wbox .dow{font-size:11px;color:var(--sub)}
+.wbox .dnum{font-size:21px;font-weight:700;color:var(--text)}
+.wbox.done .dnum{color:var(--accent)}
+.wbox.today{border-color:var(--accent)}
+.wbox.today .dow{color:var(--accent)}
+
+/* Merged history list (image-5 form): no card frames, hairline dividers */
+.hist{border-bottom:1px solid var(--border);padding:16px 0 14px}
+.hist-head{display:flex;gap:14px;align-items:flex-start}
+.hist-date{flex:none;width:54px;text-align:center}
+.hist-day{font-size:46px;line-height:1;color:var(--text)}
+.hist-my{color:var(--sub);font-size:12px;line-height:1.35;margin-top:2px}
+.hist-main{flex:1;min-width:0}
+.hist-rot{font-weight:700;font-size:16px}
+.hist-note{color:var(--accent);font-size:12px;margin:1px 0 3px}
+.hist-total{flex:none;text-align:right;font-size:12px;color:var(--sub)}
+.hist-total .num{font-size:36px;line-height:1;color:var(--text);margin-right:2px}
+.ex-row{display:flex;justify-content:space-between;gap:12px;padding:1px 0}
+.ex-name{min-width:0}
+.ex-sub{color:var(--sub)}
+.ex-sets{color:var(--sub);white-space:nowrap;text-align:right}
+.ex-memo{color:var(--sub);font-size:12px;padding:0 0 2px}
+.edit-btn{margin-top:8px;padding:5px 14px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:700;cursor:pointer}
+
+/* Reset confirmation: a separate block stacked UNDER the first button —
+   normal flow only, never overlaid on it. */
+.reset-confirm{margin-top:14px;border:1px solid #ef4444;background:#2a0f0f;color:#fecaca;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;align-items:stretch}
+.reset-confirm p{margin:0;font-size:13px}
+.reset-confirm .btn{text-align:center}
+.btn.danger{border-color:#ef4444;color:#f87171}
+.btn.danger-solid{background:#ef4444;border-color:#ef4444;color:#fff;font-weight:700}
 
 /* Ring gauge + metrics */
 .gauge-wrap{display:flex;align-items:center;gap:18px;margin:12px 0}

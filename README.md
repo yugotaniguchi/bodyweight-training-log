@@ -33,13 +33,13 @@ bun --watch run server.ts
 
 ## How to use it
 
-1. **Settings**: Enter your profile (age, sex, height, weight, and so on) in the Settings tab. The app ships with no one's data in it.
+1. **Settings**: Enter your profile (age, sex, height, weight, and so on) via the gear button (⚙) fixed at the top-right — settings is not a tab. All the form fields share one size and style, labels above fields on a regular grid. The app ships with no one's data in it.
 2. **Pain check**: First tap any warning signs (red flags) that apply — they are chips at the top. Then set muscle soreness by body part and joint pain (lower back, shoulders, elbows, wrists, hips, knees, ankles) from 0 to 5 by tapping the tiles: each tile shows the level as a big numeral, a level word, and 5 tick segments that light up teal, and the tile background deepens through dark teal shades as the level rises. Dark-teal legend badges above each grid summarise the thresholds. If the same pain has been recorded for many days in a row, a caution or see-a-doctor note appears here (it never blocks a start — only red flags do).
 3. **Workout menu**: "Create today's workout" builds a session from today's condition and your history. Sessions rotate A (push + legs) → B (back + posterior legs + core) → C (full body). The first 6 sessions are an introductory period with easier variations and fewer sets.
-4. **Logging**: For each exercise, enter the reps you did (seconds for timed exercises), RPE, and completion. The rep fields do not keep a leading zero. Each exercise also has a note field that affects only that exercise; there is no session-wide note. Timed exercises (planks and the like) have a countdown timer on the card — start it at the target seconds, pause or reset as needed, and watch the remaining-time bar; it beeps and turns teal when time is up. The timer never writes to the record: what you type is what gets saved.
-5. **Results and history**: The Results tab shows the day's totals. In History you can open a past session and fix sets, RPE, completion, and exercise notes. Edits update the totals and feed into the next session's decisions.
+4. **Logging**: Each exercise's set fields start out **pre-filled with the target** (reps, or seconds for timed exercises) — keep them, or overwrite with what you actually did, then add RPE and completion. The rep fields do not keep a leading zero. Each exercise also has a note field that affects only that exercise; there is no session-wide note. Timed exercises (planks and the like) have a countdown timer on the card — start it at the target seconds, pause or reset as needed, and watch the remaining-time bar; it beeps and turns teal when time is up. The timer never writes to the record: what you type is what gets saved.
+5. **History (results live here too)**: There is no separate results screen. Finishing a session takes you to **これまでの記録**, a quiet list, newest first: a big day number with the month and weekday under it on the left, the rotation and one row per exercise in the middle (name in white, variation and RPE word in gray, logged sets right-aligned), any per-exercise notes in small gray, and the session's total reps as a big number on the right. Entries are separated by hairlines, not cards. The `記録を編集` button under each entry lets you fix sets, RPE, completion, and exercise notes afterwards; edits update the totals and feed into the next session's decisions.
 
-The app is **dark-themed** — near-black background, white text, gray secondary text, one bright teal accent — and follows the design rules in [DESIGN.md](DESIGN.md), which were measured from the original space. Every screen opens with a header: the date and the purpose line (`器具なし / 筋力・筋肥大`) on the left, and on the right a huge **Day N** numeral (N = days since your first recorded session) over the cumulative rep count from your session history. Under it, a row of **week dots (Mon–Sun, current week)** shows which days have a completed session (filled teal; today gets a strong outline). The Menu and Results screens open with a **ring gauge** — completed exercises out of the total, with the big number in the centre — and three metrics under it: exercise count, set count, and total reps. All large numerals (Day count, gauge, metrics, pain-tile levels, totals, timers, history dates) use the **Barlow Condensed** typeface, falling back to the system font when it cannot be loaded.
+The app is **dark-themed** — near-black background, white text, gray secondary text, one bright teal accent — and follows the design rules in [DESIGN.md](DESIGN.md), which were measured from the original space. Every screen opens with a header: the date (only ever shown as `M/D（曜）`) and the purpose line (`器具なし / 筋力・筋肥大`) on the left, and on the right a huge **Day N** numeral (N = days since your first recorded session) over the cumulative rep count from your session history, with a **gear button (⚙)** fixed at the very top-right for settings. Under the header, a row of **week boxes (Mon–Sun, current week)** — equal boxes with the weekday on top in gray and a big bold day number below — marks days with a completed session by turning the number teal; today's box alone gets a teal outline and a teal weekday. The Menu screen opens with a **ring gauge** — completed exercises out of the total, with the big number in the centre — and three metrics under it: exercise count, set count, and total reps. All large numerals (Day count, gauge, metrics, pain-tile levels, totals, timers, history dates) use the **Barlow Condensed** typeface, falling back to the system font when it cannot be loaded. Dates appear in only three places in the whole app: the header, the week boxes, and the history list.
 
 ## How the next workout is decided
 
@@ -80,7 +80,7 @@ Note: the numeric pain thresholds above convert ideas from general-audience sour
 ## Data storage and reset
 
 - Data is stored in `data/store.json` in the folder where you start the server. It is not tracked by Git.
-- To reset, use "Reset all data" in the Settings tab, or delete `data/store.json` and restart.
+- To reset, use the delete button on the settings screen (behind the ⚙ gear) — its confirmation appears as a separate block under the button — or delete `data/store.json` and restart.
 - To back up, just copy `data/store.json`.
 
 ## Recreate the look in Muse
@@ -108,13 +108,16 @@ Header (top of every screen):
 - Right: the word "Day" in small bold gray, then the day count as a huge
   Barlow Condensed numeral in white; under it, small gray
   累計 ○○ レップ (cumulative reps summed from the session history).
+- A round gear button (⚙) is fixed at the very top-right of the viewport
+  (position: fixed, stays while scrolling) and opens Settings. Settings
+  is never a navigation segment; keep header space clear of the gear.
 
 Navigation:
-- A row of segment buttons (radius about 8px, small gaps) — NOT pills and
-  NOT a sidebar. Active segment: #2dd4bf fill with #052e2b bold text.
-  Inactive: #232323 fill, white text. Labels: 痛みの記録 / メニュー /
-  これまでの記録 (plus 結果 / 設定 if the app has those views; wrapping is
-  fine).
+- A row of exactly 3 segment buttons (radius about 8px, small gaps) —
+  NOT pills and NOT a sidebar. Active segment: #2dd4bf fill with #052e2b
+  bold text. Inactive: #232323 fill, white text. Labels: 痛みの記録 /
+  メニュー / これまでの記録. There is no Result segment — results are
+  merged into これまでの記録 (see Screens).
 
 Typography:
 - Body: system-ui, sans-serif, 15–16px, line height about 1.6.
@@ -156,19 +159,33 @@ Pain tiles (2-column grid, gap about 8px):
   text. Level 0 is the plain card colour.
 
 Required progress elements (do not omit):
-- Week dots under the header on every screen: 7 cells Mon–Sun of the
-  current week (Asia/Tokyo, Monday start), weekday + date number. A day
-  with a completed session is filled #2dd4bf (dark text); today gets an
-  accent outline.
-- A ring gauge at the top of the Menu and Result screens: SVG circle,
-  track #2d2d2d, arc #2dd4bf, completed/total fraction in Barlow Condensed
-  at the centre. Under it exactly three metrics in the same numeral font:
+- Week boxes under the header on every screen: 7 equal-width boxes for
+  Mon–Sun of the current week (Asia/Tokyo, Monday start). Each box: thin
+  #2d2d2d outline, radius about 10px, dark #1a1a1a fill, the weekday
+  letter on top in small gray, the day number below in large bold white.
+  A day with a completed session shows its number in #2dd4bf (no fill
+  change); today's box alone gets a #2dd4bf outline and its weekday
+  turns #2dd4bf too. No date label under the boxes.
+- A ring gauge at the top of the Menu screen: SVG circle, track #2d2d2d,
+  arc #2dd4bf, completed/total fraction in Barlow Condensed at the
+  centre. Under it exactly three metrics in the same numeral font:
   exercise count, set count, total reps.
 
 Other components:
 - Cards: #232323 fill, thin #2d2d2d outline, radius 12px, padding 14px.
 - Ordinary buttons: #232323 fill, white text, radius 8px.
-- Inputs: #1a1a1a fill, #2d2d2d outline, white text, radius 8px, 16px font.
+- Forms are uniform: every field (text, numeric, select, textarea) has
+  the same height (42px), radius (8px), padding, #1a1a1a fill, #2d2d2d
+  outline, white text and 16px font; labels sit above fields in a
+  regular grid with even gaps. The menu's set and RPE inputs share the
+  same height and styling too.
+- Dates appear ONLY in three shapes: the header's M/D（曜）, the day
+  numbers in the week boxes, and the history list's day number with
+  M月 / （曜） under it. Never print a full date (YYYY-MM-DD etc.)
+  anywhere, including inside reason texts.
+- The settings screen's delete confirmation is a separate block stacked
+  below the delete button in normal flow (with a cancel button) — never
+  overlaid on the button, never a native confirm() dialog.
 - Warning (red flag) box: red border #ef4444, dark red fill #2a0f0f,
   pale red text #fecaca — the only red in the UI.
 
@@ -191,15 +208,32 @@ Decision engine (required, not optional decoration):
 Screens:
 - Menu: one card per exercise — name, variation, target sets × reps (or
   seconds), a short form cue, set inputs, an RPE input, and a per-exercise
-  note field. Adjustment reasons are shown as a short note, not a
-  paragraph. Timed exercises (seconds) also get a countdown timer on the
-  card: starts from the target seconds, start / pause / reset buttons and
-  a remaining-time bar; on zero it turns teal and beeps (WebAudio). The
-  timer never writes to the record — the inputs stay manual.
-- Result: the ring gauge and three metrics first, then the day's totals
-  as big numbers, per-exercise results, and the next rotation.
-- History: a quiet list by date (dates in Barlow Condensed); each session
-  opens for viewing and editing.
+  note field. The set inputs of an exercise that has not been recorded
+  yet are pre-filled with the target reps/seconds; the user keeps or
+  overwrites them, and saving reads the input values. Adjustment reasons
+  are shown as a short note, not a paragraph. Timed exercises (seconds)
+  also get a countdown timer on the card: starts from the target
+  seconds, start / pause / reset buttons and a remaining-time bar; on
+  zero it turns teal and beeps (WebAudio). The timer never writes to the
+  record — the inputs stay manual.
+- History (results are merged into this screen — there is no separate
+  Result screen; completing a session and the pain screen's
+  今日の結果を見る CTA both land here): a quiet list, newest first,
+  entries separated by hairlines, NOT cards. Each entry — left: the day
+  number as a huge Barlow Condensed numeral in white, with M月 and （曜）
+  in small gray on two lines under it; centre: the rotation name in bold
+  white (e.g. A 押す + 脚）, any pain adjustment note in small #2dd4bf
+  text, then one row per exercise: name in white, variation and
+  （RPE 8 きつい） in gray on the same line, the logged sets right-aligned
+  (6 / 6 回, 41 / 41 秒, sets joined with " / "), and any per-exercise
+  note under its exercise in small gray as 種目メモ： …; right: the
+  session total as a large Barlow Condensed numeral plus a small レップ.
+  Under each entry, a small dark pill 記録を編集 button opens in-place
+  editing of sets / RPE / completion / notes. RPE words: 6 かなり楽，
+  6.5 楽， 7 やや楽， 7.5 少しきつい, 8 きつい, 8.5 かなりきつい, 9 とてもきつい,
+  9.5 ほぼ限界， 10 限界.
+- Settings (via the ⚙ gear): the profile form (uniform grid fields) and
+  the data reset with the stacked confirmation described above.
 
 Labels are in Japanese. Do not change the workout logic, the pain rules,
 or any saved data while doing design work.

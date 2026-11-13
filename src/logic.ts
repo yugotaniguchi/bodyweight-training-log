@@ -114,7 +114,7 @@ export function detectOverload(store: Store): OverloadInfo[] {
     if (nextLevel > baseline) {
       out.push({
         subject, kind, sessionDate: last.date, baseline, nextLevel,
-        reason: `24時間ルール: ${subject}の痛みが前回セッション（${last.date}）翌日に${baseline}→${nextLevel}へ戻っていないため過負荷と判定し、次回は軽減・進行なし`,
+        reason: `24時間ルール: ${subject}の痛みが前回セッションの翌日に${baseline}→${nextLevel}へ戻っていないため過負荷と判定し、次回は軽減・進行なし`,
       });
     }
   };
