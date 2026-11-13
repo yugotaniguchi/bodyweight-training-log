@@ -356,7 +356,7 @@ export function generateSession(store: Store, date: string, assessment: Assessme
     id: store.nextSessionId++, date, rotation: rotation.id,
     title: rotation.title + (excludedAny ? "（代替）" : ""),
     status: "planned", intro,
-    focusNote: excludedAny ? "痛みの基準で一部の部位を外した代替メニュー" : "",
+    focusNote: excludedAny ? "痛みの基準で一部の部位を外した代替ワークアウト" : "",
     progressionNotes: notes, exercises, totalVolume: 0,
   };
 }

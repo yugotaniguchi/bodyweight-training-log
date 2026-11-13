@@ -11,6 +11,11 @@ let resetArm = false; // settings: two-step delete confirmation state
 let menuCancelArm = false; // menu: two-step "cancel this menu" confirmation state
 const editingHist = new Set(); // session ids whose history entry is in edit mode
 const painDraft = { soreness: {}, jointPain: {}, redFlags: [] };
+// Pain save state: painGen increments on every pain edit, painSavedGen is
+// the generation last saved. Equal => the CTA reads ワークアウトを開始.
+let painGen = 0;
+let painSavedGen = -1;
+const painIsSaved = () => painSavedGen === painGen;
 
 const $app = document.getElementById("app");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -21,7 +26,7 @@ async function api(path, body) {
   if (data.today) state = data;
   return data;
 }
-async function load() { state = await (await fetch("/api/state")).json(); render(); }
+async function load() { state = await (await fetch("/api/state")).json(); if (state.pain) painSavedGen = painGen; render(); }
 document.getElementById("tabs").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-view]"); if (!b) return;
   view = b.dataset.view; menuCancelArm = false; render();
@@ -175,6 +180,8 @@ function renderPain() {
   const jointPain = { ...painDraft.jointPain, ...(pain?.jointPain ?? {}) };
   const flags = pain?.redFlags ?? painDraft.redFlags;
   const a = state.assessment;
+  const completedToday = state.todaySession?.status === "completed";
+  const painCta = completedToday ? "今日の結果を見る" : painIsSaved() ? "ワークアウトを開始" : "痛みの記録を保存";
   return `
   ${!state.profile ? `<div class="warn">先に右上の歯車ボタンからプロフィールを入力してください（空でも記録はできます）。</div>` : ""}
   <h2>まず、警告サインの確認</h2>
@@ -188,7 +195,7 @@ function renderPain() {
   <p class="desc">筋肉痛とは別に記録します。タップで強度が上がります（5の次は0に戻ります）。関節は筋肉より厳しめの基準です。</p>
   <div class="badges"><span class="badge">0–1 通常</span><span class="badge">2 軽減</span><span class="badge">3以上 除外</span><span class="badge">サインあり 受診目安</span></div>
   ${tapGrid("jointPain", state.catalog.joints, jointPain)}
-  <button class="cta" id="savePain">${state.todaySession?.status === "completed" ? "今日の結果を見る" : "痛みの記録を保存"}</button>
+  <button class="cta" id="savePain">${painCta}</button>
   ${a ? (a.care ? `<div class="warn">受診目安：${a.careReasons.join(" / ")}</div>`
       : a.rest ? `<div class="warn">完全休養日：${esc(a.restReason)}</div>`
       : `<div class="ok">開始できます。${a.parts.flatMap((p) => p.reasons).join(" / ")}</div>`) : ""}
@@ -260,7 +267,7 @@ function menuExerciseCard(s, ex) {
 }
 function renderMenu() {
   const s = state.todaySession;
-  if (!s) return `<p>今日のセッションはまだありません。</p><button class="cta" id="gen">今日のメニューを作る</button><p id="genErr" class="error"></p>`;
+  if (!s) return `<p>今日のセッションはまだありません。</p><button class="cta" id="gen">今日のワークアウトを作る</button><p id="genErr" class="error"></p>`;
   const remaining = s.exercises.filter((e) => !e.completed).length;
   return `${weekDots()}
   ${ringGauge(s)}
@@ -271,8 +278,8 @@ function renderMenu() {
   ${menuMetrics(s)}
   ${s.exercises.map((ex) => menuExerciseCard(s, ex)).join("")}
   ${s.status !== "completed" ? `<div class="card finish-card"><button class="cta" id="complete">今日のトレーニングを完了する</button>
-    ${menuCancelArm ? `<div class="cancel-confirm"><p>このメニューを取り消しますか？今日のセッションと入力した内容が消えます。</p><div class="cancel-btns"><button class="btn danger-solid" id="cancelExec">取り消す</button><button class="btn" id="cancelBack">やめる</button></div></div>`
-      : `<button class="cancel-link" id="cancelMenu">このメニューを取り消す</button>`}</div>`
+    ${menuCancelArm ? `<div class="cancel-confirm"><p>このワークアウトを取り消しますか？今日のセッションと入力した内容が消えます。</p><div class="cancel-btns"><button class="btn danger-solid" id="cancelExec">取り消す</button><button class="btn" id="cancelBack">やめる</button></div></div>`
+      : `<button class="cancel-link" id="cancelMenu">このワークアウトを取り消す</button>`}</div>`
     : `<div class="ok">完了済みです。これまでの記録で確認できます。</div>`}`;
 }
 // RPE number -> the word the original space shows next to it.
@@ -297,8 +304,6 @@ function renderHistory() {
   if (!state.sessions.length) return `<h2>これまでの記録</h2><p>記録はまだありません。</p>`;
   const entries = state.sessions.map((s) => {
     const n = dayNum(s.date);
-    const day = Number(s.date.slice(8, 10));
-    const month = Number(s.date.slice(5, 7));
     const dow = DOW_LABELS[(n + 4) % 7];
     const editing = editingHist.has(s.id);
     const body = editing
@@ -308,7 +313,7 @@ function renderHistory() {
           return `<div class="ex-row"><div class="ex-name">${esc(ex.name)}<span class="ex-sub">（${esc(ex.variation)}）${rpe}</span></div><div class="ex-sets">${ex.loggedSets.join(" / ")} ${ex.targetUnit}</div></div>${ex.note ? `<div class="ex-memo">種目メモ： ${esc(ex.note)}</div>` : ""}`;
         }).join("")}<button class="edit-btn" data-edit-history="${s.id}">記録を編集</button>`;
     return `<div class="hist"><div class="hist-head">
-      <div class="hist-date"><div class="num hist-day">${day}</div><div class="hist-my">${month}月<br>（${dow}）</div></div>
+      <div class="hist-date num">${s.date.slice(5, 7)}/${s.date.slice(8, 10)}(${dow})</div>
       <div class="hist-main"><div class="hist-rot">${esc(s.rotation)} ${esc(s.title)}</div>
       ${s.focusNote ? `<div class="hist-note">${esc(s.focusNote)}</div>` : ""}
       ${body}</div>
@@ -319,7 +324,8 @@ function renderHistory() {
 }
 function renderSettings() {
   const p = state.profile ?? { age: "", sex: "", heightCm: "", weightKg: "", bodyFatNote: "", habitNote: "" };
-  return `<h2>プロフィール（初回設定）</h2>
+  return `<button class="back-btn" id="backHome">← ホームに戻る</button>
+  <h2>プロフィール（初回設定）</h2>
   <div class="form-grid">
     <div class="field"><label for="pf-age">年齢</label><input type="text" inputmode="numeric" id="pf-age" value="${p.age ?? ""}"></div>
     <div class="field"><label for="pf-sex">性別</label><input type="text" id="pf-sex" value="${esc(p.sex)}"></div>
@@ -335,13 +341,15 @@ function renderSettings() {
 }
 function render() {
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
-  document.getElementById("gear").classList.toggle("active", view === "settings");
+  // The gear is shown only on the home (pain) screen and on Settings.
+  document.getElementById("gear").style.display = view === "pain" || view === "settings" ? "" : "none";
   $app.innerHTML = view === "pain" ? renderPain() : view === "menu" ? renderMenu() : view === "history" ? renderHistory() : renderSettings();
   updateHeader();
   bind();
 }
 function bind() {
   $app.querySelectorAll("[data-tap]").forEach((el) => el.addEventListener("click", () => {
+    painGen++;
     const [kind, part] = el.dataset.tap.split(":");
     const cur = { ...(state.pain?.[kind] ?? {}), ...painDraft[kind] };
     painDraft[kind] = { ...cur, [part]: ((cur[part] || 0) + 1) % 6 };
@@ -350,6 +358,7 @@ function bind() {
     render();
   }));
   $app.querySelectorAll("[data-flagchip]").forEach((el) => el.addEventListener("click", () => {
+    painGen++;
     const flags = new Set(state.pain?.redFlags ?? painDraft.redFlags);
     flags.has(el.dataset.flagchip) ? flags.delete(el.dataset.flagchip) : flags.add(el.dataset.flagchip);
     painDraft.redFlags = [...flags];
@@ -359,11 +368,22 @@ function bind() {
   $app.querySelectorAll(".set-input").forEach((el) => el.addEventListener("input", () => { el.value = sanitizeDigits(el.value); }));
   const savePain = document.getElementById("savePain");
   if (savePain) savePain.addEventListener("click", async () => {
+    if (state.todaySession?.status === "completed") { // 「今日の結果を見る」: save any edits first, then go
+      if (!painIsSaved()) {
+        await api("/api/pain", { soreness: state.pain?.soreness ?? painDraft.soreness, jointPain: state.pain?.jointPain ?? painDraft.jointPain, redFlags: state.pain?.redFlags ?? painDraft.redFlags });
+        painSavedGen = painGen;
+        Object.keys(painDraft.soreness).length = 0;
+      }
+      view = "history"; render(); return;
+    }
+    if (painIsSaved()) { view = "menu"; render(); return; } // 「ワークアウトを開始」
     await api("/api/pain", { soreness: state.pain?.soreness ?? painDraft.soreness, jointPain: state.pain?.jointPain ?? painDraft.jointPain, redFlags: state.pain?.redFlags ?? painDraft.redFlags });
+    painSavedGen = painGen;
     Object.keys(painDraft.soreness).length = 0;
-    if (state.todaySession?.status === "completed") view = "history"; // 「今日の結果を見る」
-    render();
+    render(); // the CTA now reads ワークアウトを開始
   });
+  const backHome = document.getElementById("backHome");
+  if (backHome) backHome.addEventListener("click", () => { view = "pain"; render(); });
   const gen = document.getElementById("gen");
   if (gen) gen.addEventListener("click", async () => {
     try { await api("/api/session/generate", {}); view = "menu"; render(); }
@@ -407,6 +427,6 @@ function bind() {
   const resetCancel = document.getElementById("resetCancel");
   if (resetCancel) resetCancel.addEventListener("click", () => { resetArm = false; render(); });
   const resetConfirm = document.getElementById("resetConfirm");
-  if (resetConfirm) resetConfirm.addEventListener("click", async () => { await api("/api/reset", {}); resetArm = false; view = "pain"; render(); });
+  if (resetConfirm) resetConfirm.addEventListener("click", async () => { await api("/api/reset", {}); resetArm = false; painGen = 0; painSavedGen = -1; view = "pain"; render(); });
 }
 load().catch((e) => { $app.innerHTML = `<p class="error">${esc(e.message)}</p>`; });

@@ -30,9 +30,9 @@ they are fixed here as the specification.
 
 | Token | Value | Used for |
 |---|---|---|
-| `--bg` | `#0f0f0f` | Page background; near-black field fill inside menu cards |
+| `--bg` | `#0f0f0f` | Page background; near-black field fill inside workout cards |
 | `--surface` | `#232323` | Generic cards, pain tiles (level 0), inactive nav segments, gear button |
-| `--surface-2` | `#1a1a1a` | Chip fill, generic input fill, menu exercise cards, finish-area card |
+| `--surface-2` | `#1a1a1a` | Chip fill, generic input fill, workout exercise cards, finish-area card |
 | `--border` | `#2d2d2d` | Borders, hairlines, gauge track, timer bar track |
 | `--accent` | `#2dd4bf` | Active nav segment, primary CTA, lit ticks, gauge arc, week-dot states |
 | `--on-accent` | `#052e2b` | Text on top of `--accent` (near-black teal) |
@@ -86,8 +86,9 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - **All large numerals use Barlow Condensed** (Google Fonts, weights
   500/600/700 loaded; rendered weight 600; falls back to system-ui when
   it cannot be loaded): the Day number, pain-tile level numbers,
-  ring-gauge centre, the three metrics, totals, timer digits, history
-  dates. Letter spacing 0.02em.
+  ring-gauge centre, the three metrics, totals, timer digits. History
+  dates also use Barlow Condensed for their numerals, at 17px (see
+  History entries). Letter spacing 0.02em.
 - Progress is always shown as a number **plus** a visual element (ring
   gauge, tick segments, remaining-time bar, week dots) — never as prose.
 - Headings (`h2`): 17px, bold, `--text`, margin 22px 0 4px.
@@ -116,8 +117,9 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Page title: `自重トレーニング記録`
 - Header purpose line: `器具なし / 筋力・筋肥大`
 - Header right: `Day` + numeral; under it `累計 {n} レップ`
-- Gear button: `⚙` (aria-label / title: `設定`)
-- Nav segments, in order: `痛みの記録` / `メニュー` / `これまでの記録`
+- Gear button: a thin line-drawn gear icon — inline SVG, gray stroke,
+  no fill (aria-label / title: `設定`)
+- Nav segments, in order: `痛みの記録` / `ワークアウト` / `これまでの記録`
 - Loading placeholder: `読み込み中…`
 
 ### Pain screen
@@ -139,8 +141,14 @@ All three notice boxes share: 1px solid border, radius 10px, padding
   脚（後ろ）・お尻・ふくらはぎ・腹筋・体幹
 - Joints (7, in order): 腰・肩・肘・手首・股関節・膝・足首
 - Level words (0–5): `なし` `軽い` `普通` `強い` `かなり強い` `激しい`
-- Primary CTA: `痛みの記録を保存` — when today's session is completed it
-  reads `今日の結果を見る` instead.
+- Primary CTA, three states:
+  - `痛みの記録を保存` — while there are unsaved pain edits (or nothing
+    saved yet today).
+  - `ワークアウトを開始` — after a successful save, while no pain value
+    has been edited since. Tapping it goes to the ワークアウト screen.
+    Any pain edit after saving returns the label to `痛みの記録を保存`.
+  - `今日の結果を見る` — when today's session is completed; tapping it
+    saves any unsaved edits first, then goes to これまでの記録.
 - Missing-profile notice (warning box, top of screen):
   `先に右上の歯車ボタンからプロフィールを入力してください（空でも記録はできます）。`
 - Assessment box, one of:
@@ -150,9 +158,9 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Overload notice heading line: `24時間ルールの自動判定（次回に反映）`,
   followed by the reasons as a bulleted list.
 
-### Menu screen
+### Workout screen
 - Empty state text: `今日のセッションはまだありません。`
-- Empty state CTA: `今日のメニューを作る`
+- Empty state CTA: `今日のワークアウトを作る`
 - Gauge sub-label: `／ {total} 種目完了`
 - Session title: `{rotation} {title}` (e.g. `B 背中 + 脚裏 + 体幹`)
 - Remaining line: `あと{n}種目`, or `全種目完了` when none remain
@@ -167,15 +175,16 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Timer buttons: `開始` / `一時停止` / `リセット`; timer unit: ` 秒`
 - Save button: `記録して完了` (unrecorded) / `記録を更新` (recorded)
 - Finish button: `今日のトレーニングを完了する`
-- Cancel link: `このメニューを取り消す`
+- Cancel link: `このワークアウトを取り消す`
 - Cancel confirmation text:
-  `このメニューを取り消しますか？今日のセッションと入力した内容が消えます。`
+  `このワークアウトを取り消しますか？今日のセッションと入力した内容が消えます。`
   Buttons: `取り消す` / `やめる`
 - Completed-session box (OK box): `完了済みです。これまでの記録で確認できます。`
 
 ### History screen
 - Heading: `これまでの記録`; empty state: `記録はまだありません。`
-- Entry date block: day numeral; under it `{month}月` then `（{weekday}）`
+- Entry date: a single line `MM/DD(曜)` (zero-padded month and day,
+  weekday as one character in half-width parentheses), e.g. `11/13(金)`
 - Per-exercise note prefix: `種目メモ： {note}`
 - Session total suffix: `レップ`
 - Sets display: values joined with ` / `, then a space and the unit
@@ -191,6 +200,7 @@ All three notice boxes share: 1px solid border, radius 10px, padding
   9.5 `ほぼ限界`, 10 `限界`. Shown as `（RPE {rpe} {word}）`.
 
 ### Settings screen
+- Back button (top-left, above the profile heading): `← ホームに戻る`
 - Headings: `プロフィール（初回設定）`, `データ`
 - Field labels: `年齢` / `性別` / `身長（cm）` / `体重（kg）` /
   `体脂肪などの補足` / `運動習慣の補足`
@@ -227,7 +237,7 @@ Shown verbatim at the bottom of every screen, after the app area:
 
 ### Header
 - Flex row, space-between, gap 12px, margin-bottom 12px,
-  **padding-right 54px** (so the Day numeral never sits under the gear).
+  **padding-right 44px** (so the Day numeral never sits under the gear).
 - Left: date in 13px `--sub`, format `M/D（曜）` (e.g. `11/13（金）`); under
   it the purpose line, 16px bold `--text`: `器具なし / 筋力・筋肥大`.
 - Right, right-aligned: `Day` in 14px bold `--sub` (4px right margin),
@@ -239,12 +249,20 @@ Shown verbatim at the bottom of every screen, after the app area:
   logged session history.
 
 ### Settings gear button
-- Settings is **not** a nav segment. A round button `⚙`: **position
-  fixed, top 10px, right 10px**, z-index 60, **44×44px**, radius 50%,
-  1px solid `--border`, `--surface` fill, `--text`, font-size 21px. It
+- Settings is **not** a nav segment. The button is deliberately
+  inconspicuous: **position fixed, top 10px, right 10px**, z-index 60,
+  **34×34px**, radius 50%, 1px solid `--border`, `--surface` fill. It
   stays at the top-right while scrolling and opens the settings screen.
-- State — settings open: fill `--accent`, text `--on-accent`, border
-  `--accent`. Otherwise the base style above.
+- Icon: an **inline SVG gear** — thin line drawing, stroke width 1.5,
+  **no fill**, **18×18px**, in the button's colour `--sub` (`#9ca3af`).
+  Never the ⚙ emoji character.
+- **One style in every state**: no hover change, no active change, and
+  no change while the settings screen is open. The button is always
+  the same muted gray; only its position and shape say it can be
+  pressed.
+- **Visibility**: shown **only** on the pain screen (home) and on the
+  settings screen. It is hidden on the workout screen and on the
+  history screen.
 
 ### Segment navigation
 - A row of segment buttons: gap **6px**, margin 12px 0, wrap allowed.
@@ -252,7 +270,7 @@ Shown verbatim at the bottom of every screen, after the app area:
   radius **8px**, no border, font **14px weight 600** — **not** pills.
 - Active segment: `--accent` fill, `--on-accent` text.
 - Inactive segments: `--surface` fill, `--text`.
-- Exactly 3 segments: 痛みの記録 / メニュー / これまでの記録. There is no
+- Exactly 3 segments: 痛みの記録 / ワークアウト / これまでの記録. There is no
   Result segment (results are merged into これまでの記録） and no
   Settings segment.
 
@@ -289,7 +307,7 @@ Shown verbatim at the bottom of every screen, after the app area:
     radius 2px, gap 3px; the first *level* ticks are lit, the rest
     unlit, with the colours from the ramp table.
 
-### Week dot row (menu screen only)
+### Week dot row (workout screen only)
 - A flex row, space-between, margin **16px 8px 2px**. Seven cells
   （月〜日， Monday first), each **34px** wide: weekday letter over a dot,
   column gap 7px. **No day numbers anywhere in this row.**
@@ -303,7 +321,7 @@ Shown verbatim at the bottom of every screen, after the app area:
   day also has a completed session, in which case the 18px circle is
   filled `--accent`.
 
-### Ring gauge (menu screen)
+### Ring gauge (workout screen)
 - **150×150px**, margin 20px auto 4px. SVG ring: radius 62,
   **stroke width 13**, track `--border`, arc `--accent`, arc line cap
   round, arc rotated to start at the top.
@@ -313,7 +331,7 @@ Shown verbatim at the bottom of every screen, after the app area:
 - The arc shows the fraction completed / total; at 0 completed the arc
   is empty, at all completed it is a full circle.
 
-### Session title block (menu screen)
+### Session title block (workout screen)
 - Centred, margin-top 12px. Session title: 20px bold `--text`,
   `{rotation} {title}`.
 - Under it, 13px `--sub`, margin-top 3px: `あと{n}種目` — or `全種目完了`
@@ -325,7 +343,7 @@ Shown verbatim at the bottom of every screen, after the app area:
   1.55, list padding-left 18px. Quietly under the title — never above
   the gauge.
 
-### Three metrics (menu screen)
+### Three metrics (workout screen)
 - A flex row, margin **20px 0 8px**; three equal cells, centred, padding
   2px 6px, separated by 1px `--border` hairlines (left border on the
   2nd and 3rd cells).
@@ -336,7 +354,7 @@ Shown verbatim at the bottom of every screen, after the app area:
   completed exercises plus any logged sets of uncompleted ones);
   cumulative completed sessions with label `累計回`.
 
-### Menu exercise cards
+### Workout exercise cards
 - Card: fill `--surface-2` (`#1a1a1a`, darker than the pain tiles),
   **no border**, radius 12px, padding **18px 20px**, margin 12px 0.
 - Header row (flex, space-between, gap 14px):
@@ -379,7 +397,7 @@ Shown verbatim at the bottom of every screen, after the app area:
   - Saving from the card always saves the sets / RPE / note with
     completed = true, and the gauge, metrics and week dots update.
 
-### Countdown timer (timed exercises, on the menu card)
+### Countdown timer (timed exercises, on the workout card)
 - Placed inside the card after the note hint, margin-top 14px: a box
   with fill `--bg`, radius **10px**, padding 12px.
 - Remaining seconds as a **38px Barlow Condensed numeral** in `--text`
@@ -396,14 +414,14 @@ Shown verbatim at the bottom of every screen, after the app area:
   WebAudio). The timer **never writes to the record**; the set inputs
   stay manual.
 
-### Finish area (menu screen)
+### Finish area (workout screen)
 - Its own card: fill `--surface-2`, no border, radius 12px, padding
   14px, margin 12px 0 — present only while today's session is not
   completed.
 - Inside: a full-width primary CTA with margin-top 0:
   `今日のトレーニングを完了する`.
 - Under it, the cancel link: block, centred, margin 14px auto 2px, no
-  background or border, 14px `--sub`, underlined: `このメニューを取り消す`.
+  background or border, 14px `--sub`, underlined: `このワークアウトを取り消す`.
 - State — cancelling (after tapping the link): the link is replaced, in
   place, by a centred confirmation: the confirmation text in 13px
   `--sub`, then a centred button row (gap 8px, margin-top 10px) with
@@ -412,9 +430,9 @@ Shown verbatim at the bottom of every screen, after the app area:
   state; `やめる` restores the link.
 - State — session completed: the finish card is replaced by an OK box:
   `完了済みです。これまでの記録で確認できます。`
-- State — no session yet (menu screen): the text
+- State — no session yet (workout screen): the text
   `今日のセッションはまだありません。`, then a primary CTA
-  `今日のメニューを作る`, then an error line (`.error`) under it.
+  `今日のワークアウトを作る`, then an error line (`.error`) under it.
 
 ### History entries (results merged in)
 - There is no separate Result screen. Completing today's session — and
@@ -424,10 +442,13 @@ Shown verbatim at the bottom of every screen, after the app area:
   `--border` bottom border — **no card frames**, a quiet list. Entry
   padding 16px 0 14px.
 - Entry header (flex, gap 14px, top-aligned):
-  - Left column, width **54px**, centred: the day number as a **46px
-    Barlow Condensed numeral** in `--text` (line height 1); under it,
-    12px `--sub`, line height 1.35, margin-top 2px, two lines:
-    `{month}月` then `（{weekday}）`.
+  - Left: the date as **one line**, `MM/DD(曜)` — zero-padded month and
+    day, the weekday as one character in half-width parentheses (e.g.
+    `11/13(金)`, `11/08(土)`) — **17px**, the numerals in Barlow
+    Condensed, `--text`, line height 1.3, in a **78px**-wide column
+    with 2px top padding, no wrapping. There is no stacked day-number
+    block; the whole date string is one size, balanced against the
+    16px list text.
   - Centre (flexible): the rotation name in 16px weight 700 `--text`
     (`{rotation} {title}`); any pain adjustment note in 12px
     `--accent`, margin 1px 0 3px, one line.
@@ -462,8 +483,12 @@ Shown verbatim at the bottom of every screen, after the app area:
 
 ### Settings screen
 - Opened only via the gear button; it replaces the app area (header,
-  gear and nav remain; no nav segment is active, the gear shows its
-  active state).
+  gear and nav remain; no nav segment is active; the gear keeps its
+  one muted style — it has no active state).
+- At the top-left of the content, the back button: `← ホームに戻る` —
+  no background, no border, 14px `--sub`, a left arrow followed by the
+  label, quiet like a text link. Tapping it returns to the pain screen
+  (home).
 - Heading `プロフィール（初回設定）`, then the form grid: CSS grid,
   columns `repeat(auto-fit, minmax(150px, 1fr))`, gap **12px**, margin
   10px 0. Fields in order: 年齢 / 性別 / 身長（cm） / 体重（kg） (normal
@@ -485,7 +510,7 @@ Shown verbatim at the bottom of every screen, after the app area:
 
 ### Form uniformity
 - Generic controls — every `input` (text/number), `select` and
-  `textarea` outside the menu exercise cards — share one geometry:
+  `textarea` outside the workout exercise cards — share one geometry:
   **height 42px**, padding 0 10px, radius **8px**, 1px solid
   `--border`, fill `--surface-2`, `--text`, **font 16px** (prevents
   iOS zoom), `box-sizing: border-box`. Textarea exception: height
@@ -496,8 +521,8 @@ Shown verbatim at the bottom of every screen, after the app area:
   width.
 - Settings fields sit on the regular grid described above; no field is
   sized ad hoc.
-- The menu exercise cards deliberately use their own black-field
-  geometry (see "Menu exercise cards"), uniform within the card.
+- The workout exercise cards deliberately use their own black-field
+  geometry (see "Workout exercise cards"), uniform within the card.
 
 ### Primary CTA
 - Full width (100%, border-box), **padding 16px**, radius **8px**, no
@@ -507,8 +532,8 @@ Shown verbatim at the bottom of every screen, after the app area:
 
 ### Date display — only two forms
 - Dates may appear **only** in these two shapes: (a) the header's
-  `M/D（曜）`, (b) the history list's day number + `{month}月` /
-  `（{weekday}）`. Full date strings (`YYYY-MM-DD`, `○年○月○日`, long
+  `M/D（曜）`, (b) the history list's single-line `MM/DD(曜)`. Full
+  date strings (`YYYY-MM-DD`, `○年○月○日`, long
   weekday forms, dates inside reason texts) are banned on every screen.
   The week dot row carries weekday letters only — no dates, no day
   numbers, and no week boxes.
@@ -519,22 +544,23 @@ Shown verbatim at the bottom of every screen, after the app area:
 1. Missing-profile warning box (only when no profile is saved)
 2. Header (date + purpose / Day + cumulative reps)
 3. Segment navigation （痛みの記録 active)
-4. Settings gear (fixed, top-right — present on every screen)
+4. Settings gear (fixed, top-right — shown on this screen and on the
+   settings screen only)
 5. `まず、警告サインの確認` — heading, description, warning-sign chips
 6. `今日の筋肉痛は？（部位ごと）` — heading, description, legend badges,
    2-column tiles (10 parts)
 7. `今日の関節痛は？（関節ごと）` — heading, description, legend badges,
    2-column tiles (7 joints)
-8. Primary CTA （痛みの記録を保存， or 今日の結果を見る when today's
-   session is completed)
+8. Primary CTA （痛みの記録を保存； ワークアウトを開始 once saved with no
+   further edits; 今日の結果を見る when today's session is completed)
 9. Assessment box (care warning / rest-day warning / OK box), when an
    assessment exists
 10. Guidance caution boxes (duration notices), if any
 11. Overload caution box (24-hour rule), if any
 12. Footer note `判定基準について` (present on every screen)
 
-### 2. Menu （メニュー）
-1. Header; segment navigation （メニュー active); gear
+### 2. Workout （ワークアウト）
+1. Header; segment navigation （ワークアウト active); no gear
 2. Week dot row
 3. Ring gauge
 4. Session title block (title, remaining line, focus note,
@@ -543,24 +569,25 @@ Shown verbatim at the bottom of every screen, after the app area:
 6. One exercise card per exercise (timer inside the card for timed
    exercises)
 7. Finish area — or the completed OK box — or, when there is no
-   session yet, the empty-state text + `今日のメニューを作る` CTA +
+   session yet, the empty-state text + `今日のワークアウトを作る` CTA +
    error line
 8. Footer note
 
 ### 3. History （これまでの記録）
-1. Header; segment navigation （これまでの記録 active); gear
+1. Header; segment navigation （これまでの記録 active); no gear
 2. Heading `これまでの記録` (or the empty-state text)
 3. Entries, newest first, in the list form above; an entry in edit
    mode shows its edit cards in place
 4. Footer note
 
 ### 4. Settings （設定， via the gear)
-1. Header; segment navigation (no segment active); gear in its active
-   state
-2. Heading `プロフィール（初回設定）`; the uniform form grid; `保存`
-3. Heading `データ`; the data note; `データを消す`; the confirmation
+1. Header; segment navigation (no segment active); gear visible in
+   its usual muted style
+2. Back button `← ホームに戻る` (top-left of the content)
+3. Heading `プロフィール（初回設定）`; the uniform form grid; `保存`
+4. Heading `データ`; the data note; `データを消す`; the confirmation
    block below it when open
-4. Footer note
+5. Footer note
 
 ## Scope boundary for design work
 
@@ -581,7 +608,7 @@ Shown verbatim at the bottom of every screen, after the app area:
   destructive actions; do not use the caution amber anywhere except
   guidance notice boxes.
 - Do not replace the segment navigation with pills or a sidebar.
-- Do not add a week strip, week boxes, or day numbers to the menu
+- Do not add a week strip, week boxes, or day numbers to the workout
   screen — the week dot row (letters + dots only) is the whole of it.
 - Do not drop Barlow Condensed for the numerals.
 - Do not add explanatory prose outside the two places allowed by the
