@@ -1,7 +1,10 @@
 import {
-  EXERCISES, ROTATIONS, SUBSTITUTES, INTRO_SESSIONS, RED_FLAGS, JOINT_TO_MUSCLE_PARTS,
+  EXERCISES, ROTATIONS, SUBSTITUTES, INTRO_SESSIONS, JOINT_TO_MUSCLE_PARTS,
   type ExerciseDef,
 } from "./exercises";
+import {
+  SRV, jointName, partName, redFlagLabel, subjectName, type Lang,
+} from "./i18n";
 
 export interface Profile {
   age: number | null; sex: string; heightCm: number | null; weightKg: number | null;
@@ -41,6 +44,8 @@ export interface Store {
   nextSessionId: number; nextExerciseId: number;
   /** Append-only log of profile edits (empty for data saved before it existed). */
   profileHistory: ProfileHistoryEntry[];
+  /** UI language ("ja" | "en"); absent means Japanese (data saved before it existed). */
+  lang?: Lang;
 }
 export const emptyStore = (): Store => ({ profile: null, pain: [], sessions: [], nextSessionId: 1, nextExerciseId: 1, profileHistory: [] });
 
@@ -79,32 +84,31 @@ export interface Assessment {
   care: boolean; careReasons: string[]; rest: boolean; restReason: string;
   parts: PartAssessment[]; excludedParts: string[]; reducedParts: string[];
 }
-export function assessPain(entry: PainEntry | null): Assessment {
+export function assessPain(entry: PainEntry | null, lang: Lang = "ja"): Assessment {
+  const T = SRV[lang];
   const parts: PartAssessment[] = [];
   if (entry) {
     for (const [subject, level] of Object.entries(entry.soreness)) {
       const reasons: string[] = [];
       let action: PartAssessment["action"] = "train";
-      if (level >= 3) { action = "exclude"; reasons.push(`筋肉痛レベル${level}: その部位は除外`); }
-      else if (level === 2) { action = "reduce"; reasons.push("筋肉痛レベル2: 負荷を下げて実施（進行はしない）"); }
+      if (level >= 3) { action = "exclude"; reasons.push(T.assessMuscleExclude(level)); }
+      else if (level === 2) { action = "reduce"; reasons.push(T.assessMuscleReduce); }
       parts.push({ subject, kind: "muscle", level, action, reasons });
     }
     for (const [subject, level] of Object.entries(entry.jointPain)) {
       const reasons: string[] = [];
       let action: PartAssessment["action"] = "train";
-      if (level >= 3) { action = "exclude"; reasons.push(`関節痛レベル${level}: その関節を使う種目は除外`); }
-      else if (level === 2) { action = "reduce"; reasons.push("関節痛レベル2: 関節は筋肉より厳しめに、負荷を下げて進行しません"); }
+      if (level >= 3) { action = "exclude"; reasons.push(T.assessJointExclude(level)); }
+      else if (level === 2) { action = "reduce"; reasons.push(T.assessJointReduce); }
       parts.push({ subject, kind: "joint", level, action, reasons });
     }
   }
-  const careReasons = (entry?.redFlags ?? []).map(
-    (id) => `警告サイン「${RED_FLAGS.find((f) => f.id === id)?.label ?? id}」: 受診目安のため開始不可`,
-  );
+  const careReasons = (entry?.redFlags ?? []).map((id) => T.careReason(redFlagLabel(id, lang)));
   const strongParts = parts.filter((p) => p.kind === "muscle" && p.level >= 4);
   const rest = careReasons.length === 0 && strongParts.length >= 2;
   return {
     care: careReasons.length > 0, careReasons,
-    rest, restReason: rest ? `レベル4以上の筋肉痛が${strongParts.length}部位あります` : "",
+    rest, restReason: rest ? T.restReason(strongParts.length) : "",
     parts,
     excludedParts: parts.filter((p) => p.action === "exclude").map((p) => p.subject),
     reducedParts: parts.filter((p) => p.action === "reduce").map((p) => p.subject),
@@ -127,7 +131,7 @@ export interface OverloadInfo {
   subject: string; kind: "muscle" | "joint";
   sessionDate: string; baseline: number; nextLevel: number; reason: string;
 }
-export function detectOverload(store: Store): OverloadInfo[] {
+export function detectOverload(store: Store, lang: Lang = "ja"): OverloadInfo[] {
   const completed = store.sessions.filter((s) => s.status === "completed").sort((a, b) => a.date.localeCompare(b.date));
   const last = completed[completed.length - 1];
   if (!last) return [];
@@ -145,7 +149,7 @@ export function detectOverload(store: Store): OverloadInfo[] {
     if (nextLevel > baseline) {
       out.push({
         subject, kind, sessionDate: last.date, baseline, nextLevel,
-        reason: `24時間ルール: ${subject}の痛みが前回セッションの翌日に${baseline}→${nextLevel}へ戻っていないため過負荷と判定し、次回は軽減・進行なし`,
+        reason: SRV[lang].overloadReason(subjectName(subject, lang), baseline, nextLevel),
       });
     }
   };
@@ -169,7 +173,7 @@ export interface PainGuidance {
   subject: string; kind: "muscle" | "joint"; days: number;
   severity: "caution" | "care"; message: string;
 }
-export function painDurationGuidance(store: Store): PainGuidance[] {
+export function painDurationGuidance(store: Store, lang: Lang = "ja"): PainGuidance[] {
   const entries = [...store.pain].sort((a, b) => a.date.localeCompare(b.date));
   if (!entries.length) return [];
   const streak = (get: (e: PainEntry) => number): number => {
@@ -183,16 +187,17 @@ export function painDurationGuidance(store: Store): PainGuidance[] {
     return days;
   };
   const out: PainGuidance[] = [];
+  const T = SRV[lang];
   const muscleParts = new Set(entries.flatMap((e) => Object.keys(e.soreness)));
   for (const part of muscleParts) {
     const days = streak((e) => e.soreness[part] ?? 0);
-    if (days >= 5) out.push({ subject: part, kind: "muscle", days, severity: "care", message: `筋肉痛（${part}）が${days}日続いています。5日以上改善しない場合は受診が目安です` });
+    if (days >= 5) out.push({ subject: part, kind: "muscle", days, severity: "care", message: T.guidanceMuscleCare(partName(part, lang), days) });
   }
   const joints = new Set(entries.flatMap((e) => Object.keys(e.jointPain)));
   for (const joint of joints) {
     const days = streak((e) => e.jointPain[joint] ?? 0);
-    if (days >= 14) out.push({ subject: joint, kind: "joint", days, severity: "care", message: `関節痛（${joint}）が${days}日続いています。2週間改善しない場合は受診が目安です` });
-    else if (days >= 7) out.push({ subject: joint, kind: "joint", days, severity: "caution", message: `関節痛（${joint}）が${days}日続いています。1週間を超えたので注意してください（2週間改善しなければ受診目安）` });
+    if (days >= 14) out.push({ subject: joint, kind: "joint", days, severity: "care", message: T.guidanceJointCare(jointName(joint, lang), days) });
+    else if (days >= 7) out.push({ subject: joint, kind: "joint", days, severity: "caution", message: T.guidanceJointCaution(jointName(joint, lang), days) });
   }
   return out;
 }
@@ -213,7 +218,8 @@ export function isCannotDo(prev: SessionExercise): boolean {
   return allZero || memoCannot;
 }
 
-export function decideNext(def: ExerciseDef, prev: SessionExercise | null, intro: boolean): NextDecision {
+export function decideNext(def: ExerciseDef, prev: SessionExercise | null, intro: boolean, lang: Lang = "ja"): NextDecision {
+  const T = SRV[lang];
   const notes: string[] = [];
   let ladder = intro ? Math.max(0, def.defaultLadder - 1) : def.defaultLadder;
   let targetSets = intro ? Math.max(1, def.baseSets - 1) : def.baseSets;
@@ -222,7 +228,7 @@ export function decideNext(def: ExerciseDef, prev: SessionExercise | null, intro
   let substitutedFrom: string | undefined;
 
   if (!prev) {
-    notes.push(intro ? "初回（導入期：易しい形・セット減）" : "初回");
+    notes.push(intro ? T.noteFirstIntro : T.noteFirst);
     return { baseId, ladderIndex: ladder, targetReps, targetSets, notes };
   }
 
@@ -239,15 +245,15 @@ export function decideNext(def: ExerciseDef, prev: SessionExercise | null, intro
     if (ladder > 0) {
       ladder -= 1;
       targetReps = def.baseTarget;
-      notes.push(`できない種目の切り替え: 1段階易しい「${def.ladder[ladder]}」へ（メモ: ${memo || "記録0回"}）`);
+      notes.push(T.noteCannotLadder(def.ladder[ladder], memo || T.noteCannotNoReps));
     } else if (SUBSTITUTES[def.baseId]) {
       const sub = EXERCISES[SUBSTITUTES[def.baseId]];
       substitutedFrom = def.baseId; baseId = sub.baseId; ladder = 0;
       targetReps = sub.baseTarget; targetSets = intro ? Math.max(1, sub.baseSets - 1) : sub.baseSets;
-      notes.push(`できない種目の切り替え: 最易段階のため同部位の別種目「${sub.name}（${sub.ladder[0]}）」へ`);
+      notes.push(T.noteCannotSubstitute(sub.name, sub.ladder[0]));
     } else {
       targetReps = Math.max(1, Math.floor(targetReps / 2));
-      notes.push("できない種目の切り替え: 回数を半分に軽減");
+      notes.push(T.noteCannotHalve);
     }
     return { baseId, ladderIndex: ladder, targetReps, targetSets, notes, substitutedFrom };
   }
@@ -256,21 +262,21 @@ export function decideNext(def: ExerciseDef, prev: SessionExercise | null, intro
   if (memo) {
     if (/痛|違和感/.test(memo)) {
       if (ladder > 0) ladder -= 1; else targetReps = def.unit === "秒" ? round5(targetReps * 0.8) : Math.max(1, targetReps - 3);
-      notes.push(`種目メモの反映: 「${memo}」→ 負荷を下げました`);
+      notes.push(T.noteMemoPain(memo));
       return { baseId, ladderIndex: ladder, targetReps, targetSets, notes };
     }
     if (/きつ|しんど|つら|限界/.test(memo)) {
       targetReps = def.unit === "秒" ? round5(targetReps * 0.9) : Math.max(1, targetReps - 2);
-      notes.push(`種目メモの反映: 「${memo}」→ 進行せず軽減`);
+      notes.push(T.noteMemoHard(memo));
       return { baseId, ladderIndex: ladder, targetReps, targetSets, notes };
     }
     if (/楽だった|楽に|余裕/.test(memo)) {
       targetReps = def.unit === "秒" ? round5(targetReps * 1.25) : targetReps + 3;
-      notes.push(`種目メモの反映: 「${memo}」→ 多めに増加`);
+      notes.push(T.noteMemoEasy(memo));
       return { baseId, ladderIndex: ladder, targetReps, targetSets, notes };
     }
     if (/ちょうど/.test(memo)) {
-      notes.push(`種目メモの反映: 「${memo}」→ 維持`);
+      notes.push(T.noteMemoJust(memo));
       return { baseId, ladderIndex: ladder, targetReps, targetSets, notes };
     }
   }
@@ -278,46 +284,48 @@ export function decideNext(def: ExerciseDef, prev: SessionExercise | null, intro
   // 3) RPE + achievement step adjustment (at most one ladder step per session)
   const rpe = prev.rpe;
   if (rpe === null || rpe === undefined) {
-    notes.push("RPE未記録のため前回と同じ負荷");
+    notes.push(T.noteNoRpe);
     return { baseId, ladderIndex: ladder, targetReps, targetSets, notes };
   }
   const achPct = Math.round(achievement * 100);
   if (rpe <= 6.5 && achievement >= 0.8) {
     if (achievement >= 1 && rpe <= 7 && ladder < def.ladder.length - 1) {
       ladder += 1; targetReps = def.baseTarget;
-      notes.push(`RPE ${rpe}・達成率 ${achPct}%: 難易度を1段階上げて「${def.ladder[ladder]}」へ`);
+      notes.push(T.noteRpeLadderUp(rpe, achPct, def.ladder[ladder]));
     } else if (def.unit === "秒") {
       targetReps = round5(targetReps * 1.25);
-      notes.push(`RPE ${rpe}・達成率 ${achPct}%: 秒数を+25%`);
+      notes.push(T.noteRpeSecondsUp(rpe, achPct));
     } else {
       targetReps = clamp(targetReps + 3, 1, 40);
-      notes.push(`RPE ${rpe}・達成率 ${achPct}%: 回数を+3`);
+      notes.push(T.noteRpeRepsPlus3(rpe, achPct));
     }
   } else if (rpe <= 8.5) {
-    if (def.unit === "秒") { targetReps = round5(targetReps * 1.1); notes.push(`RPE ${rpe}・達成率 ${achPct}%: 秒数を+10%`); }
-    else { targetReps = clamp(targetReps + 1, 1, 40); notes.push(`RPE ${rpe}・達成率 ${achPct}%: 適正域のため+1`); }
+    if (def.unit === "秒") { targetReps = round5(targetReps * 1.1); notes.push(T.noteRpeMidSeconds(rpe, achPct)); }
+    else { targetReps = clamp(targetReps + 1, 1, 40); notes.push(T.noteRpeMidPlus1(rpe, achPct)); }
   } else if (rpe >= 9.5) {
     if (achievement < 0.6 && ladder > 0) {
       ladder -= 1; targetReps = def.baseTarget;
-      notes.push(`RPE ${rpe}・達成率 ${achPct}%: 難易度を1段階下げて「${def.ladder[ladder]}」へ`);
+      notes.push(T.noteRpeLadderDown(rpe, achPct, def.ladder[ladder]));
     } else {
       targetReps = def.unit === "秒" ? round5(targetReps * 0.85) : Math.max(1, targetReps - 2);
-      notes.push(`RPE ${rpe}・達成率 ${achPct}%: 負荷を下げました`);
+      notes.push(T.noteRpeLoadDown(rpe, achPct));
     }
   } else { // rpe 9前後
-    if (achievement >= 0.8) notes.push(`RPE ${rpe}・達成率 ${achPct}%: 維持`);
-    else { targetReps = Math.max(1, targetReps - 1); notes.push(`RPE ${rpe}・達成率 ${achPct}%: -1回`); }
+    if (achievement >= 0.8) notes.push(T.noteRpeKeep(rpe, achPct));
+    else { targetReps = Math.max(1, targetReps - 1); notes.push(T.noteRpeMinus1(rpe, achPct)); }
   }
   return { baseId, ladderIndex: ladder, targetReps, targetSets, notes };
 }
 
 // ---------- session generation ----------
-export function generateSession(store: Store, date: string, assessment: Assessment): Session {
+export function generateSession(store: Store, date: string, assessment: Assessment, lang: Lang = "ja"): Session {
+  const T = SRV[lang];
   const completedCount = store.sessions.filter((s) => s.status === "completed").length;
   const intro = completedCount < INTRO_SESSIONS;
   const rotation = ROTATIONS[store.sessions.length % ROTATIONS.length];
   const notes: string[] = [];
   const exercises: SessionExercise[] = [];
+  let excludedFlag = false;
 
   // Pain application sets. A joint problem reaches an exercise two ways:
   // directly (the exercise loads that joint) and through the explicit
@@ -328,7 +336,7 @@ export function generateSession(store: Store, date: string, assessment: Assessme
   const excludedJoints = painSet("exclude", "joint"), reducedJoints = painSet("reduce", "joint");
   const viaMap = (joints: Set<string>, part: string) =>
     [...joints].filter((j) => (JOINT_TO_MUSCLE_PARTS[j] ?? []).includes(part));
-  const overload = detectOverload(store);
+  const overload = detectOverload(store, lang);
   const overloadMuscles = new Set(overload.filter((o) => o.kind === "muscle").map((o) => o.subject));
   const overloadJoints = new Set(overload.filter((o) => o.kind === "joint").map((o) => o.subject));
 
@@ -339,29 +347,30 @@ export function generateSession(store: Store, date: string, assessment: Assessme
       .flatMap((s) => s.exercises.map((e) => ({ s, e })))
       .find(({ s, e }) => s.status === "completed" && e.baseId === baseId)?.e ?? null;
 
-    const decision = decideNext(def, prev, intro && !prev);
+    const decision = decideNext(def, prev, intro && !prev, lang);
     const finalDef = EXERCISES[decision.baseId];
     const jointDirect = (set: Set<string>) => finalDef.jointParts.filter((j) => set.has(j));
     const excludeWhy: string[] = [];
-    if (excludedMuscles.has(finalDef.painPart)) excludeWhy.push(finalDef.painPart);
-    for (const j of jointDirect(excludedJoints)) excludeWhy.push(`関節痛: ${j}`);
-    for (const j of viaMap(excludedJoints, finalDef.painPart)) excludeWhy.push(`関節→部位マッピング: ${j}→${finalDef.painPart}`);
+    if (excludedMuscles.has(finalDef.painPart)) excludeWhy.push(partName(finalDef.painPart, lang));
+    for (const j of jointDirect(excludedJoints)) excludeWhy.push(T.whyJoint(jointName(j, lang)));
+    for (const j of viaMap(excludedJoints, finalDef.painPart)) excludeWhy.push(T.whyJointMap(jointName(j, lang), partName(finalDef.painPart, lang)));
     if (excludeWhy.length) {
-      notes.push(`痛み基準で除外: ${finalDef.name}（${[...new Set(excludeWhy)].join(" / ")}）`);
+      excludedFlag = true;
+      notes.push(T.genExcluded(finalDef.name, [...new Set(excludeWhy)].join(" / ")));
       continue;
     }
     let { targetReps, targetSets } = decision;
     const reduceWhy: string[] = [];
-    if (reducedMuscles.has(finalDef.painPart)) reduceWhy.push(finalDef.painPart);
-    for (const j of jointDirect(reducedJoints)) reduceWhy.push(`関節痛: ${j}`);
-    for (const j of viaMap(reducedJoints, finalDef.painPart)) reduceWhy.push(`関節→部位マッピング: ${j}→${finalDef.painPart}`);
+    if (reducedMuscles.has(finalDef.painPart)) reduceWhy.push(partName(finalDef.painPart, lang));
+    for (const j of jointDirect(reducedJoints)) reduceWhy.push(T.whyJoint(jointName(j, lang)));
+    for (const j of viaMap(reducedJoints, finalDef.painPart)) reduceWhy.push(T.whyJointMap(jointName(j, lang), partName(finalDef.painPart, lang)));
     const reduce = (why: string) => {
       targetReps = finalDef.unit === "秒" ? round5(targetReps * 0.8) : Math.max(1, Math.floor(targetReps * 0.8));
       notes.push(why);
     };
     let reducedByPain = false;
     if (reduceWhy.length) {
-      reduce(`痛み基準で軽減: ${finalDef.name}（${[...new Set(reduceWhy)].join(" / ")}）`);
+      reduce(T.genReduced(finalDef.name, [...new Set(reduceWhy)].join(" / ")));
       reducedByPain = true;
     }
     // 24-hour rule: an overloaded part is reduced and not progressed. If the
@@ -370,8 +379,8 @@ export function generateSession(store: Store, date: string, assessment: Assessme
       ? overload.find((o) => o.kind === "muscle" && o.subject === finalDef.painPart)
       : overload.find((o) => o.kind === "joint" && finalDef.jointParts.includes(o.subject));
     if (overloadHit) {
-      if (reducedByPain) notes.push(`24時間ルール: ${finalDef.name}（${overloadHit.reason}）`);
-      else reduce(`24時間ルールで軽減: ${finalDef.name}（${overloadHit.reason}）`);
+      if (reducedByPain) notes.push(T.genOverloadNote(finalDef.name, overloadHit.reason));
+      else reduce(T.genOverloadReduce(finalDef.name, overloadHit.reason));
     }
     notes.push(...decision.notes.map((n) => `${finalDef.name}: ${n}`));
     exercises.push({
@@ -382,12 +391,12 @@ export function generateSession(store: Store, date: string, assessment: Assessme
       loggedSets: Array(targetSets).fill(0), rpe: null, completed: false, note: "",
     });
   }
-  const excludedAny = notes.some((n) => n.startsWith("痛み基準で除外"));
+  const excludedAny = excludedFlag;
   return {
     id: store.nextSessionId++, date, rotation: rotation.id,
-    title: rotation.title + (excludedAny ? "（代替）" : ""),
+    title: rotation.title + (excludedAny ? T.titleAltSuffix : ""),
     status: "planned", intro,
-    focusNote: excludedAny ? "痛みの基準で一部の部位を外した代替ワークアウト" : "",
+    focusNote: excludedAny ? T.focusNoteAlt : "",
     progressionNotes: notes, exercises, totalVolume: 0,
   };
 }

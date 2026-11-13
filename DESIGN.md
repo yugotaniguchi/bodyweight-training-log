@@ -892,6 +892,39 @@ switch:
   the report's monthly summary label `{YYYY}年{M}月` (a month, not a
   day — the only place a year is shown).
 
+## Internationalization (ja / en)
+- The UI language is a setting on the settings screen （日本語 /
+  English), Japanese by default, stored server-side in the store
+  (`lang`; absent means Japanese). Switching re-renders every screen
+  in place — no reload — and the choice survives restarts and is
+  shared by every browser, because the server owns it.
+- All UI wording is dictionary-managed: no display string is hardcoded
+  in the rendering code. The "Exact UI text" sections above are
+  normative **in Japanese**; for every one of those strings an English
+  equivalent must exist in the dictionary (and vice versa — no string
+  may exist in only one language).
+- Server-generated text follows the same setting: assessment reasons,
+  duration guidance, progression notes, validation messages, error
+  reasons, and the token-auth login page are produced from per-language
+  templates on the server (`src/i18n.ts`), never by translating on the
+  client. Decision logic (thresholds, branches, amounts) is identical
+  in both languages.
+- Display words derived from data keys — body parts, joints, muscle
+  groups, rotation names, warning-sign labels, difficulty-level words —
+  have English display equivalents in the dictionary; the stored keys
+  stay Japanese. Exercise and variation names are training data and
+  are never translated.
+- Weekday notation follows the language while the date shapes above
+  stay fixed: Japanese uses the fullwidth form `11/13(金)` /
+  `11/13（金）`; English uses the halfwidth form with the three-letter
+  English weekday, `11/13(Fri)`. The week dot row's letters and the
+  monthly summary label localize the same way (`Fri`, `Nov 2026`).
+- Strings frozen into saved data (a session's progression notes, the
+  stored profile-history labels) keep the language they were written
+  in; only newly generated text uses the current language.
+- The PWA manifest (app name, description) stays Japanese regardless
+  of the setting.
+
 ## Screen compositions
 
 ### 1. Condition （コンディション）

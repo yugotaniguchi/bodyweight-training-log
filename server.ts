@@ -4,6 +4,7 @@ import { assessPain, detectOverload, diffProfile, generateSession, painDurationG
 import { MUSCLE_PARTS, JOINTS, RED_FLAGS, EXERCISES, ROTATIONS } from "./src/exercises";
 import { loadStore, saveStore, resetStore } from "./src/store";
 import { InvalidInput, parseProfile, parseStoreImport, validNote, validPainLevel, validReps, validRpe } from "./src/validate";
+import { SRV, VMSG, isLang, langOf, redFlagLabel, rotationTitle, type Lang } from "./src/i18n";
 import { ICON_192_BASE64, ICON_512_BASE64, ICON_MASKABLE_512_BASE64, APPLE_TOUCH_ICON_BASE64 } from "./src/icons";
 import { logEvent } from "./src/log";
 
@@ -37,13 +38,14 @@ const isAuthed = (req: Request): boolean => {
   const cookie = req.headers.get("cookie") ?? "";
   return cookie.split(/;\s*/).some((p) => p === `${AUTH_COOKIE}=${AUTH_VALUE}`);
 };
-function loginPage(error: boolean): Response {
+function loginPage(error: boolean, lang: Lang): Response {
+  const T = SRV[lang];
   const html = `<!DOCTYPE html>
-<html lang="ja">
+<html lang="${lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ログイン — 自重トレーニング記録</title>
+<title>${T.loginButton} — 自重トレーニング記録</title>
 <meta name="theme-color" content="#0f0f0f">
 <style>
 body{font-family:system-ui,sans-serif;font-size:16px;background:#0f0f0f;color:#f0f0f0;max-width:680px;margin:0 auto;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));line-height:1.6}
@@ -57,19 +59,22 @@ button{display:block;width:100%;box-sizing:border-box;margin-top:20px;padding:16
 </head>
 <body>
 <h1>自重トレーニング記録</h1>
-<p class="sub">続けるにはトークンを入力してください。</p>
-${error ? `<p class="error">トークンが違います</p>` : ""}
+<p class="sub">${T.loginSub}</p>
+${error ? `<p class="error">${T.loginError}</p>` : ""}
 <form method="POST" action="/login">
-<label for="token">トークン</label>
+<label for="token">${T.loginLabel}</label>
 <input id="token" name="token" type="password" autocomplete="current-password">
-<button type="submit">ログイン</button>
+<button type="submit">${T.loginButton}</button>
 </form>
 </body>
 </html>`;
   return new Response(html, { status: error ? 401 : 200, headers: { "content-type": "text/html; charset=utf-8" } });
 }
 async function handleLogin(req: Request): Promise<Response> {
-  if (req.method === "GET") return loginPage(false);
+  // The login page follows the language saved in the store, which the
+  // server knows even before anyone is logged in.
+  const lang = langOf(loadStore());
+  if (req.method === "GET") return loginPage(false, lang);
   if (req.method !== "POST") return new Response("method not allowed", { status: 405 });
   const form = await req.formData().catch(() => null);
   const given = String(form?.get("token") ?? "");
@@ -77,7 +82,7 @@ async function handleLogin(req: Request): Promise<Response> {
   const expectedHash = createHash("sha256").update(`btl:${TOKEN}`).digest();
   if (!timingSafeEqual(givenHash, expectedHash)) {
     logEvent("auth", "login failed (token mismatch)");
-    return loginPage(true);
+    return loginPage(true, lang);
   }
   logEvent("auth", "login succeeded");
   return new Response(null, {
@@ -91,6 +96,7 @@ async function handleLogin(req: Request): Promise<Response> {
 
 function publicState() {
   const store = loadStore();
+  const lang = langOf(store);
   const date = today();
   const pain = store.pain.find((p) => p.date === date) ?? null;
   const todaySession = store.sessions.find((s) => s.date === date) ?? null;
@@ -104,12 +110,12 @@ function publicState() {
     ?? [...store.sessions].reverse().find((s) => s.status === "planned")
     ?? null;
   return {
-    today: date, profile: store.profile, pain,
-    assessment: pain ? assessPain(pain) : null,
+    today: date, profile: store.profile, pain, lang,
+    assessment: pain ? assessPain(pain, lang) : null,
     // Additive, backward-compatible state: duration guidance (caution only)
     // and the auto-judged 24-hour-rule overload flags for the next session.
-    guidance: painDurationGuidance(store),
-    overload: detectOverload(store),
+    guidance: painDurationGuidance(store, lang),
+    overload: detectOverload(store, lang),
     todaySession,
     activeSession,
     profileHistory: [...store.profileHistory].reverse(),
@@ -118,31 +124,40 @@ function publicState() {
       totalCompleted: store.sessions.filter((s) => s.status === "completed").length,
       totalVolume: store.sessions.reduce((a, s) => a + s.totalVolume, 0),
     },
-    catalog: { muscleParts: MUSCLE_PARTS, joints: JOINTS, redFlags: RED_FLAGS, rotations: ROTATIONS.map((r) => ({ id: r.id, title: r.title })) },
+    // The catalog's display labels (red flags, rotation titles) follow
+    // the language; the part / joint names stay the canonical Japanese
+    // keys the stored data uses, and the client translates them for
+    // display from its own dictionary.
+    catalog: {
+      muscleParts: MUSCLE_PARTS, joints: JOINTS,
+      redFlags: RED_FLAGS.map((f) => ({ id: f.id, label: redFlagLabel(f.id, lang) })),
+      rotations: ROTATIONS.map((r) => ({ id: r.id, title: rotationTitle(r.id, r.title, lang) })),
+    },
   };
 }
 
 // Every field is validated (src/validate.ts); an invalid value throws
 // InvalidInput and the handler answers 400 without storing anything.
 // Nothing is silently clamped, truncated, or coerced anymore.
-function applyExerciseUpdate(ex: SessionExercise, body: Record<string, unknown>): SessionExercise {
+function applyExerciseUpdate(ex: SessionExercise, body: Record<string, unknown>, lang: Lang): SessionExercise {
+  const m = VMSG[lang];
   let loggedSets = ex.loggedSets;
   if (body.loggedSets !== undefined) {
-    if (!Array.isArray(body.loggedSets)) throw new InvalidInput("回数の形式が正しくありません");
-    if (body.loggedSets.length > 10) throw new InvalidInput("セット数が多すぎます");
-    loggedSets = body.loggedSets.map(validReps);
+    if (!Array.isArray(body.loggedSets)) throw new InvalidInput(m.repsFormat);
+    if (body.loggedSets.length > 10) throw new InvalidInput(m.tooManySets);
+    loggedSets = body.loggedSets.map((v) => validReps(v, lang));
   }
   let rpe = ex.rpe;
   if (body.rpe !== undefined) {
-    const v = validRpe(body.rpe); // null = "not entered": keep the stored value, as before
+    const v = validRpe(body.rpe, lang); // null = "not entered": keep the stored value, as before
     if (v !== null) rpe = v;
   }
   let completed = ex.completed;
   if (body.completed !== undefined) {
-    if (typeof body.completed !== "boolean") throw new InvalidInput("完了フラグの形式が正しくありません");
+    if (typeof body.completed !== "boolean") throw new InvalidInput(m.completedFlagFormat);
     completed = body.completed;
   }
-  const note = body.note === undefined ? ex.note : validNote(body.note);
+  const note = body.note === undefined ? ex.note : validNote(body.note, lang);
   return { ...ex, loggedSets, rpe, completed, note };
 }
 
@@ -157,17 +172,28 @@ const server = Bun.serve({
         if (path === "/login") return await handleLogin(req);
         if (!isAuthed(req)) {
           logEvent("auth", `401 ${req.method} ${path}`);
-          if (path.startsWith("/api/")) return json({ error: "認証が必要です" }, 401);
+          if (path.startsWith("/api/")) return json({ error: SRV[langOf(loadStore())].errAuthRequired }, 401);
           return Response.redirect(new URL("/login", url), 302);
         }
       }
 
       if (path === "/api/state" && req.method === "GET") return json(publicState());
 
+      // UI language setting: saved in the store, so it survives reloads
+      // and follows the data across browsers. Absent in the store means
+      // Japanese.
+      if (path === "/api/lang" && req.method === "POST") {
+        const b = await req.json();
+        const store = loadStore();
+        if (!isLang(b?.lang)) { logEvent("api", `400 POST ${path}`); return json({ error: VMSG[langOf(store)].langInvalid }, 400); }
+        store.lang = b.lang;
+        saveStore(store); return json(publicState());
+      }
+
       if (path === "/api/profile" && req.method === "POST") {
         const b = await req.json();
         const store = loadStore();
-        const next = parseProfile(b); // throws InvalidInput -> 400
+        const next = parseProfile(b, langOf(store)); // throws InvalidInput -> 400
         // Keep the change history: one entry per save that changed
         // something, holding each field's before/after values.
         const changes = diffProfile(store.profile, next);
@@ -181,13 +207,14 @@ const server = Bun.serve({
       if (path === "/api/pain" && req.method === "POST") {
         const b = await req.json();
         const store = loadStore();
+        const lang = langOf(store);
         // Pain levels are validated, not clamped: a present value must be
         // an integer 0-5 (a missing part means 0, as the client sends all).
         const level = (obj: unknown, key: string): number => {
           if (obj === undefined || obj === null) return 0;
-          if (typeof obj !== "object") throw new InvalidInput("痛みレベルの形式が正しくありません");
+          if (typeof obj !== "object") throw new InvalidInput(VMSG[lang].painFormat);
           const v = (obj as Record<string, unknown>)[key];
-          return v === undefined ? 0 : validPainLevel(v);
+          return v === undefined ? 0 : validPainLevel(v, lang);
         };
         const entry: PainEntry = {
           date: today(),
@@ -201,14 +228,16 @@ const server = Bun.serve({
 
       if (path === "/api/session/generate" && req.method === "POST") {
         const store = loadStore();
+        const lang = langOf(store);
+        const T = SRV[lang];
         const date = today();
-        if (store.sessions.some((s) => s.date === date)) { logEvent("api", `409 POST ${path}`); return json({ error: "今日のセッションは作成済みです" }, 409); }
+        if (store.sessions.some((s) => s.date === date)) { logEvent("api", `409 POST ${path}`); return json({ error: T.errSessionExists }, 409); }
         const pain = store.pain.find((p) => p.date === date) ?? null;
-        const assessment = assessPain(pain);
-        if (assessment.care) { logEvent("api", `403 POST ${path} (red flag)`); return json({ error: "警告サインがあるため開始できません", assessment }, 403); }
-        if (assessment.rest) { logEvent("api", `403 POST ${path} (rest day)`); return json({ error: "完全休養日です", assessment }, 403); }
-        const session = generateSession(store, date, assessment);
-        if (session.exercises.length === 0) { logEvent("api", `403 POST ${path} (all excluded)`); return json({ error: "除外により実施できる種目がありません", assessment }, 403); }
+        const assessment = assessPain(pain, lang);
+        if (assessment.care) { logEvent("api", `403 POST ${path} (red flag)`); return json({ error: T.errBlockedRedFlag, assessment }, 403); }
+        if (assessment.rest) { logEvent("api", `403 POST ${path} (rest day)`); return json({ error: T.errRestDay, assessment }, 403); }
+        const session = generateSession(store, date, assessment, lang);
+        if (session.exercises.length === 0) { logEvent("api", `403 POST ${path} (all excluded)`); return json({ error: T.errAllExcluded, assessment }, 403); }
         store.sessions.push(session); saveStore(store); return json(publicState());
       }
 
@@ -218,7 +247,7 @@ const server = Bun.serve({
         const s = store.sessions.find((x) => x.id === Number(exMatch[1]));
         const ex = s?.exercises.find((x) => x.id === Number(exMatch[2]));
         if (!s || !ex) { logEvent("api", `404 ${req.method} ${path}`); return json({ error: "not found" }, 404); }
-        Object.assign(ex, applyExerciseUpdate(ex, await req.json()));
+        Object.assign(ex, applyExerciseUpdate(ex, await req.json(), langOf(store)));
         s.totalVolume = sessionTotal(s); saveStore(store); return json(publicState());
       }
 
@@ -230,7 +259,7 @@ const server = Bun.serve({
         if (!s) { logEvent("api", `404 ${req.method} ${path}`); return json({ error: "not found" }, 404); }
         for (const upd of Array.isArray(b.exercises) ? b.exercises : []) {
           const ex = s.exercises.find((x) => x.id === Number(upd.exerciseId));
-          if (ex) Object.assign(ex, applyExerciseUpdate(ex, upd));
+          if (ex) Object.assign(ex, applyExerciseUpdate(ex, upd, langOf(store)));
         }
         s.totalVolume = sessionTotal(s); saveStore(store); return json(publicState());
       }
@@ -265,7 +294,7 @@ const server = Bun.serve({
       // Data import: the body is fully validated (parseStoreImport) before
       // anything is written, so a bad file answers 400 and replaces nothing.
       if (path === "/api/import" && req.method === "POST") {
-        const store = parseStoreImport(await req.json()); // throws InvalidInput -> 400
+        const store = parseStoreImport(await req.json(), langOf(loadStore())); // throws InvalidInput -> 400
         saveStore(store); return json(publicState());
       }
       if (path.startsWith("/api/")) { logEvent("api", `404 ${req.method} ${path}`); return json({ error: "not found" }, 404); }
@@ -286,7 +315,7 @@ const server = Bun.serve({
       return new Response(Bun.file(join(PUBLIC, "index.html")));
     } catch (e) {
       if (e instanceof InvalidInput) { logEvent("api", `400 ${req.method} ${path}: ${e.message}`); return json({ error: e.message }, 400); }
-      if (e instanceof SyntaxError) { logEvent("api", `400 ${req.method} ${path}: malformed request`); return json({ error: "リクエストの形式が正しくありません" }, 400); }
+      if (e instanceof SyntaxError) { logEvent("api", `400 ${req.method} ${path}: malformed request`); return json({ error: SRV[langOf(loadStore())].errMalformed }, 400); }
       logEvent("api", `500 ${req.method} ${path}: ${e instanceof Error ? e.name : "error"}`);
       return json({ error: String(e) }, 500);
     }

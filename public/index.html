@@ -21,11 +21,11 @@
 <header class="app-header">
   <div class="ah-left">
     <div class="ah-date" id="ah-date">—</div>
-    <div class="ah-purpose">器具なし / 筋力・筋肥大</div>
+    <div class="ah-purpose" id="ah-purpose">器具なし / 筋力・筋肥大</div>
   </div>
   <div class="ah-right">
     <div><span class="ah-day-label">Day</span><span class="num ah-day-num" id="ah-day">–</span></div>
-    <div class="ah-total">累計 <span id="ah-reps">0</span> レップ</div>
+    <div class="ah-total"><span id="ah-total-label">累計</span> <span id="ah-reps">0</span> <span id="ah-total-unit">レップ</span></div>
   </div>
 </header>
 <button id="gear" class="gear" type="button" aria-label="設定" title="設定"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
@@ -36,11 +36,11 @@
 </nav>
 <main id="app"><p>読み込み中…</p></main>
 <section class="note">
-  <h2>判定基準について</h2>
-  <p>警告サイン（レッドフラッグ）がある日は開始できません。筋肉痛はレベル2で軽減・3以上で部位除外、関節痛はより厳しく（2で軽減・3以上で除外）判定します。完全休養はレベル4以上の筋肉痛が2部位以上の日だけです。</p>
-  <p>24時間ルール：運動中・運動後の痛みが翌朝までに元の水準へ戻らなければ、前回の負荷が高すぎたサインです。痛みの記録から自動で判定し、過負荷の部位は次回軽減して進行しません（Silbernagelらの痛みモニタリングモデル）。</p>
-  <p>継続日数チェック：同じ部位の筋肉痛が5日以上、関節痛が2週間改善しない場合は受診目安として注意表示します（関節痛は7日でも注意表示）。開始を止めるのは警告サインだけです。関節痛は部位にも効きます（腰→脚・体幹、肩→押す系、肘→押す系・引く系、手首→押す系・プランク系、股関節・膝・足首→脚系）。</p>
-  <p class="refs">参考文献：ACSM ポジションスタンド／ACSM 筋肉痛（DOMS）資料、Silbernagel et al. 2007 (Am J Sports Med)、NHS 関節痛・腰痛、CDC/NIOSH 横紋筋融解症。</p>
+  <h2 id="note-title">判定基準について</h2>
+  <p id="note-p1">警告サイン（レッドフラッグ）がある日は開始できません。筋肉痛はレベル2で軽減・3以上で部位除外、関節痛はより厳しく（2で軽減・3以上で除外）判定します。完全休養はレベル4以上の筋肉痛が2部位以上の日だけです。</p>
+  <p id="note-p2">24時間ルール：運動中・運動後の痛みが翌朝までに元の水準へ戻らなければ、前回の負荷が高すぎたサインです。痛みの記録から自動で判定し、過負荷の部位は次回軽減して進行しません（Silbernagelらの痛みモニタリングモデル）。</p>
+  <p id="note-p3">継続日数チェック：同じ部位の筋肉痛が5日以上、関節痛が2週間改善しない場合は受診目安として注意表示します（関節痛は7日でも注意表示）。開始を止めるのは警告サインだけです。関節痛は部位にも効きます（腰→脚・体幹、肩→押す系、肘→押す系・引く系、手首→押す系・プランク系、股関節・膝・足首→脚系）。</p>
+  <p class="refs" id="note-refs">参考文献：ACSM ポジションスタンド／ACSM 筋肉痛（DOMS）資料、Silbernagel et al. 2007 (Am J Sports Med)、NHS 関節痛・腰痛、CDC/NIOSH 横紋筋融解症。</p>
 </section>
 <script src="/app.js"></script>
 </body>
