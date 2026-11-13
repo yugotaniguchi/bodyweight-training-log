@@ -16,6 +16,8 @@ bun run server.ts
 
 Open http://localhost:3000 in your browser. To use a different port, run `PORT=8080 bun run server.ts`.
 
+On a phone, the browser's "Add to Home Screen" installs it like an app: the app ships a web app manifest (`自重トレーニング記録` / `自重トレ`, standalone display, near-black theme) and icons drawn as its ring-gauge motif. The icon PNGs are embedded in the server as base64 (`src/icons.ts`) and served at the usual `/icon-*.png` paths, so the repository itself stays text-only. There is intentionally **no service worker** — the app is useless without its server, so an offline shell would only pretend otherwise.
+
 ### Run with Docker
 
 ```bash
@@ -36,7 +38,7 @@ bun --watch run server.ts
 1. **Settings**: Enter your profile (age, sex, height, weight, and so on) via the small gear button fixed at the top-right — a muted line icon, shown only on the condition and settings screens; settings is not a tab. A quiet **← ホームに戻る** button at the top-left of the settings screen takes you back. All the form fields share one size and style, labels above fields on a regular grid. The app ships with no one's data in it.
 2. **Condition**: First tap any warning signs (red flags) that apply — they are chips at the top. Then set muscle soreness by body part and joint pain (lower back, shoulders, elbows, wrists, hips, knees, ankles) from 0 to 5 by tapping the tiles: each tile shows the level as a big numeral, a level word, and 5 tick segments that light up teal, and the tile background deepens through dark teal shades as the level rises. Dark-teal legend badges above each grid summarise the thresholds. If the same pain has been recorded for many days in a row, a caution or see-a-doctor note appears here (it never blocks a start — only red flags do). Tapping **コンディションを保存** saves the check; once saved, the button turns into **ワークアウトを開始**, which creates today's session on the spot if none exists yet and takes you to the workout tab (if creation is blocked by a warning sign or a rest day, the workout tab shows the reason). Changing any pain value after saving flips it back to コンディションを保存, so unsaved changes are always visible.
 3. **Workout**: "Create today's workout" builds a session from today's condition and your history. Sessions rotate A (push + legs) → B (back + posterior legs + core) → C (full body). The first 6 sessions are an introductory period with easier variations and fewer sets. If you open this tab before entering today's condition, it shows a short note and a **コンディションを入力** button back to the condition tab instead of the create button. The workout screen opens with a **week dot row** (Mon–Sun: a filled teal dot for days with a completed session, a teal ring for today — no day numbers), a **ring gauge** (completed exercises as a big central numeral, with the total under it), the session title with how many exercises remain, and three metrics: exercise count, completed/total sets, and cumulative completed sessions.
-4. **Logging**: Each exercise is a card headed by its variation name, with the total target at the top-right. The set fields — black boxes in an even row — start out **pre-filled with the target** (reps, or seconds for timed exercises): keep them, or overwrite with what you actually did. RPE is a select with exactly ten options — `未入力`, then `6（かなり楽）`, `6.5（楽）`, `7（やや楽）`, `7.5（少しきつい）`, `8（きつい）`, `8.5（かなりきつい）`, `9（とてもきつい）`, `9.5（ほぼ限界）`, `10（限界）` — and only the number is saved. Each exercise also has a note field that affects only that exercise; there is no session-wide note. The card's **記録して完了** button saves that exercise and advances the gauge; a recorded exercise's button becomes 記録を更新. Timed exercises (planks and the like) have a countdown timer on the card — start it at the target seconds, pause or reset as needed, and watch the remaining-time bar; it beeps and turns teal when time is up. The timer never writes to the record: what you type is what gets saved. At the bottom, **今日のトレーニングを完了する** finishes the day, and the underlined **このワークアウトを取り消す** link deletes today's session (after an inline confirmation) so you can start over from the pain check.
+4. **Logging**: Each exercise is a card headed by its variation name, with the total target at the top-right. The set fields — black boxes in an even row — start out **pre-filled with the target** (reps, or seconds for timed exercises): keep them, or overwrite with what you actually did. RPE is a select with exactly ten options — `未入力`, then `6（かなり楽）`, `6.5（楽）`, `7（やや楽）`, `7.5（少しきつい）`, `8（きつい）`, `8.5（かなりきつい）`, `9（とてもきつい）`, `9.5（ほぼ限界）`, `10（限界）` — and only the number is saved. Each exercise also has a note field that affects only that exercise; there is no session-wide note. Until you save a card, its typed values are kept as a **draft in the browser** (localStorage, keyed by date and session), so a reload or an accidental tab switch loses nothing; the draft is restored onto unrecorded cards only, and it disappears once the exercise is saved or the session is completed or cancelled. The card's **記録して完了** button saves that exercise and advances the gauge; a recorded exercise's button becomes 記録を更新. Timed exercises (planks and the like) have a countdown timer on the card — start it at the target seconds, pause or reset as needed, and watch the remaining-time bar; it beeps and turns teal when time is up. The timer is end-time based (it stores the finish moment and always recomputes the remainder), so locking the screen or backgrounding the tab cannot make it drift. The timer never writes to the record: what you type is what gets saved. At the bottom, **今日のトレーニングを完了する** finishes the day, and the underlined **このワークアウトを取り消す** link deletes today's session (after an inline confirmation) so you can start over from the pain check.
 5. **Report (results live here too)**: There is no separate results screen. Finishing a session takes you to **レポート**, a quiet list, newest first: the date in one line (`11/13(金)`) on the left, the rotation and one row per exercise in the middle (name in white, variation and RPE word in gray, logged sets right-aligned), any per-exercise notes in small gray, and the session's total reps as a big number on the right. Entries are separated by hairlines, not cards. The `記録を編集` button under each entry lets you fix sets, RPE, completion, and exercise notes afterwards; edits update the totals and feed into the next session's decisions.
 
 **Loading and failure states**: The app talks only to its own local server, so the fallback UI is deliberately small. The first load shows `読み込み中…`; if it fails, the reason appears with a **再読み込み** button instead of a blank screen. Every button that sends data is disabled while its request runs, and if a save fails, the reason shows as a short error line right under the button and the button works again — nothing fails silently, gets stuck, or submits twice.
@@ -85,7 +87,8 @@ Note: the numeric pain thresholds above convert ideas from general-audience sour
 
 - Data is stored in `data/store.json` in the folder where you start the server. It is not tracked by Git.
 - To reset, use the delete button on the settings screen (behind the gear button) — its confirmation appears as a separate block under the button — or delete `data/store.json` and restart.
-- To back up, just copy `data/store.json`.
+- To back up, just copy `data/store.json` — or use the settings screen's **エクスポート** button, which downloads the whole store as one JSON file.
+- To restore or move your data, use **インポート** on the same screen: pick the JSON file, confirm in the inline block (never a native dialog), and the store is replaced. The file is fully checked first — top-level keys, every record's types, and the same validation rules as normal writes — and a bad file is refused with a reason and replaces nothing.
 
 ## Recreate the look in Muse
 
@@ -351,6 +354,53 @@ summon the phone keypad with inputmode: set inputs and the integer
 profile fields (age, height) use inputmode="numeric" with
 pattern="[0-9]*"; decimal fields (weight, the history-edit RPE input)
 use inputmode="decimal".
+
+Draft persistence: while a workout card is being filled in, keep its
+raw values (set fields, RPE, note) in localStorage under a key naming
+the date and session (btl-draft:{date}:{session id}); restore them
+only onto unrecorded cards (saved server values win), and drop them
+when the exercise is saved, the session is completed or cancelled,
+the data is reset or imported, or they belong to another day/session
+(pruned on load). The server data format does not change.
+
+Data export / import (settings, データ section): an エクスポート button
+downloads the whole store as JSON, and an インポート button picks a
+JSON file and — after an inline warning-coloured confirmation block
+(「{file name}」で現在のデータをすべて置き換えます。元に戻せません。 with
+インポートする / キャンセル, never a native dialog) — replaces the store.
+The imported file is fully validated first (all top-level keys, every
+record's types, the validation rules above wherever they fit); a bad
+file is refused with a reason and replaces nothing.
+
+PWA: serve a web app manifest (name 自重トレーニング記録, short name
+自重トレ, display standalone, background_color and theme_color
+#0f0f0f) as application/manifest+json, with PNG icons (192, 512, a
+512 maskable variant, a 180 apple-touch-icon) showing the ring-gauge
+motif — a #2d2d2d track circle and a #2dd4bf arc with round caps and
+a centre dot on #0f0f0f. Embed the icon PNGs as base64 in the server
+code (src/icons.ts) and serve them decoded as image/png at the
+/icon-192.png, /icon-512.png, /icon-maskable-512.png and
+/apple-touch-icon.png paths, rather than shipping binary icon files.
+Link the manifest and apple-touch-icon in the
+head, set theme-color #0f0f0f, and add the mobile-web-app-capable
+metas. Do NOT add a service worker: the app needs its server, so an
+offline shell would be a lie.
+
+Countdown timers are end-time based: on start, store the end
+timestamp and always recompute the remaining seconds from it (pause
+freezes the remainder, resume recomputes the end). Re-sync when the
+page becomes visible again, so a locked screen or a backgrounded tab
+cannot drift the count; if the end passed meanwhile, show the
+finished state.
+
+Accessibility minimum: every input is labelled without changing the
+look (set inputs carry aria-label "{exercise} {n}セット目", the
+history-edit note aria-label この種目のメモ, RPE/note fields use label
+for or sit inside their label, settings fields use label for/id);
+pain tiles are buttons whose aria-label states the part and current
+level (e.g. 胸：レベル2（普通）); warning-sign chips carry aria-pressed;
+the active nav segment carries aria-current="page"; and
+:focus-visible draws a 2px #2dd4bf outline (nothing changes at rest).
 
 Labels are in Japanese. Do not change the workout logic, the pain rules,
 or any saved data while doing design work.

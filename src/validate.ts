@@ -2,7 +2,8 @@
 // hand-sent request cannot store a broken value; the client (public/app.js)
 // checks the same rules before sending and shows the same reason text.
 // A rejected write answers HTTP 400 with the reason and stores nothing.
-import type { Profile } from "./logic";
+import { RED_FLAGS } from "./exercises";
+import { sessionTotal, type PainEntry, type Profile, type Session, type SessionExercise, type Store } from "./logic";
 
 export class InvalidInput extends Error {}
 
@@ -90,5 +91,101 @@ export function parseProfile(b: Record<string, unknown>): Profile {
   return {
     age, sex: text(b.sex), heightCm, weightKg,
     bodyFatNote: text(b.bodyFatNote), habitNote: text(b.habitNote),
+  };
+}
+
+// ---------- whole-store import (settings: data import) ----------
+// An imported file replaces the whole store, so it is checked record by
+// record before anything is written: the top-level keys must all be
+// present, every record must have the right types, and the per-field
+// validators above are reused wherever they apply (reps, RPE, notes,
+// pain levels, profile, dates). Any problem throws InvalidInput and the
+// caller answers 400 having stored nothing. Records are rebuilt field
+// by field (unknown keys are dropped), each session's totalVolume is
+// recomputed, and the id counters are raised past the largest imported
+// id when needed so later sessions can never collide with imported ones.
+export const IMPORT_MESSAGE = "インポートファイルの形式が正しくありません";
+
+const isObj = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+const impStr = (v: unknown, max = 1000): string => {
+  if (typeof v !== "string" || v.length > max) fail(IMPORT_MESSAGE);
+  return v as string;
+};
+const impInt = (v: unknown, lo: number, hi: number): number => {
+  if (typeof v !== "number" || !Number.isInteger(v) || v < lo || v > hi) fail(IMPORT_MESSAGE);
+  return v as number;
+};
+
+function parseImportedExercise(v: unknown): SessionExercise {
+  if (!isObj(v)) fail(IMPORT_MESSAGE);
+  if (!Array.isArray(v.loggedSets) || v.loggedSets.length > 10) fail(IMPORT_MESSAGE);
+  const unit = v.targetUnit;
+  if (unit !== "回" && unit !== "秒") fail(IMPORT_MESSAGE);
+  if (typeof v.completed !== "boolean") fail(IMPORT_MESSAGE);
+  return {
+    id: impInt(v.id, 1, Number.MAX_SAFE_INTEGER),
+    baseId: impStr(v.baseId, 100), name: impStr(v.name), muscleGroup: impStr(v.muscleGroup, 100),
+    painPart: impStr(v.painPart, 100), variation: impStr(v.variation), ladderIndex: impInt(v.ladderIndex, 0, 1000),
+    targetSets: impInt(v.targetSets, 1, 10), targetReps: validReps(v.targetReps), targetUnit: unit,
+    cue: impStr(v.cue), loggedSets: (v.loggedSets as unknown[]).map(validReps),
+    rpe: validRpe(v.rpe), completed: v.completed, note: validNote(v.note),
+  };
+}
+
+function parseImportedSession(v: unknown): Session {
+  if (!isObj(v)) fail(IMPORT_MESSAGE);
+  if (v.status !== "planned" && v.status !== "completed") fail(IMPORT_MESSAGE);
+  if (typeof v.intro !== "boolean") fail(IMPORT_MESSAGE);
+  if (!Array.isArray(v.exercises)) fail(IMPORT_MESSAGE);
+  if (!Array.isArray(v.progressionNotes)) fail(IMPORT_MESSAGE);
+  const s: Session = {
+    id: impInt(v.id, 1, Number.MAX_SAFE_INTEGER),
+    date: validDateString(v.date),
+    rotation: impStr(v.rotation, 100), title: impStr(v.title),
+    status: v.status, intro: v.intro,
+    focusNote: impStr(v.focusNote), progressionNotes: (v.progressionNotes as unknown[]).map((n) => impStr(n)),
+    exercises: (v.exercises as unknown[]).map(parseImportedExercise),
+    totalVolume: 0,
+  };
+  s.totalVolume = sessionTotal(s);
+  return s;
+}
+
+function parseImportedPain(v: unknown): PainEntry {
+  if (!isObj(v)) fail(IMPORT_MESSAGE);
+  const levels = (o: unknown): Record<string, number> => {
+    if (!isObj(o)) fail(IMPORT_MESSAGE);
+    const out: Record<string, number> = {};
+    for (const [k, val] of Object.entries(o as Record<string, unknown>)) out[k] = validPainLevel(val);
+    return out;
+  };
+  if (!Array.isArray(v.redFlags)) fail(IMPORT_MESSAGE);
+  return {
+    date: validDateString(v.date),
+    soreness: levels(v.soreness), jointPain: levels(v.jointPain),
+    // Unknown red-flag ids are dropped, as on the pain endpoint.
+    redFlags: (v.redFlags as unknown[]).filter(
+      (x): x is string => typeof x === "string" && RED_FLAGS.some((f) => f.id === x),
+    ),
+  };
+}
+
+export function parseStoreImport(v: unknown): Store {
+  if (!isObj(v)) fail(IMPORT_MESSAGE);
+  for (const k of ["profile", "pain", "sessions", "nextSessionId", "nextExerciseId"]) {
+    if (!(k in v)) fail(IMPORT_MESSAGE);
+  }
+  if (!Array.isArray(v.pain) || !Array.isArray(v.sessions)) fail(IMPORT_MESSAGE);
+  const profile = v.profile === null ? null : isObj(v.profile) ? parseProfile(v.profile) : fail(IMPORT_MESSAGE);
+  const sessions = (v.sessions as unknown[]).map(parseImportedSession);
+  const maxSessionId = sessions.reduce((a, s) => Math.max(a, s.id), 0);
+  const maxExerciseId = sessions.reduce((a, s) => s.exercises.reduce((b, e) => Math.max(b, e.id), a), 0);
+  return {
+    profile,
+    pain: (v.pain as unknown[]).map(parseImportedPain),
+    sessions,
+    nextSessionId: Math.max(impInt(v.nextSessionId, 1, Number.MAX_SAFE_INTEGER), maxSessionId + 1),
+    nextExerciseId: Math.max(impInt(v.nextExerciseId, 1, Number.MAX_SAFE_INTEGER), maxExerciseId + 1),
   };
 }

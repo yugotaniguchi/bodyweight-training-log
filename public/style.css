@@ -90,6 +90,11 @@ textarea{height:auto;min-height:42px;padding:9px 10px;line-height:1.5;resize:ver
 /* Fallback UI: while a button's request runs it is disabled and dimmed;
    a failed request leaves an error line right after its button. */
 button:disabled{opacity:.55;cursor:default}
+/* Keyboard focus: one accent outline, shown only for keyboard users
+   (:focus-visible) so the resting look never changes. */
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* Settings data actions (export / import) */
+.data-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
 .action-err{margin:8px 0 0;font-size:14px}
 .cancel-btns .action-err{flex:0 0 100%;margin:2px 0 0;text-align:center}
 label.row{display:block;margin:6px 0}

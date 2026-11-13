@@ -2,7 +2,18 @@ import { join } from "node:path";
 import { assessPain, detectOverload, generateSession, painDurationGuidance, sessionTotal, type PainEntry, type SessionExercise } from "./src/logic";
 import { MUSCLE_PARTS, JOINTS, RED_FLAGS, EXERCISES, ROTATIONS } from "./src/exercises";
 import { loadStore, saveStore, resetStore } from "./src/store";
-import { InvalidInput, parseProfile, validNote, validPainLevel, validReps, validRpe } from "./src/validate";
+import { InvalidInput, parseProfile, parseStoreImport, validNote, validPainLevel, validReps, validRpe } from "./src/validate";
+import { ICON_192_BASE64, ICON_512_BASE64, ICON_MASKABLE_512_BASE64, APPLE_TOUCH_ICON_BASE64 } from "./src/icons";
+
+// Icons are embedded as base64 (src/icons.ts) so the repository carries
+// no binary files; they are decoded once here and served as image/png
+// at the paths the manifest and index.html reference.
+const ICON_ROUTES = new Map<string, Uint8Array>([
+  ["/icon-192.png", Buffer.from(ICON_192_BASE64, "base64")],
+  ["/icon-512.png", Buffer.from(ICON_512_BASE64, "base64")],
+  ["/icon-maskable-512.png", Buffer.from(ICON_MASKABLE_512_BASE64, "base64")],
+  ["/apple-touch-icon.png", Buffer.from(APPLE_TOUCH_ICON_BASE64, "base64")],
+]);
 
 const PORT = Number(process.env.PORT ?? 3000);
 const PUBLIC = join(process.cwd(), "public");
@@ -144,7 +155,33 @@ const server = Bun.serve({
       }
 
       if (path === "/api/reset" && req.method === "POST") { resetStore(); return json(publicState()); }
+
+      // Data export: the whole store as a downloadable JSON file.
+      if (path === "/api/export" && req.method === "GET") {
+        return new Response(JSON.stringify(loadStore(), null, 2), {
+          headers: {
+            "content-type": "application/json; charset=utf-8",
+            "content-disposition": 'attachment; filename="bodyweight-training-log.json"',
+          },
+        });
+      }
+      // Data import: the body is fully validated (parseStoreImport) before
+      // anything is written, so a bad file answers 400 and replaces nothing.
+      if (path === "/api/import" && req.method === "POST") {
+        const store = parseStoreImport(await req.json()); // throws InvalidInput -> 400
+        saveStore(store); return json(publicState());
+      }
       if (path.startsWith("/api/")) return json({ error: "not found" }, 404);
+
+      // Icons come from the embedded base64 data, not from public/.
+      const icon = ICON_ROUTES.get(path);
+      if (icon) return new Response(icon, { headers: { "content-type": "image/png" } });
+
+      // The web app manifest must go out as application/manifest+json.
+      if (path === "/manifest.webmanifest") {
+        const f = Bun.file(join(PUBLIC, "manifest.webmanifest"));
+        if (await f.exists()) return new Response(f, { headers: { "content-type": "application/manifest+json; charset=utf-8" } });
+      }
 
       const filePath = path === "/" ? join(PUBLIC, "index.html") : join(PUBLIC, path);
       const file = Bun.file(filePath);

@@ -223,6 +223,12 @@ All three notice boxes share: 1px solid border, radius 10px, padding
   `体脂肪などの補足` / `運動習慣の補足`
 - Save button: `保存`
 - Data note: `保存先はサーバー側の data/store.json です。`
+- Export button: `エクスポート` (downloads the whole store as JSON)
+- Import button: `インポート` (opens a JSON file picker)
+- Import confirmation text: `「{file name}」で現在のデータをすべて置き換えます。元に戻せません。`
+- Import confirmation buttons: `インポートする` / `キャンセル`
+- Import file that cannot be parsed as JSON:
+  `ファイルの形式が正しくありません`
 - Delete button: `データを消す`
 - Confirmation text:
   `本当に全データを消しますか？プロフィール・痛みの記録・セッション履歴がすべて消え、元に戻せません。`
@@ -424,8 +430,17 @@ Shown verbatim at the bottom of every screen, after the app area:
   time remaining, transitioning width 0.2s linear.
 - Buttons (`.btn`): `開始` / `一時停止` / `リセット`, in a row, gap 8px,
   wrap allowed.
-- State — running: counts down from the target seconds. Paused: holds.
-  Reset: back to the target.
+- Timing is **end-time based**: starting stores an end timestamp
+  (now + remaining seconds) and the remaining time is always recomputed
+  from it, never decremented per tick. If the screen is locked or the
+  tab sits in the background and the browser throttles the interval,
+  the display snaps to the true remainder on the next tick and when
+  the page becomes visible again — or to the finished state if the
+  end time passed meanwhile (the beep is attempted; a browser may
+  keep a backgrounded page silent).
+- State — running: counts down from the target seconds. Paused: holds
+  (the remainder is frozen from the end time; resuming recomputes a
+  new end time). Reset: back to the target.
 - State — finished (0 reached): the box fill becomes `#0b2420` with a
   1px `--accent` border, and a short beep sounds (880Hz, twice, via
   WebAudio). The timer **never writes to the record**; the set inputs
@@ -522,6 +537,20 @@ Shown verbatim at the bottom of every screen, after the app area:
 - Save button (`.btn`): `保存`.
 - Heading `データ`; small text (13px `--sub`):
   `保存先はサーバー側の data/store.json です。`
+- Export / import row: two `.btn` in a row (gap 8px, wrap allowed):
+  `エクスポート` downloads the whole store as a JSON file
+  (`GET /api/export`, sent with a download Content-Disposition);
+  `インポート` opens a JSON file picker.
+- State — import chosen (a parseable file was picked): a confirmation
+  block in the same style as the reset confirmation below (warning
+  colours, stacked in normal flow, no native dialog): the text
+  `「{file name}」で現在のデータをすべて置き換えます。元に戻せません。`, then
+  `インポートする` (danger-solid, full width), then `キャンセル` (`.btn`,
+  full width). Confirming replaces the whole store
+  (`POST /api/import`); the file is fully validated first and a bad
+  file is refused with a reason and replaces nothing. A file that is
+  not JSON at all shows `ファイルの形式が正しくありません` instead of
+  opening the confirmation.
 - Delete button (`.btn` danger outline): `データを消す`.
 - State — confirmation open: a separate block stacked **below** the
   delete button in normal flow, margin-top 14px, warning colours
@@ -645,6 +674,87 @@ Numeric fields summon the numeric keypad via `inputmode` while staying
 - Decimal fields (weight; the history-edit RPE text input):
   `inputmode="decimal"`.
 
+## Draft persistence (workout screen)
+
+Unsaved input on a workout card survives a reload or a stray tab
+switch:
+
+- While a workout card is being filled in, its raw values (set fields,
+  RPE select, note) are kept in `localStorage` under a key naming the
+  date and the session: `btl-draft:{YYYY-MM-DD}:{session id}`, one
+  entry per exercise. The server-side data format is unchanged.
+- A draft is restored **only onto unrecorded cards**; saved server
+  values always win. Restoring a draft never changes the card's
+  recorded / unrecorded state or its button label.
+- A draft entry is dropped when its exercise is saved, the whole key
+  when the session is completed or cancelled, and all keys on data
+  reset or after a data import. On load, drafts belonging to another
+  day or another session are pruned, and a completed session keeps no
+  drafts.
+
+## Data export / import
+
+- Export (`GET /api/export`) returns the whole store as pretty-printed
+  JSON with `Content-Disposition: attachment`, filename
+  `bodyweight-training-log.json`.
+- Import (`POST /api/import`) replaces the whole store — but only
+  after the file passes a full structural check: all top-level keys
+  present (`profile`, `pain`, `sessions`, `nextSessionId`,
+  `nextExerciseId`), every record type-checked, and the validation
+  rules above applied wherever they fit (dates, pain levels, reps,
+  RPE, notes, profile). A bad file is answered 400 with the reason
+  `インポートファイルの形式が正しくありません` and **nothing is replaced**.
+  Records are rebuilt field by field (unknown keys dropped), session
+  totals are recomputed, and the id counters are raised past the
+  largest imported id when needed so future sessions cannot collide
+  with imported ones.
+- On a successful import the client reloads its state from the
+  response and re-renders.
+
+## PWA — manifest and icons
+
+- A web app manifest is served at `/manifest.webmanifest` as
+  `application/manifest+json`: name `自重トレーニング記録`, short name
+  `自重トレ`, `display: standalone`, `background_color` and
+  `theme_color` both `#0f0f0f`.
+- Icons are PNG: 192 and 512, a 512 maskable variant, and a 180
+  apple-touch-icon. They are not files in `public/`: the PNG bytes are
+  embedded as base64 constants in `src/icons.ts`, and the server
+  decodes them and serves them as `image/png` at the usual paths
+  (`/icon-192.png`, `/icon-512.png`, `/icon-maskable-512.png`,
+  `/apple-touch-icon.png`) that the manifest and page head reference.
+  The motif is the ring gauge — a `#2d2d2d` track
+  circle with a `#2dd4bf` arc (round caps, starting at the top,
+  sweeping about 270°) and a teal centre dot — on a `#0f0f0f`
+  background; the maskable variant keeps the motif inside the safe
+  zone. The 192 icon doubles as the favicon.
+- The page head links the manifest and the apple-touch-icon, sets
+  `theme-color` to `#0f0f0f`, and declares the mobile-web-app-capable
+  metas with app title `自重トレ`.
+- There is deliberately **no Service Worker**: the app is useless
+  without its server, and an offline shell would only pretend
+  otherwise.
+
+## Accessibility (minimum)
+
+- Every input has an associated label without changing the visual
+  layout: the workout cards' RPE select and note already use
+  `label for`; set inputs (workout cards and history edit) carry an
+  `aria-label` of `{exercise} {n}セット目`; the history-edit note
+  carries `aria-label="この種目のメモ"`; the history-edit RPE input and
+  the completion checkbox sit inside their `label` elements; the
+  settings fields use `label for` with matching ids.
+- Pain tiles are real `button` elements whose `aria-label` states the
+  part and the current level, e.g. `胸：レベル2（普通）`. Warning-sign
+  chips are buttons with `aria-pressed`.
+- The active navigation segment carries `aria-current="page"`.
+- Keyboard focus is visible: `:focus-visible` draws a 2px `--accent`
+  outline with a 2px offset. Nothing changes at rest.
+- Tap targets already fixed by this document's normative geometry
+  (the 34px gear, the chips at 7px vertical padding, the 12px
+  history `記録を編集` pill) are **not** enlarged — the normative sizes
+  win over the 44px guideline where they conflict.
+
 ## Date display — only two forms
 - Dates may appear **only** in these two shapes: (a) the header's
   `M/D（曜）`, (b) the history list's single-line `MM/DD(曜)`. Full
@@ -703,8 +813,9 @@ Numeric fields summon the numeric keypad via `inputmode` while staying
    its usual muted style
 2. Back button `← ホームに戻る` (top-left of the content)
 3. Heading `プロフィール（初回設定）`; the uniform form grid; `保存`
-4. Heading `データ`; the data note; `データを消す`; the confirmation
-   block below it when open
+4. Heading `データ`; the data note; `エクスポート` / `インポート` (with the
+   import confirmation block when a file is chosen); `データを消す`; the
+   confirmation block below it when open
 5. Footer note
 
 ## Scope boundary for design work

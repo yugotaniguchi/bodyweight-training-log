@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { emptyStore, type Store } from "../src/logic";
 import {
-  InvalidInput, isValidDateString, parseProfile, validDateString, validNote, validPainLevel, validReps, validRpe,
+  InvalidInput, isValidDateString, parseProfile, parseStoreImport, validDateString, validNote, validPainLevel, validReps, validRpe,
 } from "../src/validate";
 
 describe("validReps", () => {
@@ -87,5 +88,52 @@ describe("parseProfile", () => {
   test("free-text fields are length-capped", () => {
     expect(() => parseProfile({ ...ok, bodyFatNote: "x".repeat(201) })).toThrow(InvalidInput);
     expect(parseProfile({ ...ok, habitNote: "週2回" }).habitNote).toBe("週2回");
+  });
+});
+
+describe("parseStoreImport", () => {
+  const sample = (): Store => {
+    const s = emptyStore();
+    s.profile = { age: 28, sex: "男性", heightCm: 171, weightKg: 64, bodyFatNote: "", habitNote: "" };
+    s.pain = [{ date: "2026-11-13", soreness: { "胸": 2 }, jointPain: { "膝": 1 }, redFlags: [] }];
+    s.sessions = [{
+      id: 1, date: "2026-11-13", rotation: "A", title: "押す + 脚", status: "completed", intro: true,
+      focusNote: "", progressionNotes: ["初回"],
+      exercises: [{
+        id: 1, baseId: "pushup", name: "腕立て伏せ", muscleGroup: "胸・肩・上腕", painPart: "胸",
+        variation: "膝つき腕立て伏せ", ladderIndex: 0, targetSets: 2, targetReps: 10, targetUnit: "回",
+        cue: "", loggedSets: [10, 9], rpe: 8, completed: true, note: "",
+      }],
+      totalVolume: 19,
+    }];
+    s.nextSessionId = 2; s.nextExerciseId = 2;
+    return s;
+  };
+  test("accepts a well-formed store and recomputes totals", () => {
+    const out = parseStoreImport(structuredClone(sample()));
+    expect(out.profile?.age).toBe(28);
+    expect(out.sessions[0].totalVolume).toBe(19);
+    expect(out.nextSessionId).toBe(2);
+  });
+  test("raises id counters past imported ids", () => {
+    const s = sample(); s.nextSessionId = 1; s.nextExerciseId = 1;
+    const out = parseStoreImport(structuredClone(s));
+    expect(out.nextSessionId).toBe(2);
+    expect(out.nextExerciseId).toBe(2);
+  });
+  test("rejects non-objects and missing keys", () => {
+    for (const v of [null, [], "x", 42, {}, { profile: null, pain: [], sessions: [] }]) {
+      expect(() => parseStoreImport(v)).toThrow(InvalidInput);
+    }
+  });
+  test("rejects broken records anywhere in the file", () => {
+    const badPain = sample(); badPain.pain[0].soreness["胸"] = 6;
+    expect(() => parseStoreImport(structuredClone(badPain))).toThrow(InvalidInput);
+    const badDate = sample(); badDate.sessions[0].date = "13/11/2026";
+    expect(() => parseStoreImport(structuredClone(badDate))).toThrow(InvalidInput);
+    const badReps = sample(); badReps.sessions[0].exercises[0].loggedSets = [1.5];
+    expect(() => parseStoreImport(structuredClone(badReps))).toThrow(InvalidInput);
+    const badStatus = sample(); (badStatus.sessions[0] as { status: string }).status = "done";
+    expect(() => parseStoreImport(structuredClone(badStatus))).toThrow(InvalidInput);
   });
 });
