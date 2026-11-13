@@ -7,3 +7,6 @@ services:
       - ./data:/app/data
     environment:
       PORT: "3000"
+      # Optional token auth: set BTL_TOKEN in your shell (or a .env file)
+      # before `docker compose up` to enable the login gate; empty = off.
+      BTL_TOKEN: "${BTL_TOKEN:-}"

@@ -28,13 +28,44 @@ export interface Session {
   focusNote: string; progressionNotes: string[];
   exercises: SessionExercise[]; totalVolume: number;
 }
+/** One recorded profile change: the fields that differed on one save. */
+export interface ProfileChange {
+  field: string; label: string;
+  from: string | number | null; to: string | number | null;
+}
+export interface ProfileHistoryEntry { at: string; changes: ProfileChange[] }
 export interface Store {
   profile: Profile | null;
   pain: PainEntry[];
   sessions: Session[];
   nextSessionId: number; nextExerciseId: number;
+  /** Append-only log of profile edits (empty for data saved before it existed). */
+  profileHistory: ProfileHistoryEntry[];
 }
-export const emptyStore = (): Store => ({ profile: null, pain: [], sessions: [], nextSessionId: 1, nextExerciseId: 1 });
+export const emptyStore = (): Store => ({ profile: null, pain: [], sessions: [], nextSessionId: 1, nextExerciseId: 1, profileHistory: [] });
+
+// ---------- profile change history ----------
+// Every profile save is diffed against the stored one; the differences
+// (field, before, after) are kept in store.profileHistory so the user
+// can see how their profile evolved. A first save records every field
+// against null.
+const PROFILE_FIELDS: { key: keyof Profile; label: string }[] = [
+  { key: "age", label: "年齢" },
+  { key: "sex", label: "性別" },
+  { key: "heightCm", label: "身長" },
+  { key: "weightKg", label: "体重" },
+  { key: "bodyFatNote", label: "体脂肪などの補足" },
+  { key: "habitNote", label: "運動習慣の補足" },
+];
+export function diffProfile(prev: Profile | null, next: Profile): ProfileChange[] {
+  const out: ProfileChange[] = [];
+  for (const f of PROFILE_FIELDS) {
+    const from = prev ? prev[f.key] : null;
+    const to = next[f.key];
+    if (from !== to) out.push({ field: f.key, label: f.label, from, to });
+  }
+  return out;
+}
 
 // ---------- pain assessment ----------
 // Criteria (see README): red flags first; muscle soreness 2 = reduce, 3+ = exclude;

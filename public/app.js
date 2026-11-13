@@ -21,6 +21,42 @@ let importArm = false; // settings: import confirmation state
 let importPending = null; // parsed JSON waiting for import confirmation
 let importFileName = "";
 let importError = "";
+let histQuery = ""; // report screen: free-word filter over exercise names / notes
+
+// ---------- browser history + per-view scroll positions ----------
+// Tab switches are real history entries (pushState / popstate), so the
+// browser Back / Forward buttons move between views. Each entry
+// carries its view and a key; the scroll position is kept per key and
+// restored when the entry is shown again. A fresh navigation starts
+// at the top. The initial entry is written with replaceState so no
+// extra history is piled up.
+const VIEW_PATHS = { pain: "/", menu: "/workout", history: "/report", settings: "/settings" };
+const PATH_VIEWS = { "/": "pain", "/workout": "menu", "/report": "history", "/settings": "settings" };
+let navKeySeq = 0;
+let navKey = 0;
+const scrollByKey = {};
+function go(v) {
+  if (v === view) { render(); return; }
+  scrollByKey[navKey] = window.scrollY;
+  view = v; menuCancelArm = false; menuGenError = "";
+  navKey = ++navKeySeq;
+  history.pushState({ v, k: navKey }, "", VIEW_PATHS[v]);
+  render();
+  window.scrollTo(0, 0);
+}
+window.addEventListener("popstate", (e) => {
+  const v = e.state?.v ?? PATH_VIEWS[location.pathname] ?? "pain";
+  scrollByKey[navKey] = window.scrollY;
+  navKey = e.state?.k ?? 0;
+  view = v; menuCancelArm = false; menuGenError = "";
+  render();
+  const y = scrollByKey[navKey] ?? 0;
+  requestAnimationFrame(() => window.scrollTo(0, y));
+});
+// The session the workout screen works on: today's session, or — when
+// today has none — the newest unfinished one (see publicState). A
+// session belongs to the day it was started.
+const menuSession = () => state?.activeSession ?? state?.todaySession ?? null;
 
 // ---------- workout drafts (client-side only) ----------
 // While a workout card is being filled in, its raw input values are kept
@@ -31,7 +67,7 @@ let importError = "";
 // is saved, when the session is completed or cancelled, and whenever it
 // belongs to another day or another session.
 const DRAFT_PREFIX = "btl-draft:";
-const draftKey = () => (state?.todaySession ? `${DRAFT_PREFIX}${state.today}:${state.todaySession.id}` : null);
+const draftKey = () => { const s = menuSession(); return s ? `${DRAFT_PREFIX}${s.date}:${s.id}` : null; };
 function readDrafts() {
   try {
     const k = draftKey(); if (!k) return {};
@@ -69,14 +105,14 @@ function pruneDrafts() {
       const k = localStorage.key(i);
       if (k && k.startsWith(DRAFT_PREFIX) && k !== keep) localStorage.removeItem(k);
     }
-    if (state?.todaySession?.status === "completed") dropDraftSession();
+    if (menuSession()?.status === "completed") dropDraftSession();
   } catch { /* ignore */ }
 }
 // Capture edits on workout cards only (history-edit cards are not
 // .ex-card, settings fields are not in cards at all).
 function captureDraft(e) {
   const el = e.target;
-  if (!(el instanceof Element) || !state?.todaySession) return;
+  if (!(el instanceof Element) || !menuSession()) return;
   const card = el.closest(".ex-card"); if (!card) return;
   const field = el.closest("[data-set],[data-rpe],[data-note]"); if (!field) return;
   const tag = field.dataset.set ?? field.dataset.rpe ?? field.dataset.note;
@@ -112,11 +148,21 @@ async function load() {
   state = data;
   if (state.pain) painSavedGen = painGen;
   pruneDrafts();
+  // Deep link / reload on a view URL: adopt that view as the initial
+  // history entry (replaceState — no extra history is piled up).
+  if (!load.initialised) {
+    load.initialised = true;
+    view = PATH_VIEWS[location.pathname] ?? "pain";
+    navKey = 0; navKeySeq = 0;
+    history.replaceState({ v: view, k: 0 }, "", VIEW_PATHS[view]);
+  }
   render();
 }
-// Initial-load failure: never a blank screen — the reason plus a retry.
+// Initial-load failure: never a blank screen — the reason, a hint that
+// the server may simply not be running (with its start command), and a
+// retry button.
 function loadFailed(e) {
-  $app.innerHTML = `<p class="error">${esc(e.message)}</p><button class="cta" id="reloadBtn">再読み込み</button>`;
+  $app.innerHTML = `<p class="error">${esc(e.message)}</p><p class="small">サーバーが起動していない可能性があります。起動コマンド： bun run server.ts</p><button class="cta" id="reloadBtn">再読み込み</button>`;
   document.getElementById("reloadBtn").addEventListener("click", () => {
     $app.innerHTML = `<p>読み込み中…</p>`;
     load().catch(loadFailed);
@@ -143,9 +189,17 @@ async function withBusy(btn, fn) {
 }
 document.getElementById("tabs").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-view]"); if (!b) return;
-  view = b.dataset.view; menuCancelArm = false; menuGenError = ""; render();
+  go(b.dataset.view);
 });
-document.getElementById("gear").addEventListener("click", () => { view = "settings"; menuCancelArm = false; menuGenError = ""; render(); });
+document.getElementById("gear").addEventListener("click", () => { go("settings"); });
+// Report search: a delegated listener (attached once) so re-rendering
+// the entry list never loses it. Typing filters the entries only; the
+// summaries hide while a query is present.
+document.addEventListener("input", (e) => {
+  if (e.target?.id !== "histSearch") return;
+  histQuery = e.target.value;
+  refreshHistoryList();
+});
 $app.addEventListener("input", captureDraft);
 $app.addEventListener("change", captureDraft);
 
@@ -396,6 +450,18 @@ function validateProfileData(v) {
 // RPE select options: exactly these ten entries, each shown as
 // "value（word）" (also while selected); the saved value is the bare number.
 const RPE_SELECT = [[6, "かなり楽"], [6.5, "楽"], [7, "やや楽"], [7.5, "少しきつい"], [8, "きつい"], [8.5, "かなりきつい"], [9, "とてもきつい"], [9.5, "ほぼ限界"], [10, "限界"]];
+// The most recent recorded RPE for the same exercise (sessions are
+// newest first; the card's own instance is skipped). Used only as the
+// initial selection of an unrecorded card's RPE select — a card with
+// no recorded history anywhere stays 未入力.
+function lastRpeFor(ex) {
+  for (const s of state.sessions) {
+    for (const e of s.exercises) {
+      if (e.id !== ex.id && e.baseId === ex.baseId && e.rpe != null) return e.rpe;
+    }
+  }
+  return null;
+}
 function menuExerciseCard(s, ex) {
   const recorded = ex.completed || ex.rpe != null || ex.loggedSets.some((v) => v !== 0);
   // An unrecorded card restores its unsaved draft (see the draft helpers);
@@ -405,7 +471,9 @@ function menuExerciseCard(s, ex) {
     const shown = recorded ? (v === 0 ? "" : v) : (draft && i < draft.sets.length ? draft.sets[i] : ex.targetReps);
     return `<div class="set-cell"><div class="set-label">${i + 1}セット目</div><input class="set-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-set="${ex.id}:${i}" value="${esc(shown)}" placeholder="0" aria-label="${esc(ex.variation || ex.name)} ${i + 1}セット目"></div>`;
   }).join("");
-  const selRpe = draft ? (draft.rpe === "" ? null : Number(draft.rpe)) : ex.rpe;
+  // Initial RPE selection: a draft wins, then the saved value, then —
+  // for an unrecorded card — the previous recorded RPE of this exercise.
+  const selRpe = draft ? (draft.rpe === "" ? null : Number(draft.rpe)) : (ex.rpe ?? lastRpeFor(ex));
   const rpeOptions = [`<option value=""${selRpe == null ? " selected" : ""}>未入力</option>`]
     .concat(RPE_SELECT.map(([v, w]) => `<option value="${v}"${selRpe === v ? " selected" : ""}>${v}（${w}）</option>`)).join("");
   const totalTarget = ex.targetReps * ex.targetSets;
@@ -428,7 +496,7 @@ function menuExerciseCard(s, ex) {
   </div>`;
 }
 function renderMenu() {
-  const s = state.todaySession;
+  const s = menuSession();
   if (!s) {
     // No condition recorded today yet: this guidance takes priority over
     // the generate-session guidance.
@@ -436,9 +504,15 @@ function renderMenu() {
     return `<p>今日のセッションはまだありません。</p><button class="cta" id="gen">今日のワークアウトを作る</button><p id="genErr" class="error">${esc(menuGenError)}</p>`;
   }
   const remaining = s.exercises.filter((e) => !e.completed).length;
+  // An unfinished session from an earlier day keeps its own date: the
+  // title block names that date (header date form) so it can never be
+  // mistaken for a session of the new day.
+  const pastDate = s.date !== state.today
+    ? `<div class="menu-date">${Number(s.date.slice(5, 7))}/${Number(s.date.slice(8, 10))}（${DOW_LABELS[(dayNum(s.date) + 4) % 7]}）のセッション</div>` : "";
   return `${weekDots()}
   ${ringGauge(s)}
   <div class="menu-title"><h2 class="menu-session-title">${esc(s.rotation)} ${esc(s.title)}</h2>
+  ${pastDate}
   <div class="menu-remain">${remaining > 0 ? `あと${remaining}種目` : "全種目完了"}</div>
   ${s.focusNote ? `<div class="menu-focus">${esc(s.focusNote)}</div>` : ""}</div>
   ${s.progressionNotes.length ? `<div class="adj-notes"><ul>${s.progressionNotes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>` : ""}
@@ -464,12 +538,55 @@ function rpeWord(rpe) {
   return "とても楽";
 }
 const DOW_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
+// ---------- report summaries + search ----------
+// Monthly totals (newest month first) and per-muscle-group totals,
+// computed from the recorded sessions on the client. A session counts
+// toward a muscle group once per exercise actually performed
+// (completed, or with any set logged above zero); the group total is
+// the raw sum of logged sets (seconds for timed exercises).
+function historySummariesHtml() {
+  const months = new Map();
+  for (const s of state.sessions) {
+    const k = s.date.slice(0, 7);
+    const m = months.get(k) ?? { n: 0, vol: 0 };
+    m.n++; m.vol += s.totalVolume; months.set(k, m);
+  }
+  const monthRows = [...months.entries()].sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([k, m]) => `<div class="sum-row"><span>${Number(k.slice(0, 4))}年${Number(k.slice(5, 7))}月</span><span class="sum-val">${m.n}回 ／ ${m.vol}レップ</span></div>`).join("");
+  const groups = new Map();
+  for (const s of state.sessions) for (const e of s.exercises) {
+    if (!e.completed && !e.loggedSets.some((v) => v > 0)) continue;
+    const g = groups.get(e.muscleGroup) ?? { n: 0, vol: 0 };
+    g.n++; g.vol += e.loggedSets.reduce((a, b) => a + b, 0); groups.set(e.muscleGroup, g);
+  }
+  const groupRows = [...groups.entries()].sort((a, b) => b[1].vol - a[1].vol)
+    .map(([g, v]) => `<div class="sum-row"><span>${esc(g)}</span><span class="sum-val">${v.n}回 ／ ${v.vol}</span></div>`).join("");
+  return `<h3 class="sum-head">月別</h3>${monthRows}<h3 class="sum-head">部位別</h3>${groupRows}`;
+}
+// Free-word filter: a session matches when any of its exercises matches
+// on name, variation, or per-exercise note.
+function sessionMatchesQuery(s) {
+  const q = histQuery.trim().toLowerCase();
+  if (!q) return true;
+  return s.exercises.some((e) => `${e.name} ${e.variation ?? ""} ${e.note ?? ""}`.toLowerCase().includes(q));
+}
+// Re-render only the entry list (and the summaries' visibility) while
+// searching, so the search field keeps its focus and value.
+function refreshHistoryList() {
+  const ent = document.getElementById("histEntries");
+  if (!ent) return;
+  ent.innerHTML = historyEntriesHtml();
+  const sum = document.getElementById("histSummaries");
+  if (sum) sum.style.display = histQuery.trim() ? "none" : "";
+  bindHistoryEntries();
+}
 // The old Result view is merged into History: one list, newest first, in
 // the original's layout — big day number + month/weekday on the left,
 // rotation and exercise rows in the middle, session total on the right.
-function renderHistory() {
-  if (!state.sessions.length) return `<h2>レポート</h2><p>記録はまだありません。</p><button class="cta" id="histGoMenu">ワークアウトへ</button>`;
-  const entries = state.sessions.map((s) => {
+function historyEntriesHtml() {
+  const shown = state.sessions.filter(sessionMatchesQuery);
+  if (!shown.length) return `<p>該当する記録がありません。</p>`;
+  return shown.map((s) => {
     const n = dayNum(s.date);
     const dow = DOW_LABELS[(n + 4) % 7];
     const editing = editingHist.has(s.id);
@@ -487,7 +604,26 @@ function renderHistory() {
       <div class="hist-total"><span class="num">${s.totalVolume}</span>レップ</div>
     </div></div>`;
   }).join("");
-  return `<h2>レポート</h2>${entries}`;
+}
+function renderHistory() {
+  if (!state.sessions.length) return `<h2>レポート</h2><p>記録はまだありません。</p><button class="cta" id="histGoMenu">ワークアウトへ</button>`;
+  const searching = histQuery.trim() !== "";
+  return `<h2>レポート</h2>
+  <div class="hist-tools"><input type="search" id="histSearch" placeholder="種目名・メモで検索" aria-label="記録を検索" value="${esc(histQuery)}"></div>
+  <div id="histSummaries"${searching ? ` style="display:none"` : ""}>${historySummariesHtml()}</div>
+  <div id="histEntries">${historyEntriesHtml()}</div>`;
+}
+// Profile-history value formatting: an unset value reads 未入力.
+const fmtHistVal = (v) => (v === null || v === undefined || v === "" ? "未入力" : String(v));
+// A profile-history timestamp (ISO, UTC) shown in Asia/Tokyo as the
+// header date form plus HH:MM, e.g. 11/13（金） 14:05.
+function profileHistoryWhen(at) {
+  const t = new Date(at);
+  if (Number.isNaN(t.getTime())) return "";
+  const d = t.toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+  const time = t.toLocaleTimeString("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit", hour12: false });
+  const n = dayNum(d);
+  return `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}（${DOW_LABELS[(n + 4) % 7]}） ${time}`;
 }
 function renderSettings() {
   const p = state.profile ?? { age: "", sex: "", heightCm: "", weightKg: "", bodyFatNote: "", habitNote: "" };
@@ -502,6 +638,8 @@ function renderSettings() {
     <div class="field wide"><label for="pf-habit">運動習慣の補足</label><textarea id="pf-habit" rows="2">${esc(p.habitNote)}</textarea></div>
   </div>
   <p><button class="btn" id="saveProfile">保存</button></p>
+  ${(state.profileHistory ?? []).length ? `<h2>プロフィール履歴</h2>
+  <div class="prof-history">${state.profileHistory.map((h) => `<div class="ph-entry"><div class="ph-date">${esc(profileHistoryWhen(h.at))}</div>${h.changes.map((c) => `<div class="ph-row">${esc(c.label)}： ${esc(fmtHistVal(c.from))} → ${esc(fmtHistVal(c.to))}</div>`).join("")}</div>`).join("")}</div>` : ""}
   <h2>データ</h2><p class="small">保存先はサーバー側の data/store.json です。</p>
   <p class="data-actions"><button class="btn" id="exportData">エクスポート</button><button class="btn" id="importData">インポート</button><input type="file" id="importFile" accept="application/json,.json" hidden></p>
   ${importError ? `<p class="error">${esc(importError)}</p>` : ""}
@@ -521,6 +659,22 @@ function render() {
   $app.innerHTML = view === "pain" ? renderPain() : view === "menu" ? renderMenu() : view === "history" ? renderHistory() : renderSettings();
   updateHeader();
   bind();
+}
+// Bindings for the report entry list only. bind() calls this on every
+// full render, and refreshHistoryList() calls it after replacing the
+// list during a search, so the edit buttons always work.
+function bindHistoryEntries() {
+  const root = document.getElementById("histEntries") ?? $app;
+  root.querySelectorAll(".set-input").forEach((el) => el.addEventListener("input", () => { el.value = sanitizeDigits(el.value); }));
+  root.querySelectorAll("[data-edit-history]").forEach((el) => el.addEventListener("click", () => { editingHist.add(Number(el.dataset.editHistory)); render(); }));
+  root.querySelectorAll("[data-save-history]").forEach((el) => el.addEventListener("click", async () => {
+    const s = state.sessions.find((x) => x.id === Number(el.dataset.saveHistory));
+    const exercises = s.exercises.map((ex) => ({ exerciseId: ex.id, ...collectExercise($app, ex) }));
+    await withBusy(el, async () => {
+      for (const u of exercises) { const err = validateExerciseData(u); if (err) throw new Error(err); }
+      await api(`/api/session/${s.id}/record`, { exercises }); editingHist.delete(s.id); render();
+    });
+  }));
 }
 function bind() {
   $app.querySelectorAll("[data-tap]").forEach((el) => el.addEventListener("click", () => {
@@ -551,7 +705,7 @@ function bind() {
     };
     if (state.todaySession?.status === "completed") { // 「今日の結果を見る」: save any edits first, then go
       if (!painIsSaved() && !(await withBusy(savePain, savePainNow))) return; // failed: error line shown, stay here
-      view = "history"; render(); return;
+      go("history"); return;
     }
     if (painIsSaved()) { // 「ワークアウトを開始」: create today's session first if there is none yet
       if (!state.todaySession) {
@@ -559,46 +713,46 @@ function bind() {
         try { await api("/api/session/generate", {}); menuGenError = ""; }
         catch (e) { menuGenError = e.message; } // blocked (red flag / rest day): the menu empty state shows the reason
       }
-      view = "menu"; render(); return;
+      go("menu"); return;
     }
     await withBusy(savePain, async () => { await savePainNow(); render(); }); // the CTA now reads ワークアウトを開始
   });
   const backHome = document.getElementById("backHome");
-  if (backHome) backHome.addEventListener("click", () => { view = "pain"; render(); });
+  if (backHome) backHome.addEventListener("click", () => { go("pain"); });
   const gen = document.getElementById("gen");
   if (gen) gen.addEventListener("click", async () => {
     if (gen.disabled) return;
     gen.disabled = true; // the #genErr line below already reports failures
-    try { await api("/api/session/generate", {}); menuGenError = ""; view = "menu"; render(); }
+    try { await api("/api/session/generate", {}); menuGenError = ""; go("menu"); }
     catch (e) { menuGenError = e.message; const ge = document.getElementById("genErr"); if (ge) ge.textContent = e.message; }
     finally { if (gen.isConnected) gen.disabled = false; }
   });
   const goCond = document.getElementById("goCond");
-  if (goCond) goCond.addEventListener("click", () => { view = "pain"; render(); });
+  if (goCond) goCond.addEventListener("click", () => { go("pain"); });
   const goReport = document.getElementById("goReport");
-  if (goReport) goReport.addEventListener("click", () => { view = "history"; render(); });
+  if (goReport) goReport.addEventListener("click", () => { go("history"); });
   const histGoMenu = document.getElementById("histGoMenu");
-  if (histGoMenu) histGoMenu.addEventListener("click", () => { view = "menu"; render(); });
+  if (histGoMenu) histGoMenu.addEventListener("click", () => { go("menu"); });
   $app.querySelectorAll("[data-save-ex]").forEach((el) => el.addEventListener("click", async () => {
     const [sid, eid] = el.dataset.saveEx.split(":").map(Number);
-    const s = state.sessions.find((x) => x.id === sid) ?? state.todaySession;
+    const s = state.sessions.find((x) => x.id === sid) ?? menuSession();
     const ex = s.exercises.find((x) => x.id === eid);
     // 「記録して完了」: saving from the menu card always marks the exercise completed.
     await withBusy(el, async () => {
       const data = { ...collectExercise($app, ex), completed: true };
       const err = validateExerciseData(data); if (err) throw new Error(err);
       await api(`/api/session/${sid}/exercise/${eid}`, data);
-      if (state.todaySession && sid === state.todaySession.id) dropDraftExercise(eid); // saved: the draft is done
+      if (menuSession() && sid === menuSession().id) dropDraftExercise(eid); // saved: the draft is done
       render();
     });
   }));
-  const findTodayEx = (id) => (state.todaySession?.exercises ?? []).find((e) => e.id === id);
+  const findTodayEx = (id) => (menuSession()?.exercises ?? []).find((e) => e.id === id);
   $app.querySelectorAll("[data-timer-start]").forEach((el) => el.addEventListener("click", () => { const ex = findTodayEx(Number(el.dataset.timerStart)); if (ex) startTimer(ex); }));
   $app.querySelectorAll("[data-timer-pause]").forEach((el) => el.addEventListener("click", () => { const ex = findTodayEx(Number(el.dataset.timerPause)); if (ex) pauseTimer(ex); }));
   $app.querySelectorAll("[data-timer-reset]").forEach((el) => el.addEventListener("click", () => { const ex = findTodayEx(Number(el.dataset.timerReset)); if (ex) resetTimer(ex); }));
   const complete = document.getElementById("complete");
   if (complete) complete.addEventListener("click", async () => {
-    await withBusy(complete, async () => { await api(`/api/session/${state.todaySession.id}/complete`, {}); dropDraftSession(); menuCancelArm = false; view = "history"; render(); });
+    await withBusy(complete, async () => { await api(`/api/session/${menuSession().id}/complete`, {}); dropDraftSession(); menuCancelArm = false; go("history"); });
   });
   const cancelMenu = document.getElementById("cancelMenu");
   if (cancelMenu) cancelMenu.addEventListener("click", () => { menuCancelArm = true; render(); });
@@ -606,22 +760,14 @@ function bind() {
   if (cancelBack) cancelBack.addEventListener("click", () => { menuCancelArm = false; render(); });
   const cancelExec = document.getElementById("cancelExec");
   if (cancelExec) cancelExec.addEventListener("click", async () => {
-    const key = draftKey(); // after the delete there is no today session to key on
+    const key = draftKey(); // after the delete there is no menu session to key on
     await withBusy(cancelExec, async () => {
-      await api(`/api/session/${state.todaySession.id}/delete`, {});
+      await api(`/api/session/${menuSession().id}/delete`, {});
       if (key) { try { localStorage.removeItem(key); } catch { /* ignore */ } }
-      menuCancelArm = false; view = "pain"; render();
+      menuCancelArm = false; go("pain");
     });
   });
-  $app.querySelectorAll("[data-edit-history]").forEach((el) => el.addEventListener("click", () => { editingHist.add(Number(el.dataset.editHistory)); render(); }));
-  $app.querySelectorAll("[data-save-history]").forEach((el) => el.addEventListener("click", async () => {
-    const s = state.sessions.find((x) => x.id === Number(el.dataset.saveHistory));
-    const exercises = s.exercises.map((ex) => ({ exerciseId: ex.id, ...collectExercise($app, ex) }));
-    await withBusy(el, async () => {
-      for (const u of exercises) { const err = validateExerciseData(u); if (err) throw new Error(err); }
-      await api(`/api/session/${s.id}/record`, { exercises }); editingHist.delete(s.id); render();
-    });
-  }));
+  bindHistoryEntries();
   const saveProfile = document.getElementById("saveProfile");
   if (saveProfile) saveProfile.addEventListener("click", async () => {
     await withBusy(saveProfile, async () => {
@@ -665,7 +811,7 @@ function bind() {
   if (resetCancel) resetCancel.addEventListener("click", () => { resetArm = false; render(); });
   const resetConfirm = document.getElementById("resetConfirm");
   if (resetConfirm) resetConfirm.addEventListener("click", async () => {
-    await withBusy(resetConfirm, async () => { await api("/api/reset", {}); resetArm = false; dropAllDrafts(); painGen = 0; painSavedGen = -1; view = "pain"; render(); });
+    await withBusy(resetConfirm, async () => { await api("/api/reset", {}); resetArm = false; dropAllDrafts(); painGen = 0; painSavedGen = -1; go("pain"); });
   });
 }
 load().catch(loadFailed);

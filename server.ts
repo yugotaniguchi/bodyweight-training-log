@@ -1,9 +1,11 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
-import { assessPain, detectOverload, generateSession, painDurationGuidance, sessionTotal, type PainEntry, type SessionExercise } from "./src/logic";
+import { assessPain, detectOverload, diffProfile, generateSession, painDurationGuidance, sessionTotal, type PainEntry, type SessionExercise } from "./src/logic";
 import { MUSCLE_PARTS, JOINTS, RED_FLAGS, EXERCISES, ROTATIONS } from "./src/exercises";
 import { loadStore, saveStore, resetStore } from "./src/store";
 import { InvalidInput, parseProfile, parseStoreImport, validNote, validPainLevel, validReps, validRpe } from "./src/validate";
 import { ICON_192_BASE64, ICON_512_BASE64, ICON_MASKABLE_512_BASE64, APPLE_TOUCH_ICON_BASE64 } from "./src/icons";
+import { logEvent } from "./src/log";
 
 // Icons are embedded as base64 (src/icons.ts) so the repository carries
 // no binary files; they are decoded once here and served as image/png
@@ -21,10 +23,86 @@ const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8" } });
 const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" }); // YYYY-MM-DD
 
+// ---------- optional token authentication ----------
+// Enabled only when BTL_TOKEN is set; unset, the app behaves exactly
+// as before (no auth anywhere). When enabled, every page and API
+// route requires the login cookie: the browser is redirected to a
+// minimal /login form, the API answers 401. The cookie carries only
+// a SHA-256 hash of the token, HttpOnly, for 30 days.
+const TOKEN = process.env.BTL_TOKEN ?? "";
+const AUTH_COOKIE = "btl_auth";
+const AUTH_VALUE = TOKEN ? createHash("sha256").update(`btl:${TOKEN}`).digest("hex") : "";
+const isAuthed = (req: Request): boolean => {
+  if (!TOKEN) return true;
+  const cookie = req.headers.get("cookie") ?? "";
+  return cookie.split(/;\s*/).some((p) => p === `${AUTH_COOKIE}=${AUTH_VALUE}`);
+};
+function loginPage(error: boolean): Response {
+  const html = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ログイン — 自重トレーニング記録</title>
+<meta name="theme-color" content="#0f0f0f">
+<style>
+body{font-family:system-ui,sans-serif;font-size:16px;background:#0f0f0f;color:#f0f0f0;max-width:680px;margin:0 auto;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));line-height:1.6}
+h1{font-size:20px;margin:22px 0 4px}
+.sub{color:#9ca3af;font-size:13px;margin:0 0 14px}
+label{display:block;font-size:13px;color:#9ca3af;margin-bottom:4px}
+input{height:42px;padding:0 10px;border-radius:8px;border:1px solid #2d2d2d;background:#1a1a1a;color:#f0f0f0;font-size:16px;box-sizing:border-box;font-family:inherit;width:100%}
+button{display:block;width:100%;box-sizing:border-box;margin-top:20px;padding:16px;border:none;border-radius:8px;background:#2dd4bf;color:#052e2b;font-size:16px;font-weight:700;cursor:pointer}
+.error{color:#f87171;font-size:14px}
+</style>
+</head>
+<body>
+<h1>自重トレーニング記録</h1>
+<p class="sub">続けるにはトークンを入力してください。</p>
+${error ? `<p class="error">トークンが違います</p>` : ""}
+<form method="POST" action="/login">
+<label for="token">トークン</label>
+<input id="token" name="token" type="password" autocomplete="current-password">
+<button type="submit">ログイン</button>
+</form>
+</body>
+</html>`;
+  return new Response(html, { status: error ? 401 : 200, headers: { "content-type": "text/html; charset=utf-8" } });
+}
+async function handleLogin(req: Request): Promise<Response> {
+  if (req.method === "GET") return loginPage(false);
+  if (req.method !== "POST") return new Response("method not allowed", { status: 405 });
+  const form = await req.formData().catch(() => null);
+  const given = String(form?.get("token") ?? "");
+  const givenHash = createHash("sha256").update(`btl:${given}`).digest();
+  const expectedHash = createHash("sha256").update(`btl:${TOKEN}`).digest();
+  if (!timingSafeEqual(givenHash, expectedHash)) {
+    logEvent("auth", "login failed (token mismatch)");
+    return loginPage(true);
+  }
+  logEvent("auth", "login succeeded");
+  return new Response(null, {
+    status: 303,
+    headers: {
+      location: "/",
+      "set-cookie": `${AUTH_COOKIE}=${AUTH_VALUE}; HttpOnly; Path=/; SameSite=Lax; Max-Age=2592000`,
+    },
+  });
+}
+
 function publicState() {
   const store = loadStore();
   const date = today();
   const pain = store.pain.find((p) => p.date === date) ?? null;
+  const todaySession = store.sessions.find((s) => s.date === date) ?? null;
+  // The workout screen works on the active session: today's session if
+  // one exists, otherwise the newest still-unfinished (planned) one —
+  // a session belongs to the day it was started, so an unfinished
+  // session from an earlier day stays recordable and completable as
+  // that day's session even after the date has moved on, and never
+  // mixes with a new day's session.
+  const activeSession = todaySession
+    ?? [...store.sessions].reverse().find((s) => s.status === "planned")
+    ?? null;
   return {
     today: date, profile: store.profile, pain,
     assessment: pain ? assessPain(pain) : null,
@@ -32,7 +110,9 @@ function publicState() {
     // and the auto-judged 24-hour-rule overload flags for the next session.
     guidance: painDurationGuidance(store),
     overload: detectOverload(store),
-    todaySession: store.sessions.find((s) => s.date === date) ?? null,
+    todaySession,
+    activeSession,
+    profileHistory: [...store.profileHistory].reverse(),
     sessions: [...store.sessions].reverse(),
     stats: {
       totalCompleted: store.sessions.filter((s) => s.status === "completed").length,
@@ -72,12 +152,29 @@ const server = Bun.serve({
     const url = new URL(req.url);
     const path = url.pathname;
     try {
+      // Optional token gate (see above): /login is the only open route.
+      if (TOKEN) {
+        if (path === "/login") return await handleLogin(req);
+        if (!isAuthed(req)) {
+          logEvent("auth", `401 ${req.method} ${path}`);
+          if (path.startsWith("/api/")) return json({ error: "認証が必要です" }, 401);
+          return Response.redirect(new URL("/login", url), 302);
+        }
+      }
+
       if (path === "/api/state" && req.method === "GET") return json(publicState());
 
       if (path === "/api/profile" && req.method === "POST") {
         const b = await req.json();
         const store = loadStore();
-        store.profile = parseProfile(b); // throws InvalidInput -> 400
+        const next = parseProfile(b); // throws InvalidInput -> 400
+        // Keep the change history: one entry per save that changed
+        // something, holding each field's before/after values.
+        const changes = diffProfile(store.profile, next);
+        if (changes.length) {
+          store.profileHistory = [...store.profileHistory, { at: new Date().toISOString(), changes }].slice(-100);
+        }
+        store.profile = next;
         saveStore(store); return json(publicState());
       }
 
@@ -105,13 +202,13 @@ const server = Bun.serve({
       if (path === "/api/session/generate" && req.method === "POST") {
         const store = loadStore();
         const date = today();
-        if (store.sessions.some((s) => s.date === date)) return json({ error: "今日のセッションは作成済みです" }, 409);
+        if (store.sessions.some((s) => s.date === date)) { logEvent("api", `409 POST ${path}`); return json({ error: "今日のセッションは作成済みです" }, 409); }
         const pain = store.pain.find((p) => p.date === date) ?? null;
         const assessment = assessPain(pain);
-        if (assessment.care) return json({ error: "警告サインがあるため開始できません", assessment }, 403);
-        if (assessment.rest) return json({ error: "完全休養日です", assessment }, 403);
+        if (assessment.care) { logEvent("api", `403 POST ${path} (red flag)`); return json({ error: "警告サインがあるため開始できません", assessment }, 403); }
+        if (assessment.rest) { logEvent("api", `403 POST ${path} (rest day)`); return json({ error: "完全休養日です", assessment }, 403); }
         const session = generateSession(store, date, assessment);
-        if (session.exercises.length === 0) return json({ error: "除外により実施できる種目がありません", assessment }, 403);
+        if (session.exercises.length === 0) { logEvent("api", `403 POST ${path} (all excluded)`); return json({ error: "除外により実施できる種目がありません", assessment }, 403); }
         store.sessions.push(session); saveStore(store); return json(publicState());
       }
 
@@ -120,7 +217,7 @@ const server = Bun.serve({
         const store = loadStore();
         const s = store.sessions.find((x) => x.id === Number(exMatch[1]));
         const ex = s?.exercises.find((x) => x.id === Number(exMatch[2]));
-        if (!s || !ex) return json({ error: "not found" }, 404);
+        if (!s || !ex) { logEvent("api", `404 ${req.method} ${path}`); return json({ error: "not found" }, 404); }
         Object.assign(ex, applyExerciseUpdate(ex, await req.json()));
         s.totalVolume = sessionTotal(s); saveStore(store); return json(publicState());
       }
@@ -130,7 +227,7 @@ const server = Bun.serve({
         const b = await req.json();
         const store = loadStore();
         const s = store.sessions.find((x) => x.id === Number(recMatch[1]));
-        if (!s) return json({ error: "not found" }, 404);
+        if (!s) { logEvent("api", `404 ${req.method} ${path}`); return json({ error: "not found" }, 404); }
         for (const upd of Array.isArray(b.exercises) ? b.exercises : []) {
           const ex = s.exercises.find((x) => x.id === Number(upd.exerciseId));
           if (ex) Object.assign(ex, applyExerciseUpdate(ex, upd));
@@ -142,7 +239,7 @@ const server = Bun.serve({
       if (delMatch && req.method === "POST") { // cancel today's menu from the menu screen
         const store = loadStore();
         const idx = store.sessions.findIndex((x) => x.id === Number(delMatch[1]));
-        if (idx < 0) return json({ error: "not found" }, 404);
+        if (idx < 0) { logEvent("api", `404 ${req.method} ${path}`); return json({ error: "not found" }, 404); }
         store.sessions.splice(idx, 1); saveStore(store); return json(publicState());
       }
 
@@ -150,7 +247,7 @@ const server = Bun.serve({
       if (compMatch && req.method === "POST") {
         const store = loadStore();
         const s = store.sessions.find((x) => x.id === Number(compMatch[1]));
-        if (!s) return json({ error: "not found" }, 404);
+        if (!s) { logEvent("api", `404 ${req.method} ${path}`); return json({ error: "not found" }, 404); }
         s.status = "completed"; s.totalVolume = sessionTotal(s); saveStore(store); return json(publicState());
       }
 
@@ -171,7 +268,7 @@ const server = Bun.serve({
         const store = parseStoreImport(await req.json()); // throws InvalidInput -> 400
         saveStore(store); return json(publicState());
       }
-      if (path.startsWith("/api/")) return json({ error: "not found" }, 404);
+      if (path.startsWith("/api/")) { logEvent("api", `404 ${req.method} ${path}`); return json({ error: "not found" }, 404); }
 
       // Icons come from the embedded base64 data, not from public/.
       const icon = ICON_ROUTES.get(path);
@@ -188,11 +285,13 @@ const server = Bun.serve({
       if (await file.exists()) return new Response(file);
       return new Response(Bun.file(join(PUBLIC, "index.html")));
     } catch (e) {
-      if (e instanceof InvalidInput) return json({ error: e.message }, 400);
-      if (e instanceof SyntaxError) return json({ error: "リクエストの形式が正しくありません" }, 400);
+      if (e instanceof InvalidInput) { logEvent("api", `400 ${req.method} ${path}: ${e.message}`); return json({ error: e.message }, 400); }
+      if (e instanceof SyntaxError) { logEvent("api", `400 ${req.method} ${path}: malformed request`); return json({ error: "リクエストの形式が正しくありません" }, 400); }
+      logEvent("api", `500 ${req.method} ${path}: ${e instanceof Error ? e.name : "error"}`);
       return json({ error: String(e) }, 500);
     }
   },
 });
 console.log(`bodyweight-training-log listening on http://localhost:${server.port}`);
+logEvent("start", `listening on port ${server.port}${TOKEN ? " (token auth enabled)" : ""}`);
 export { EXERCISES };

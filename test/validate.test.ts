@@ -136,4 +136,19 @@ describe("parseStoreImport", () => {
     const badStatus = sample(); (badStatus.sessions[0] as { status: string }).status = "done";
     expect(() => parseStoreImport(structuredClone(badStatus))).toThrow(InvalidInput);
   });
+  test("profile history: carried when present, empty when absent, checked when broken", () => {
+    const s = sample();
+    s.profileHistory = [{ at: "2026-11-13T05:00:00.000Z", changes: [{ field: "weightKg", label: "体重", from: 65, to: 64 }] }];
+    const out = parseStoreImport(structuredClone(s));
+    expect(out.profileHistory).toHaveLength(1);
+    expect(out.profileHistory[0].changes[0]).toMatchObject({ field: "weightKg", from: 65, to: 64 });
+    // An old export without the key imports with an empty history.
+    const old = sample() as unknown as Record<string, unknown>;
+    delete old.profileHistory;
+    expect(parseStoreImport(structuredClone(old)).profileHistory).toEqual([]);
+    // A malformed history is refused like any other broken record.
+    const bad = sample() as unknown as Record<string, any>;
+    bad.profileHistory = [{ at: "2026-11-13T05:00:00.000Z", changes: [{ field: "weightKg" }] }];
+    expect(() => parseStoreImport(structuredClone(bad))).toThrow(InvalidInput);
+  });
 });

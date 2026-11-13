@@ -3,7 +3,7 @@
 // checks the same rules before sending and shows the same reason text.
 // A rejected write answers HTTP 400 with the reason and stores nothing.
 import { RED_FLAGS } from "./exercises";
-import { sessionTotal, type PainEntry, type Profile, type Session, type SessionExercise, type Store } from "./logic";
+import { sessionTotal, type PainEntry, type Profile, type ProfileHistoryEntry, type Session, type SessionExercise, type Store } from "./logic";
 
 export class InvalidInput extends Error {}
 
@@ -171,6 +171,29 @@ function parseImportedPain(v: unknown): PainEntry {
   };
 }
 
+// Profile history is optional in an import (exports written before it
+// existed do not carry it); when present it is type-checked entry by
+// entry and defaults to empty when absent.
+function parseImportedProfileHistory(v: unknown): ProfileHistoryEntry[] {
+  if (v === undefined) return [];
+  if (!Array.isArray(v)) fail(IMPORT_MESSAGE);
+  const scalar = (x: unknown): string | number | null => {
+    if (x === null) return null;
+    if (typeof x === "number" && Number.isFinite(x)) return x;
+    return impStr(x);
+  };
+  return (v as unknown[]).map((e) => {
+    if (!isObj(e) || !Array.isArray(e.changes)) fail(IMPORT_MESSAGE);
+    return {
+      at: impStr(e.at, 64),
+      changes: (e.changes as unknown[]).map((c) => {
+        if (!isObj(c)) fail(IMPORT_MESSAGE);
+        return { field: impStr(c.field, 64), label: impStr(c.label, 64), from: scalar(c.from), to: scalar(c.to) };
+      }),
+    };
+  });
+}
+
 export function parseStoreImport(v: unknown): Store {
   if (!isObj(v)) fail(IMPORT_MESSAGE);
   for (const k of ["profile", "pain", "sessions", "nextSessionId", "nextExerciseId"]) {
@@ -187,5 +210,6 @@ export function parseStoreImport(v: unknown): Store {
     sessions,
     nextSessionId: Math.max(impInt(v.nextSessionId, 1, Number.MAX_SAFE_INTEGER), maxSessionId + 1),
     nextExerciseId: Math.max(impInt(v.nextExerciseId, 1, Number.MAX_SAFE_INTEGER), maxExerciseId + 1),
+    profileHistory: parseImportedProfileHistory(v.profileHistory),
   };
 }

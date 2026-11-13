@@ -122,6 +122,8 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Nav segments, in order: `コンディション` / `ワークアウト` / `レポート`
 - Loading placeholder: `読み込み中…`
 - Load-failure retry button: `再読み込み`
+- Load-failure server hint (small text between the reason and the
+  retry button): `サーバーが起動していない可能性があります。起動コマンド： bun run server.ts`
 - Network-failure message (no response at all):
   `通信に失敗しました。接続を確認してもう一度お試しください。`
 
@@ -174,6 +176,9 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Empty state CTA: `今日のワークアウトを作る`
 - Gauge sub-label: `／ {total} 種目完了`
 - Session title: `{rotation} {title}` (e.g. `B 背中 + 脚裏 + 体幹`)
+- Past-day session label (only when the shown session belongs to an
+  earlier day — see "Dates and sessions"): `{M/D（曜）}のセッション`,
+  in the header date form, directly under the session title.
 - Remaining line: `あと{n}種目`, or `全種目完了` when none remain
 - Metrics labels: `種目` / `セット` / `累計回`
 - Per set: `{n}セット目`; target line: `目標 {sets}セット × {reps}{unit}`
@@ -200,6 +205,17 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 ### Report screen
 - Heading: `レポート`; empty state: `記録はまだありません。`, followed by a
   primary CTA `ワークアウトへ` (goes to the ワークアウト screen).
+- Search field (generic input, full width, under the heading):
+  placeholder `種目名・メモで検索`. While a query is present the
+  summaries below are hidden and the entries are filtered; no match
+  shows `該当する記録がありません。`
+- Summary headings: `月別` / `部位別`. Summary rows are two-column
+  lines (label left, value right in `--sub`):
+  - Monthly: `{YYYY}年{M}月` and `{n}回 ／ {total}レップ` (session count
+    and summed session totals, newest month first).
+  - Muscle group: `{muscleGroup}` and `{n}回 ／ {total}` (performed
+    count and the raw sum of logged sets — seconds for timed
+    exercises), ordered by total descending.
 - Entry date: a single line `MM/DD(曜)` (zero-padded month and day,
   weekday as one character in half-width parentheses), e.g. `11/13(金)`
 - Per-exercise note prefix: `種目メモ： {note}`
@@ -222,6 +238,11 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Field labels: `年齢` / `性別` / `身長（cm）` / `体重（kg）` /
   `体脂肪などの補足` / `運動習慣の補足`
 - Save button: `保存`
+- Profile-history heading (only when history exists):
+  `プロフィール履歴`. Each entry: the save moment as
+  `{M/D（曜）} {HH:MM}` (header date form plus the time, Asia/Tokyo),
+  then one line per changed field: `{label}： {from} → {to}`, an
+  unset value shown as `未入力`.
 - Data note: `保存先はサーバー側の data/store.json です。`
 - Export button: `エクスポート` (downloads the whole store as JSON)
 - Import button: `インポート` (opens a JSON file picker)
@@ -252,6 +273,12 @@ Shown verbatim at the bottom of every screen, after the app area:
 
 - Single column, mobile-first (mainly used on an iPhone). Content
   **max-width 680px**, centred, **padding 16px** on all sides.
+- Safe areas: the page opts into `viewport-fit=cover`, and the safe
+  area insets are **added** to the existing spacing — the bottom body
+  padding grows by `env(safe-area-inset-bottom)`, and the fixed gear
+  button's top/right offsets grow by the top/right insets. On a
+  device without insets every value is exactly the normative one
+  above; nothing shrinks.
 - Pain tiles: **2-column grid**, gap **8px**.
 - The primary CTA sits after the screen's content, full width.
 - Vertical rhythm: `h2` sections as above; cards have margin 12px 0.
@@ -356,7 +383,11 @@ Shown verbatim at the bottom of every screen, after the app area:
 
 ### Session title block (workout screen)
 - Centred, margin-top 12px. Session title: 20px bold `--text`,
-  `{rotation} {title}`.
+  `{rotation} {title}`. Long titles wrap inside the block
+  (`overflow-wrap: anywhere`); the font size never changes.
+- When the shown session belongs to an earlier day, a 12px `--sub`
+  line directly under the title names its date in the header form:
+  `{M/D（曜）}のセッション` (see "Dates and sessions").
 - Under it, 13px `--sub`, margin-top 3px: `あと{n}種目` — or `全種目完了`
   when every exercise is completed.
 - Under that, the session's pain-adjustment note (focus note), when
@@ -383,7 +414,9 @@ Shown verbatim at the bottom of every screen, after the app area:
 - Header row (flex, space-between, gap 14px):
   - Left: the muscle group in 12px `--sub`; under it the **variation
     name as the heading**, 21px bold `--text`, line height 1.35,
-    margin 2px 0 3px (the variation alone, e.g.
+    margin 2px 0 3px, wrapping inside the card
+    (`overflow-wrap: anywhere`) so a long name never overflows (the
+    variation alone, e.g.
     `プローンWレイズ（トップで止める）`, `スーパーマンホールド`,
     `膝曲げレッグレイズ`; if the variation equals the exercise name, the
     name alone). Under that, 13px `--sub`: `目標 {sets}セット ×
@@ -413,7 +446,11 @@ Shown verbatim at the bottom of every screen, after the app area:
     RPE set, or has any logged set ≠ 0. Otherwise it is **unrecorded**.
   - Unrecorded: every set input is **pre-filled with the target**
     (reps, or seconds for timed exercises) so the user can keep or
-    overwrite it; the button reads `記録して完了`.
+    overwrite it; the button reads `記録して完了`. The RPE select
+    starts at this exercise's **most recent recorded RPE** (from any
+    earlier session) when one exists, and at `未入力` when none does;
+    the note is never pre-filled. This initial selection does not by
+    itself make the card "recorded".
   - Recorded: set inputs show the logged values, with 0 shown as an
     empty field; the button reads `記録を更新`. This label change and
     the input values are the only visual differences.
@@ -497,7 +534,13 @@ Shown verbatim at the bottom of every screen, after the app area:
 - Exercise rows (flex, space-between, gap 12px, padding 1px 0): name
   in `--text`; then, in `--sub` on the same line, `（{variation}）` and
   `（RPE {rpe} {word}）` when an RPE is set. Logged sets right-aligned,
-  `--sub`, no wrapping: values joined with ` / ` plus the unit.
+  `--sub`, no wrapping: values joined with ` / ` plus the unit. The
+  name side wraps (`overflow-wrap: anywhere`) rather than pushing the
+  sets out of the entry.
+- Above the entries: a full-width search field (generic control) and,
+  while no query is entered, the two summaries (see "Exact UI text —
+  Report screen" for their exact shapes). Typing filters the entries
+  live and hides the summaries; the search field keeps focus.
 - A per-exercise note goes directly under its exercise row: 12px
   `--sub`, `種目メモ： {note}`.
 - Under the exercise rows, the edit button: margin-top 8px, padding
@@ -535,6 +578,12 @@ Shown verbatim at the bottom of every screen, after the app area:
   all columns (textareas, rows 2).
 - Each field: label above the control — label 13px `--sub`, 4px gap.
 - Save button (`.btn`): `保存`.
+- Profile history (only when at least one entry exists): heading
+  `プロフィール履歴`, then the entries newest first, each separated by
+  a 1px `--border` bottom border: the save moment in 13px `--sub`
+  (`{M/D（曜）} {HH:MM}`), then one 14px line per changed field
+  (`{label}： {from} → {to}`, unset = `未入力`). Read-only — there is
+  no history editing.
 - Heading `データ`; small text (13px `--sub`):
   `保存先はサーバー側の data/store.json です。`
 - Export / import row: two `.btn` in a row (gap 8px, wrap allowed):
@@ -590,9 +639,11 @@ wait or a failure would otherwise leave a blank or unresponsive screen.
 
 - Initial load: the app area shows the loading placeholder
   `読み込み中…` until the state arrives. If the load fails, the area
-  shows the reason as error text (`.error`) followed by a primary CTA
-  `再読み込み`, which returns to the loading placeholder and retries.
-  Never a blank screen.
+  shows the reason as error text (`.error`), then the small-text hint
+  that the server may not be running — including its start command
+  (`サーバーが起動していない可能性があります。起動コマンド： bun run server.ts`) —
+  followed by a primary CTA `再読み込み`, which returns to the loading
+  placeholder and retries. Never a blank screen.
 - Every button that sends a request — the condition CTA in all its
   states, `今日のワークアウトを作る`, the per-exercise record buttons,
   `今日のトレーニングを完了する`, `取り消す`, the history-edit save,
@@ -681,7 +732,8 @@ switch:
 
 - While a workout card is being filled in, its raw values (set fields,
   RPE select, note) are kept in `localStorage` under a key naming the
-  date and the session: `btl-draft:{YYYY-MM-DD}:{session id}`, one
+  session's own date (the day it was started) and the session:
+  `btl-draft:{YYYY-MM-DD}:{session id}`, one
   entry per exercise. The server-side data format is unchanged.
 - A draft is restored **only onto unrecorded cards**; saved server
   values always win. Restoring a draft never changes the card's
@@ -710,6 +762,78 @@ switch:
   with imported ones.
 - On a successful import the client reloads its state from the
   response and re-renders.
+- The store also carries `profileHistory` (see Settings). It is part
+  of every export; on import it is optional — files written before it
+  existed import with an empty history, and a present history is
+  type-checked like every other record.
+
+## Data file safety — atomic writes, backups, recovery, server log
+
+- Writes are **atomic**: the new store is written to a temp file and
+  renamed over `data/store.json`, so an interrupted write can never
+  leave a half-written file.
+- Before each overwrite, the previous contents are rotated into
+  **backup generations** next to the store file: `store.backup.1.json`
+  (newest) through `store.backup.3.json`. Nothing else is kept.
+- On load, a store file that exists but does not parse is treated as
+  corrupted: the newest backup generation that parses takes its
+  place, the main file is restored from it, and the recovery is
+  recorded in the server log. A **missing** store file is a fresh
+  start, not a recovery — deleting `store.json` (and its backups)
+  stays the manual reset.
+- The server keeps an event log at `data/server.log`: one line per
+  event with an ISO timestamp — startup, store recovery, API errors
+  (status, method, path, short reason), and auth events. It never
+  contains request bodies or stored personal data. Past ~256 KB it
+  rotates to a single `server.log.1`, so at most two files exist.
+
+## Dates and sessions — one clock, sessions belong to their start day
+
+- There is exactly one clock: the **server's Asia/Tokyo date**. The
+  server derives "today" itself for every judgement and returns it in
+  the state; the client never computes a date from the device clock
+  (weekday math is done on the server's date strings, in UTC day
+  numbers). The countdown timer's use of the local clock is for
+  durations only, never for dates.
+- A session **belongs to the day it was started** (its server date)
+  and keeps that date forever. If the date moves on while a session
+  is still unfinished, the workout screen keeps showing that session
+  — titled with its own date, `{M/D（曜）}のセッション` — and it can be
+  recorded and completed as that day's session. It never merges into
+  the new day: generating a session for the new day creates a
+  separate session for that date.
+- Condition (pain) records are the opposite: always the current
+  server day's. Starting a new day means a fresh condition check for
+  that day; yesterday's check is history, used by the 24-hour rule
+  and duration guidance.
+
+## Navigation — browser history and scroll positions
+
+- Each view has a path: コンディション `/`, ワークアウト `/workout`,
+  レポート `/report`, 設定 `/settings`. Switching views (tabs, the gear,
+  and the in-app buttons that change screens) pushes a history entry,
+  so the browser's Back / Forward buttons move between views.
+- The initial entry is written with `replaceState`: loading the app
+  (including a deep link to a view path, which opens that view) adds
+  no extra history.
+- Scroll positions are kept per history entry: leaving a view stores
+  its scroll offset, and returning via Back / Forward restores it. A
+  fresh navigation to a view starts at the top.
+
+## Optional token authentication
+
+- Authentication exists only when the server is started with the
+  `BTL_TOKEN` environment variable set. Unset, there is no login
+  anywhere and the app behaves exactly as specified above.
+- When enabled, **every** page and API route is protected: an
+  unauthenticated page request redirects to `/login`, and an
+  unauthenticated API request is answered 401. `/login` shows a
+  minimal form in the app's own tokens (dark background, one password
+  field labelled `トークン`, a primary `ログイン` button). A wrong
+  token is refused with the single generic line `トークンが違います`.
+- A correct token sets an HttpOnly cookie (`SameSite=Lax`, 30 days)
+  holding only a hash of the token; it opens all pages and APIs until
+  it expires. There is no user account and no logout UI.
 
 ## PWA — manifest and icons
 
@@ -762,6 +886,11 @@ switch:
   weekday forms, dates inside reason texts) are banned on every screen.
   The week dot row carries weekday letters only — no dates, no day
   numbers, and no week boxes.
+- Three defined reuses, all built from form (a), are not new forms:
+  the workout screen's past-day session label `{M/D（曜）}のセッション`,
+  the settings profile-history timestamp `{M/D（曜）} {HH:MM}`, and
+  the report's monthly summary label `{YYYY}年{M}月` (a month, not a
+  day — the only place a year is shown).
 
 ## Screen compositions
 
@@ -804,19 +933,23 @@ switch:
 ### 3. Report （レポート）
 1. Header; segment navigation （レポート active); no gear
 2. Heading `レポート` (or the empty-state text + `ワークアウトへ` CTA)
-3. Entries, newest first, in the list form above; an entry in edit
+3. Search field `種目名・メモで検索`; while a query is present, the
+   summaries hide and the entries are filtered
+4. Summaries `月別` and `部位別` (quiet two-column rows)
+5. Entries, newest first, in the list form above; an entry in edit
    mode shows its edit cards in place
-4. Footer note
+6. Footer note
 
 ### 4. Settings （設定， via the gear)
 1. Header; segment navigation (no segment active); gear visible in
    its usual muted style
 2. Back button `← ホームに戻る` (top-left of the content)
 3. Heading `プロフィール（初回設定）`; the uniform form grid; `保存`
-4. Heading `データ`; the data note; `エクスポート` / `インポート` (with the
+4. Heading `プロフィール履歴` and the entries, when history exists
+5. Heading `データ`; the data note; `エクスポート` / `インポート` (with the
    import confirmation block when a file is chosen); `データを消す`; the
    confirmation block below it when open
-5. Footer note
+6. Footer note
 
 ## Scope boundary for design work
 
