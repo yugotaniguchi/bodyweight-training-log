@@ -112,22 +112,78 @@ label.row{display:block;margin:6px 0}
 .btn.danger{border-color:#ef4444;color:#f87171}
 .btn.danger-solid{background:#ef4444;border-color:#ef4444;color:#fff;font-weight:700}
 
-/* Ring gauge + metrics */
-.gauge-wrap{display:flex;align-items:center;gap:18px;margin:12px 0}
-.gauge{position:relative;width:96px;height:96px;flex:none}
-.gauge svg{transform:rotate(-90deg)}
-.gauge .g-bg{stroke:var(--border)}.gauge .g-fg{stroke:var(--accent)}
-.gauge-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:30px;color:var(--text)}
-.metrics{display:flex;gap:20px;flex-wrap:wrap}
-.metric{text-align:center}
-.metric .m-num{font-size:30px;line-height:1;color:var(--text)}
-.metric .m-label{font-size:12px;color:var(--sub)}
+/* Week dots (menu screen): Mon–Sun letters over dots, no day numbers.
+   Done day = filled teal dot; today = teal bold letter + teal ring. */
+.weekdots{display:flex;justify-content:space-between;margin:16px 8px 2px}
+.wdot{display:flex;flex-direction:column;align-items:center;gap:7px;width:34px}
+.wdot-label{color:var(--sub);font-size:12px;line-height:1}
+.wdot.today .wdot-label{color:var(--accent);font-weight:700}
+.wdot-dot{width:9px;height:9px;border-radius:50%;border:2px solid #333;box-sizing:border-box}
+.wdot-dot.done{background:var(--accent);border-color:var(--accent)}
+.wdot.today .wdot-dot{width:18px;height:18px;border:2px solid var(--accent);background:transparent}
+.wdot.today .wdot-dot.done{background:var(--accent)}
 
-/* Countdown timer on timed-exercise cards */
-.timer{margin-top:10px;border-top:1px dashed var(--border);padding-top:10px}
+/* Ring gauge (menu screen): thick ring centred, big count + total under it */
+.gauge2{position:relative;width:150px;height:150px;margin:20px auto 4px}
+.gauge2 svg{transform:rotate(-90deg)}
+.gauge2 .g-bg{stroke:var(--border)}.gauge2 .g-fg{stroke:var(--accent)}
+.gauge2-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.gauge2-num{font-size:62px;line-height:1;color:var(--text)}
+.gauge2-sub{color:var(--sub);font-size:12px;margin-top:3px}
+
+/* Session title + remaining count, centred */
+.menu-title{text-align:center;margin-top:12px}
+.menu-session-title{font-size:20px;margin:0;color:var(--text)}
+.menu-remain{color:var(--sub);font-size:13px;margin-top:3px}
+.menu-focus{color:var(--accent);font-size:12px;margin-top:3px}
+/* Adjustment notes: small and quiet, under the title */
+.adj-notes{max-width:540px;margin:10px auto 0;color:var(--sub);font-size:12px;line-height:1.55}
+.adj-notes ul{margin:0;padding-left:18px}
+
+/* Three metrics divided by hairlines */
+.menu-metrics{display:flex;margin:20px 0 8px}
+.mmetric{flex:1;text-align:center;padding:2px 6px}
+.mmetric + .mmetric{border-left:1px solid var(--border)}
+.mmetric .m-num{font-size:32px;line-height:1.1;color:var(--text)}
+.mmetric .m-label{font-size:12px;color:var(--sub)}
+
+/* Menu exercise cards: measured #1a1a1a fill (= --surface-2), in-card
+   fields are near-black boxes (#0f0f0f = --bg). */
+.ex-card{background:var(--surface-2);border:none;padding:18px 20px}
+.ex-head{display:flex;justify-content:space-between;gap:14px}
+.ex-part{color:var(--sub);font-size:12px}
+.ex-title{font-size:21px;margin:2px 0 3px;line-height:1.35;color:var(--text)}
+.ex-target-line{color:var(--sub);font-size:13px}
+.ex-cue{color:var(--sub);font-size:13px;line-height:1.55;margin:8px 0 0}
+.ex-total{flex:none;text-align:right}
+.ex-total .num{font-size:36px;line-height:1;color:var(--sub)}
+.ex-total-label{color:var(--sub);font-size:11px;margin-top:2px}
+.set-grid{display:flex;gap:8px;margin-top:16px}
+.set-cell{flex:1;display:flex;flex-direction:column;gap:5px;min-width:0}
+.set-label{text-align:center;color:var(--sub);font-size:12px}
+.set-cell .set-input{width:100%;height:46px;background:var(--bg);border:none;border-radius:8px;text-align:center;font-size:17px;font-weight:700;color:var(--text)}
+.ex-divider{border:none;border-top:1px solid var(--border);margin:16px 0 12px}
+.rpe-row{display:flex;align-items:center;gap:10px}
+.rpe-row label{font-size:14px}
+.rpe-select{background:var(--bg);border:none;height:40px;border-radius:8px;color:var(--text);font-size:14px;padding:0 10px;min-width:150px}
+.note-label{display:block;font-weight:700;font-size:14px;margin:16px 0 6px}
+.ex-card .note-input{width:100%;background:var(--bg);border:none;height:44px;margin-top:0}
+.note-hint{color:var(--sub);font-size:12px;margin-top:6px}
+.ex-save{margin-top:16px}
+
+/* Finish area: complete CTA in a card, cancel as an underlined gray link */
+.finish-card{background:var(--surface-2);border:none}
+.finish-card .cta{margin-top:0}
+.cancel-link{display:block;margin:14px auto 2px;background:none;border:none;color:var(--sub);text-decoration:underline;font-size:14px;cursor:pointer}
+.cancel-confirm{margin-top:14px;text-align:center}
+.cancel-confirm p{margin:0;color:var(--sub);font-size:13px}
+.cancel-btns{display:flex;gap:8px;justify-content:center;margin-top:10px}
+
+/* Countdown timer on timed-exercise cards: black box like the other fields */
+.timer{margin-top:14px;background:var(--bg);border-radius:10px;padding:12px}
 .timer-display{font-size:38px;line-height:1;color:var(--text)}
 .timer-display small{font-size:14px;color:var(--sub)}
 .timer-bar{height:8px;background:var(--border);border-radius:999px;overflow:hidden;margin:8px 0}
 .timer-fill{height:100%;background:var(--accent);transition:width .2s linear}
 .timer-btns{display:flex;gap:8px;flex-wrap:wrap}
-.timer.done{background:#0b2420;border:1px solid var(--accent);border-radius:10px;padding:10px}
+.timer.done{background:#0b2420;border:1px solid var(--accent)}

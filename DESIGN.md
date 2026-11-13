@@ -8,7 +8,8 @@ marked **(inferred)**. When this file and any other description disagree,
 this file wins.
 
 Screenshots measured: the pain-check screen of the original space
-(top half and joint-pain section + call-to-action).
+(top half and joint-pain section + call-to-action) and the menu screen
+(top half, exercise cards, and the finish area at the bottom).
 
 ## Theme
 
@@ -23,7 +24,7 @@ Screenshots measured: the pain-check screen of the original space
 |---|---|---|
 | `--bg` | `#0f0f0f` | Page background |
 | `--surface` | `#232323` | Cards, pain tiles (level 0), inactive nav segments |
-| `--surface-2` | `#1a1a1a` | Chip fill, input fill |
+| `--surface-2` | `#1a1a1a` | Chip fill, input fill, menu exercise cards, finish-area card |
 | `--border` | `#2d2d2d` | Chip borders, hairlines, gauge track |
 | `--accent` | `#2dd4bf` | Active nav segment, primary CTA, lit ticks, gauge arc |
 | `--on-accent` | `#052e2b` | Text on top of `--accent` (near-black teal) |
@@ -125,17 +126,70 @@ text `#fecaca`. This is the one place red is allowed.
 - Tile background deepens through the inferred teal ramp above as the
   level rises.
 
-### Ring gauge and metrics (inferred placement)
-- Not visible in the pain-screen screenshots; kept from the original
-  space's menu screen: an SVG ring (track `--border`, arc `--accent`)
-  with the completed/total fraction in Barlow Condensed at the centre,
-  and three metrics under it — exercise count, set count, total reps —
-  in the same numeral font. (There is no separate result screen; the
-  merged history list below carries the totals.)
+### Menu screen (measured from the menu screenshots)
 
-### No week display
-- The app has no week display: no Mon–Sun week boxes or week strip on
-  any screen.
+Top to bottom:
+
+1. Header and segment navigation (as above; メニュー active).
+2. **Week dot row**: the seven weekday letters （月〜日） spread evenly,
+   each over a dot. A day with a completed session gets a **filled
+   `--accent` dot**; today gets an `--accent` **bold letter** and an
+   **outline ring** (accent border, no fill unless also completed);
+   other days get a small dark-gray outline circle. **No day numbers.**
+   This dot row is part of the original design — what must not come
+   back is the Mon–Sun week *boxes* (letter + day number in bordered
+   boxes) that an earlier recreation added; there are no week boxes.
+3. **Ring gauge**: a thick SVG ring (track `--border` `#2d2d2d`
+   measured, arc `--accent`), about 150px across. Centre: the
+   completed-exercise **count** as a huge Barlow Condensed numeral in
+   `--text`; under it, small `--sub` text `／ total 種目完了`.
+4. **Session title**: centred, bold `--text`, `B 背中 + 脚裏 + 体幹`
+   (rotation letter + session title). Under it, small `--sub`
+   `あと○種目` (exercises remaining; a completed-state line when none
+   remain). Pain / progression adjustment notes sit quietly under the
+   title in small text — they never displace the layout above.
+5. **Three metrics**: a row divided by hairlines (`--border`), each a
+   big Barlow Condensed numeral over a small `--sub` label:
+   `○ 種目` (exercise count) / `完了セット数/総セット数 セット` /
+   `○ 累計回` (cumulative completed sessions).
+6. **Exercise cards** (one per exercise): fill `#1a1a1a`
+   (= `--surface-2`, measured — darker than the pain tiles), radius
+   about 12px, generous padding, no visible border.
+   - Top-left: the muscle group in small `--sub`; under it the
+     **variation name as the heading** in large bold `--text`
+     (e.g. `プローンWレイズ（トップで止める）`, `スーパーマンホールド`,
+     `膝曲げレッグレイズ` — the variation alone, even when it differs
+     from the exercise name; if the variation equals the name, the name
+     alone). Under that, small `--sub` `目標 ○セット × ○回` (秒 for
+     timed exercises), then the form cue in small `--sub`.
+   - Top-right: the **total target** (target reps × sets, or total
+     seconds) as a large Barlow Condensed numeral in `--sub` (measured
+     `#9ca3af`), with a small `合計回` / `合計秒` label under it.
+   - Set inputs: one cell per set — a small centred `--sub` label
+     `○セット目` over a **near-black box** (`#0f0f0f` = `--bg`,
+     measured), radius 8px, centred bold white digits, cells evenly
+     split across the card width. Unrecorded exercises start pre-filled
+     with the target (see "Menu inputs start from the target").
+   - A hairline divider (`--border`).
+   - `きつさ RPE` label + a **black select** (`#0f0f0f` fill): first
+     option `未入力`, then RPE values from `6 以下` and 6.5 up to 10 in
+     0.5 steps. The saved value is the number (6 for `6 以下`).
+   - `この種目のメモ（任意）` bold small label + a black input
+     (placeholder `例：膝立ちが限界だった`), under it small `--sub`
+     `次回、この種目にだけ反映されます。`
+   - Timed （秒） exercises keep the countdown timer inside the card,
+     styled as a black box like the other fields.
+   - Bottom: a full-width `--accent` button `記録して完了` (dark bold
+     text). It saves the sets / RPE / note with completed = true, and
+     the gauge and metrics update. A recorded exercise's button reads
+     `記録を更新` — that label change is the only distinction; the
+     unrecorded look above is the reference.
+7. **Finish area** (its own card, `#1a1a1a`): a full-width `--accent`
+   button `今日のトレーニングを完了する`, and under it a centred,
+   underlined `--sub` link `このメニューを取り消す`. Cancelling asks
+   inline first (a short confirmation with 取り消す / やめる in place —
+   never a native dialog), then deletes today's session and returns to
+   the pain-check state.
 
 ### History screen (results merged in)
 - There is no separate Result screen. Completing today's session — and
@@ -173,12 +227,15 @@ text `#fecaca`. This is the one place red is allowed.
   16px font (prevents iOS zoom).
 
 ### Form uniformity
-- On any screen with several fields (profile/settings, and the menu's
-  set and RPE inputs), all fields share one geometry: same height
-  (42px), radius (8px), padding, border, fill and 16px font — text,
-  numeric, select and textarea alike (textarea keeps the same styling,
-  with a matching min-height). Labels sit above their fields in a
-  regular grid (equal columns, even gaps); no field is sized ad hoc.
+- On the profile/settings screen, all fields share one geometry: same
+  height (42px), radius (8px), padding, border, fill and 16px font —
+  text, numeric, select and textarea alike (textarea keeps the same
+  styling, with a matching min-height). Labels sit above their fields
+  in a regular grid (equal columns, even gaps); no field is sized ad
+  hoc.
+- The menu screen's exercise cards follow their own measured spec
+  instead (see "Menu screen"): black set boxes in an even row, a black
+  RPE select, a black note input — uniform within the card.
 
 ### Menu inputs start from the target
 - On the menu screen, each set input of an exercise that has not been
@@ -211,8 +268,8 @@ text `#fecaca`. This is the one place red is allowed.
    腰・肩・肘・手首・股関節・膝・足首）
 6. Primary CTA at the bottom
 
-Menu, history, and settings screens reuse the same tokens: exercise
-cards and the ring gauge with metrics on the menu, the quiet date-led
+The menu screen's composition is specified in "Menu screen" above.
+History and settings screens reuse the same tokens: the quiet date-led
 history list (results merged in), a gear button instead of a settings
 segment, and uniform dark form fields on settings.
 
@@ -230,6 +287,7 @@ segment, and uniform dark form fields on settings.
 - Pain-tile level 1–5 background ramp (all tiles were level 0).
 - Selected state of the warning chips.
 - Warning-box colours (no active warning was shown).
-- Ring-gauge styling details (not on the pain screen).
+- The recorded state of a menu exercise card (screenshots show the
+  unrecorded state; the only distinction kept is the button label).
 - Exact pixel sizes for the CTA height and tile radius (estimated from
   proportions).

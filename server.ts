@@ -110,6 +110,14 @@ const server = Bun.serve({
         s.totalVolume = sessionTotal(s); saveStore(store); return json(publicState());
       }
 
+      const delMatch = path.match(/^\/api\/session\/(\d+)\/delete$/);
+      if (delMatch && req.method === "POST") { // cancel today's menu from the menu screen
+        const store = loadStore();
+        const idx = store.sessions.findIndex((x) => x.id === Number(delMatch[1]));
+        if (idx < 0) return json({ error: "not found" }, 404);
+        store.sessions.splice(idx, 1); saveStore(store); return json(publicState());
+      }
+
       const compMatch = path.match(/^\/api\/session\/(\d+)\/complete$/);
       if (compMatch && req.method === "POST") {
         const store = loadStore();

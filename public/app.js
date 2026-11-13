@@ -8,6 +8,7 @@ function sanitizeDigits(v) {
 let state = null;
 let view = "pain";
 let resetArm = false; // settings: two-step delete confirmation state
+let menuCancelArm = false; // menu: two-step "cancel this menu" confirmation state
 const editingHist = new Set(); // session ids whose history entry is in edit mode
 const painDraft = { soreness: {}, jointPain: {}, redFlags: [] };
 
@@ -23,9 +24,9 @@ async function api(path, body) {
 async function load() { state = await (await fetch("/api/state")).json(); render(); }
 document.getElementById("tabs").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-view]"); if (!b) return;
-  view = b.dataset.view; render();
+  view = b.dataset.view; menuCancelArm = false; render();
 });
-document.getElementById("gear").addEventListener("click", () => { view = "settings"; render(); });
+document.getElementById("gear").addEventListener("click", () => { view = "settings"; menuCancelArm = false; render(); });
 
 const LEVEL_WORDS = ["なし", "軽い", "普通", "強い", "かなり強い", "激しい"];
 function tapGrid(kind, parts, current) {
@@ -59,22 +60,50 @@ function updateHeader() {
   document.getElementById("ah-reps").textContent = state.stats.totalVolume;
 }
 
-// ---------- ring gauge + metrics ----------
+// ---------- week dots (menu screen) ----------
+// One row for the current week (Mon–Sun, Asia/Tokyo dates from the state):
+// weekday letter over a dot. A day with a completed session gets a filled
+// teal dot; today gets a teal bold letter and an outline ring. No day
+// numbers — this is a dot row, not the week boxes removed earlier.
+function weekDots() {
+  const n = dayNum(state.today);
+  const monday = n - (((n + 4) % 7 + 6) % 7); // (n+4)%7: 0=Sunday
+  const completedDates = new Set(state.sessions.filter((s) => s.status === "completed").map((s) => s.date));
+  const labels = ["月", "火", "水", "木", "金", "土", "日"];
+  const cells = labels.map((lab, i) => {
+    const dn = monday + i;
+    const dt = new Date(dn * DAY_MS);
+    const ds = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
+    const isToday = dn === n;
+    const done = completedDates.has(ds);
+    return `<div class="wdot${isToday ? " today" : ""}"><div class="wdot-label">${lab}</div><div class="wdot-dot${done ? " done" : ""}"></div></div>`;
+  }).join("");
+  return `<div class="weekdots">${cells}</div>`;
+}
+
+// ---------- ring gauge + metrics (menu screen) ----------
+// Thick ring, track in --border (#2d2d2d measured), arc in the accent.
+// Centre: the completed-exercise count as a big numeral, under it
+// "／ total 種目完了" in small gray.
 function ringGauge(s) {
   const total = s.exercises.length;
   const done = s.exercises.filter((e) => e.completed).length;
-  const C = 2 * Math.PI * 40;
+  const R = 62, C = 2 * Math.PI * R;
   const off = total ? C * (1 - done / total) : C;
-  const sets = s.exercises.reduce((a, e) => a + e.targetSets, 0);
-  const volume = s.exercises.reduce((a, e) => a + e.loggedSets.reduce((x, y) => x + y, 0), 0);
-  return `<div class="gauge-wrap"><div class="gauge">
-    <svg width="96" height="96" viewBox="0 0 96 96"><circle class="g-bg" cx="48" cy="48" r="40" fill="none" stroke-width="9"/><circle class="g-fg" cx="48" cy="48" r="40" fill="none" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/></svg>
-    <div class="gauge-center num">${done}/${total}</div></div>
-    <div class="metrics">
-      <div class="metric"><div class="m-num num">${total}</div><div class="m-label">種目数</div></div>
-      <div class="metric"><div class="m-num num">${sets}</div><div class="m-label">セット数</div></div>
-      <div class="metric"><div class="m-num num">${volume}</div><div class="m-label">累計回数</div></div>
-    </div></div>`;
+  return `<div class="gauge2">
+    <svg width="150" height="150" viewBox="0 0 150 150"><circle class="g-bg" cx="75" cy="75" r="${R}" fill="none" stroke-width="13"/><circle class="g-fg" cx="75" cy="75" r="${R}" fill="none" stroke-width="13" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/></svg>
+    <div class="gauge2-center"><div class="num gauge2-num">${done}</div><div class="gauge2-sub">／ ${total} 種目完了</div></div></div>`;
+}
+// Three metrics divided by hairlines: exercise count / completed sets over
+// total sets / cumulative completed sessions.
+function menuMetrics(s) {
+  const totalSets = s.exercises.reduce((a, e) => a + e.targetSets, 0);
+  const doneSets = s.exercises.reduce((a, e) => a + (e.completed ? e.targetSets : e.loggedSets.filter((v) => v > 0).length), 0);
+  return `<div class="menu-metrics">
+    <div class="mmetric"><div class="m-num num">${s.exercises.length}</div><div class="m-label">種目</div></div>
+    <div class="mmetric"><div class="m-num num">${doneSets}/${totalSets}</div><div class="m-label">セット</div></div>
+    <div class="mmetric"><div class="m-num num">${state.stats.totalCompleted}</div><div class="m-label">累計回</div></div>
+  </div>`;
 }
 
 // ---------- countdown timer for timed exercises ----------
@@ -195,15 +224,56 @@ function collectExercise(root, ex) {
   const noteEl = root.querySelector(`[data-note="${ex.id}"]`);
   return { loggedSets, rpe: rpeEl && rpeEl.value !== "" ? Number(rpeEl.value) : null, completed: doneEl ? doneEl.checked : ex.completed, note: noteEl ? noteEl.value : ex.note };
 }
+// Menu-screen exercise card, laid out like the original space: muscle
+// group small at the top-left, the variation as the big heading, target
+// line and form cue in gray, the total target at the top-right. Set inputs
+// are black boxes in an even row; RPE is a black select; the per-exercise
+// note sits over a full-width teal record button.
+const RPE_OPTIONS = [6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
+function menuExerciseCard(s, ex) {
+  const recorded = ex.completed || ex.rpe != null || ex.loggedSets.some((v) => v !== 0);
+  const sets = ex.loggedSets.map((v, i) => {
+    const shown = recorded ? (v === 0 ? "" : v) : ex.targetReps;
+    return `<div class="set-cell"><div class="set-label">${i + 1}セット目</div><input class="set-input" type="text" inputmode="numeric" autocomplete="off" data-set="${ex.id}:${i}" value="${shown}" placeholder="0"></div>`;
+  }).join("");
+  const rpeValues = ex.rpe != null && !RPE_OPTIONS.includes(ex.rpe) ? [...RPE_OPTIONS, ex.rpe].sort((a, b) => a - b) : RPE_OPTIONS;
+  const rpeOptions = [`<option value=""${ex.rpe == null ? " selected" : ""}>未入力</option>`]
+    .concat(rpeValues.map((v) => `<option value="${v}"${ex.rpe === v ? " selected" : ""}>${v === 6 ? "6 以下" : v}</option>`)).join("");
+  const totalTarget = ex.targetReps * ex.targetSets;
+  return `<div class="card ex-card">
+    <div class="ex-head"><div class="ex-head-left">
+      <div class="ex-part">${esc(ex.muscleGroup)}</div>
+      <h3 class="ex-title">${esc(ex.variation || ex.name)}</h3>
+      <div class="ex-target-line">目標 ${ex.targetSets}セット × ${ex.targetReps}${ex.targetUnit}</div>
+      <p class="ex-cue">${esc(ex.cue)}</p>
+    </div>
+    <div class="ex-total"><div class="num">${totalTarget}</div><div class="ex-total-label">合計${ex.targetUnit}</div></div></div>
+    <div class="set-grid">${sets}</div>
+    <hr class="ex-divider">
+    <div class="rpe-row"><label for="rpe-${ex.id}">きつさ RPE</label><select class="rpe-select" id="rpe-${ex.id}" data-rpe="${ex.id}">${rpeOptions}</select></div>
+    <label class="note-label" for="note-${ex.id}">この種目のメモ（任意）</label>
+    <input class="note-input" id="note-${ex.id}" type="text" data-note="${ex.id}" placeholder="例：膝立ちが限界だった" value="${esc(ex.note)}">
+    <div class="note-hint">次回、この種目にだけ反映されます。</div>
+    ${ex.targetUnit === "秒" ? timerHtml(ex) : ""}
+    <button class="cta ex-save" data-save-ex="${s.id}:${ex.id}">${recorded ? "記録を更新" : "記録して完了"}</button>
+  </div>`;
+}
 function renderMenu() {
   const s = state.todaySession;
   if (!s) return `<p>今日のセッションはまだありません。</p><button class="cta" id="gen">今日のメニューを作る</button><p id="genErr" class="error"></p>`;
-  return `<h2>${esc(s.title)}（${esc(s.rotation)}）${s.intro ? "・導入期" : ""}</h2>
+  const remaining = s.exercises.filter((e) => !e.completed).length;
+  return `${weekDots()}
   ${ringGauge(s)}
-  ${s.focusNote ? `<p>${esc(s.focusNote)}</p>` : ""}
-  ${s.progressionNotes.length ? `<div class="card"><h3>前回の記録・メモ・RPEからの調整</h3><ul>${s.progressionNotes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>` : ""}
-  ${s.exercises.map((ex) => exerciseCard(s, ex, true)).join("")}
-  ${s.status !== "completed" ? `<button class="cta" id="complete">トレーニングを完了する</button>` : `<div class="ok">完了済みです。これまでの記録で確認できます。</div>`}`;
+  <div class="menu-title"><h2 class="menu-session-title">${esc(s.rotation)} ${esc(s.title)}</h2>
+  <div class="menu-remain">${remaining > 0 ? `あと${remaining}種目` : "全種目完了"}</div>
+  ${s.focusNote ? `<div class="menu-focus">${esc(s.focusNote)}</div>` : ""}</div>
+  ${s.progressionNotes.length ? `<div class="adj-notes"><ul>${s.progressionNotes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>` : ""}
+  ${menuMetrics(s)}
+  ${s.exercises.map((ex) => menuExerciseCard(s, ex)).join("")}
+  ${s.status !== "completed" ? `<div class="card finish-card"><button class="cta" id="complete">今日のトレーニングを完了する</button>
+    ${menuCancelArm ? `<div class="cancel-confirm"><p>このメニューを取り消しますか？今日のセッションと入力した内容が消えます。</p><div class="cancel-btns"><button class="btn danger-solid" id="cancelExec">取り消す</button><button class="btn" id="cancelBack">やめる</button></div></div>`
+      : `<button class="cancel-link" id="cancelMenu">このメニューを取り消す</button>`}</div>`
+    : `<div class="ok">完了済みです。これまでの記録で確認できます。</div>`}`;
 }
 // RPE number -> the word the original space shows next to it.
 function rpeWord(rpe) {
@@ -303,14 +373,24 @@ function bind() {
     const [sid, eid] = el.dataset.saveEx.split(":").map(Number);
     const s = state.sessions.find((x) => x.id === sid) ?? state.todaySession;
     const ex = s.exercises.find((x) => x.id === eid);
-    await api(`/api/session/${sid}/exercise/${eid}`, collectExercise($app, ex)); render();
+    // 「記録して完了」: saving from the menu card always marks the exercise completed.
+    await api(`/api/session/${sid}/exercise/${eid}`, { ...collectExercise($app, ex), completed: true }); render();
   }));
   const findTodayEx = (id) => (state.todaySession?.exercises ?? []).find((e) => e.id === id);
   $app.querySelectorAll("[data-timer-start]").forEach((el) => el.addEventListener("click", () => { const ex = findTodayEx(Number(el.dataset.timerStart)); if (ex) startTimer(ex); }));
   $app.querySelectorAll("[data-timer-pause]").forEach((el) => el.addEventListener("click", () => { const ex = findTodayEx(Number(el.dataset.timerPause)); if (ex) pauseTimer(ex); }));
   $app.querySelectorAll("[data-timer-reset]").forEach((el) => el.addEventListener("click", () => { const ex = findTodayEx(Number(el.dataset.timerReset)); if (ex) resetTimer(ex); }));
   const complete = document.getElementById("complete");
-  if (complete) complete.addEventListener("click", async () => { await api(`/api/session/${state.todaySession.id}/complete`, {}); view = "history"; render(); });
+  if (complete) complete.addEventListener("click", async () => { await api(`/api/session/${state.todaySession.id}/complete`, {}); menuCancelArm = false; view = "history"; render(); });
+  const cancelMenu = document.getElementById("cancelMenu");
+  if (cancelMenu) cancelMenu.addEventListener("click", () => { menuCancelArm = true; render(); });
+  const cancelBack = document.getElementById("cancelBack");
+  if (cancelBack) cancelBack.addEventListener("click", () => { menuCancelArm = false; render(); });
+  const cancelExec = document.getElementById("cancelExec");
+  if (cancelExec) cancelExec.addEventListener("click", async () => {
+    await api(`/api/session/${state.todaySession.id}/delete`, {});
+    menuCancelArm = false; view = "pain"; render();
+  });
   $app.querySelectorAll("[data-edit-history]").forEach((el) => el.addEventListener("click", () => { editingHist.add(Number(el.dataset.editHistory)); render(); }));
   $app.querySelectorAll("[data-save-history]").forEach((el) => el.addEventListener("click", async () => {
     const s = state.sessions.find((x) => x.id === Number(el.dataset.saveHistory));
