@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>自重トレーニング記録</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -15,11 +18,13 @@
   <button data-view="history">これまでの記録</button>
   <button data-view="settings">設定</button>
 </nav>
+<div id="weekbar" class="weekbar" aria-label="今週の記録"></div>
 <main id="app"><p>読み込み中…</p></main>
 <section class="note">
   <h2>判定基準について</h2>
   <p>警告サイン（レッドフラッグ）がある日は開始できません。筋肉痛はレベル2で軽減・3以上で部位除外、関節痛はより厳しく（2で軽減・3以上で除外）判定します。完全休養はレベル4以上の筋肉痛が2部位以上の日だけです。</p>
-  <p>24時間ルール：運動中・運動後の痛みが翌朝までに元の水準へ戻らなければ、前回の負荷が高すぎたサインです。次回は下げて進行しません（Silbernagelらの痛みモニタリングモデル）。筋肉痛が5日、関節痛が1〜2週間改善しない場合は受診を目安にしてください。</p>
+  <p>24時間ルール：運動中・運動後の痛みが翌朝までに元の水準へ戻らなければ、前回の負荷が高すぎたサインです。痛みの記録から自動で判定し、過負荷の部位は次回軽減して進行しません（Silbernagelらの痛みモニタリングモデル）。</p>
+  <p>継続日数チェック：同じ部位の筋肉痛が5日以上、関節痛が2週間改善しない場合は受診目安として注意表示します（関節痛は7日でも注意表示）。開始を止めるのは警告サインだけです。関節痛は部位にも効きます（腰→脚・体幹、肩→押す系、肘→押す系・引く系、手首→押す系・プランク系、股関節・膝・足首→脚系）。</p>
   <p class="refs">参考文献：ACSM ポジションスタンド／ACSM 筋肉痛（DOMS）資料、Silbernagel et al. 2007 (Am J Sports Med)、NHS 関節痛・腰痛、CDC/NIOSH 横紋筋融解症。</p>
 </section>
 <script src="/app.js"></script>

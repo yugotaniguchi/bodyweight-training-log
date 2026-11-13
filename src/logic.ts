@@ -1,5 +1,5 @@
 import {
-  EXERCISES, ROTATIONS, SUBSTITUTES, INTRO_SESSIONS, RED_FLAGS,
+  EXERCISES, ROTATIONS, SUBSTITUTES, INTRO_SESSIONS, RED_FLAGS, JOINT_TO_MUSCLE_PARTS,
   type ExerciseDef,
 } from "./exercises";
 
@@ -38,8 +38,11 @@ export const emptyStore = (): Store => ({ profile: null, pain: [], sessions: [],
 
 // ---------- pain assessment ----------
 // Criteria (see README): red flags first; muscle soreness 2 = reduce, 3+ = exclude;
-// joint pain stricter (2 = reduce, 3+ = exclude); full rest only when level 4+
-// soreness is present in 2+ parts. The 24-hour rule is guidance text, not a gate.
+// joint pain stricter (2 = reduce, 3+ = exclude) and also applies through the
+// explicit JOINT_TO_MUSCLE_PARTS mapping; full rest only when level 4+ soreness
+// is present in 2+ parts. The 24-hour rule (below) is auto-judged from the pain
+// history: it reduces the next session, it never blocks a start. Only red
+// flags block.
 export interface PartAssessment { subject: string; kind: "muscle" | "joint"; level: number; action: "train" | "reduce" | "exclude"; reasons: string[] }
 export interface Assessment {
   care: boolean; careReasons: string[]; rest: boolean; restReason: string;
@@ -75,6 +78,92 @@ export function assessPain(entry: PainEntry | null): Assessment {
     excludedParts: parts.filter((p) => p.action === "exclude").map((p) => p.subject),
     reducedParts: parts.filter((p) => p.action === "reduce").map((p) => p.subject),
   };
+}
+
+// ---------- date helpers (all dates are YYYY-MM-DD, Asia/Tokyo) ----------
+const DAY_MS = 86_400_000;
+const parseDay = (d: string) => Date.UTC(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1, Number(d.slice(8, 10)));
+const fmtDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+export const addDays = (d: string, n: number) => fmtDay(parseDay(d) + n * DAY_MS);
+export const diffDays = (from: string, to: string) => Math.round((parseDay(to) - parseDay(from)) / DAY_MS);
+
+// ---------- 24-hour rule (auto-judged from pain history) ----------
+// If, on the day after the last completed session, the pain level of a part
+// that session used is still above its pre-session level (the most recent
+// record before the session day), that part was overloaded: the next session
+// reduces it and does not progress it.
+export interface OverloadInfo {
+  subject: string; kind: "muscle" | "joint";
+  sessionDate: string; baseline: number; nextLevel: number; reason: string;
+}
+export function detectOverload(store: Store): OverloadInfo[] {
+  const completed = store.sessions.filter((s) => s.status === "completed").sort((a, b) => a.date.localeCompare(b.date));
+  const last = completed[completed.length - 1];
+  if (!last) return [];
+  const used = last.exercises.filter((e) => e.completed || e.loggedSets.some((v) => v > 0));
+  const usedExercises = used.length ? used : last.exercises;
+  if (!usedExercises.length) return [];
+  const entries = [...store.pain].sort((a, b) => a.date.localeCompare(b.date));
+  const pre = [...entries].reverse().find((p) => p.date < last.date) ?? null;
+  const next = entries.find((p) => p.date === addDays(last.date, 1)) ?? entries.find((p) => p.date > last.date) ?? null;
+  if (!next) return [];
+  const out: OverloadInfo[] = [];
+  const check = (subject: string, kind: "muscle" | "joint", get: (e: PainEntry) => number) => {
+    const baseline = pre ? get(pre) : 0;
+    const nextLevel = get(next);
+    if (nextLevel > baseline) {
+      out.push({
+        subject, kind, sessionDate: last.date, baseline, nextLevel,
+        reason: `24時間ルール: ${subject}の痛みが前回セッション（${last.date}）翌日に${baseline}→${nextLevel}へ戻っていないため過負荷と判定し、次回は軽減・進行なし`,
+      });
+    }
+  };
+  for (const part of new Set(usedExercises.map((e) => e.painPart))) {
+    check(part, "muscle", (e) => e.soreness[part] ?? 0);
+  }
+  const defOf = (e: SessionExercise) => EXERCISES[e.baseId];
+  for (const joint of new Set(usedExercises.flatMap((e) => defOf(e)?.jointParts ?? []))) {
+    check(joint, "joint", (e) => e.jointPain[joint] ?? 0);
+  }
+  return out;
+}
+
+// ---------- pain duration guidance (caution only, never a block) ----------
+// Counts, per part, the run of consecutive days (ending at the latest record)
+// with pain level >= 1, i.e. days it has not resolved. Muscle soreness that
+// lasts 5+ days and joint pain that lasts 14+ days are "see a doctor"
+// guidance; joint pain at 7+ days is a caution. Red flags remain the only
+// start block.
+export interface PainGuidance {
+  subject: string; kind: "muscle" | "joint"; days: number;
+  severity: "caution" | "care"; message: string;
+}
+export function painDurationGuidance(store: Store): PainGuidance[] {
+  const entries = [...store.pain].sort((a, b) => a.date.localeCompare(b.date));
+  if (!entries.length) return [];
+  const streak = (get: (e: PainEntry) => number): number => {
+    let days = 0; let expected: string | null = null;
+    for (let i = entries.length - 1; i >= 0; i--) {
+      const e = entries[i];
+      if (expected !== null && e.date !== expected) break; // gap in the record breaks the run
+      if (get(e) < 1) break; // resolved
+      days++; expected = addDays(e.date, -1);
+    }
+    return days;
+  };
+  const out: PainGuidance[] = [];
+  const muscleParts = new Set(entries.flatMap((e) => Object.keys(e.soreness)));
+  for (const part of muscleParts) {
+    const days = streak((e) => e.soreness[part] ?? 0);
+    if (days >= 5) out.push({ subject: part, kind: "muscle", days, severity: "care", message: `筋肉痛（${part}）が${days}日続いています。5日以上改善しない場合は受診が目安です` });
+  }
+  const joints = new Set(entries.flatMap((e) => Object.keys(e.jointPain)));
+  for (const joint of joints) {
+    const days = streak((e) => e.jointPain[joint] ?? 0);
+    if (days >= 14) out.push({ subject: joint, kind: "joint", days, severity: "care", message: `関節痛（${joint}）が${days}日続いています。2週間改善しない場合は受診が目安です` });
+    else if (days >= 7) out.push({ subject: joint, kind: "joint", days, severity: "caution", message: `関節痛（${joint}）が${days}日続いています。1週間を超えたので注意してください（2週間改善しなければ受診目安）` });
+  }
+  return out;
 }
 
 // ---------- next-load decision ----------
@@ -199,6 +288,19 @@ export function generateSession(store: Store, date: string, assessment: Assessme
   const notes: string[] = [];
   const exercises: SessionExercise[] = [];
 
+  // Pain application sets. A joint problem reaches an exercise two ways:
+  // directly (the exercise loads that joint) and through the explicit
+  // JOINT_TO_MUSCLE_PARTS mapping (the exercise trains a mapped muscle part).
+  const painSet = (action: "exclude" | "reduce", kind: "muscle" | "joint") =>
+    new Set(assessment.parts.filter((p) => p.action === action && p.kind === kind).map((p) => p.subject));
+  const excludedMuscles = painSet("exclude", "muscle"), reducedMuscles = painSet("reduce", "muscle");
+  const excludedJoints = painSet("exclude", "joint"), reducedJoints = painSet("reduce", "joint");
+  const viaMap = (joints: Set<string>, part: string) =>
+    [...joints].filter((j) => (JOINT_TO_MUSCLE_PARTS[j] ?? []).includes(part));
+  const overload = detectOverload(store);
+  const overloadMuscles = new Set(overload.filter((o) => o.kind === "muscle").map((o) => o.subject));
+  const overloadJoints = new Set(overload.filter((o) => o.kind === "joint").map((o) => o.subject));
+
   for (const baseId of rotation.exerciseIds) {
     const def = EXERCISES[baseId];
     // last completed record of this exercise (or of a substitute source)
@@ -208,16 +310,37 @@ export function generateSession(store: Store, date: string, assessment: Assessme
 
     const decision = decideNext(def, prev, intro && !prev);
     const finalDef = EXERCISES[decision.baseId];
-    const hits = (list: string[]) =>
-      list.includes(finalDef.painPart) || finalDef.jointParts.some((j) => list.includes(j));
-    if (hits(assessment.excludedParts)) {
-      notes.push(`痛み基準で除外: ${finalDef.name}（${finalDef.painPart}）`);
+    const jointDirect = (set: Set<string>) => finalDef.jointParts.filter((j) => set.has(j));
+    const excludeWhy: string[] = [];
+    if (excludedMuscles.has(finalDef.painPart)) excludeWhy.push(finalDef.painPart);
+    for (const j of jointDirect(excludedJoints)) excludeWhy.push(`関節痛: ${j}`);
+    for (const j of viaMap(excludedJoints, finalDef.painPart)) excludeWhy.push(`関節→部位マッピング: ${j}→${finalDef.painPart}`);
+    if (excludeWhy.length) {
+      notes.push(`痛み基準で除外: ${finalDef.name}（${[...new Set(excludeWhy)].join(" / ")}）`);
       continue;
     }
     let { targetReps, targetSets } = decision;
-    if (hits(assessment.reducedParts)) {
+    const reduceWhy: string[] = [];
+    if (reducedMuscles.has(finalDef.painPart)) reduceWhy.push(finalDef.painPart);
+    for (const j of jointDirect(reducedJoints)) reduceWhy.push(`関節痛: ${j}`);
+    for (const j of viaMap(reducedJoints, finalDef.painPart)) reduceWhy.push(`関節→部位マッピング: ${j}→${finalDef.painPart}`);
+    const reduce = (why: string) => {
       targetReps = finalDef.unit === "秒" ? round5(targetReps * 0.8) : Math.max(1, Math.floor(targetReps * 0.8));
-      notes.push(`痛み基準で軽減: ${finalDef.name}（${finalDef.painPart}）`);
+      notes.push(why);
+    };
+    let reducedByPain = false;
+    if (reduceWhy.length) {
+      reduce(`痛み基準で軽減: ${finalDef.name}（${[...new Set(reduceWhy)].join(" / ")}）`);
+      reducedByPain = true;
+    }
+    // 24-hour rule: an overloaded part is reduced and not progressed. If the
+    // pain criteria already reduced it, say so without reducing twice.
+    const overloadHit = overloadMuscles.has(finalDef.painPart)
+      ? overload.find((o) => o.kind === "muscle" && o.subject === finalDef.painPart)
+      : overload.find((o) => o.kind === "joint" && finalDef.jointParts.includes(o.subject));
+    if (overloadHit) {
+      if (reducedByPain) notes.push(`24時間ルール: ${finalDef.name}（${overloadHit.reason}）`);
+      else reduce(`24時間ルールで軽減: ${finalDef.name}（${overloadHit.reason}）`);
     }
     notes.push(...decision.notes.map((n) => `${finalDef.name}: ${n}`));
     exercises.push({

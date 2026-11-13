@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { assessPain, generateSession, sessionTotal, type PainEntry, type SessionExercise } from "./src/logic";
+import { assessPain, detectOverload, generateSession, painDurationGuidance, sessionTotal, type PainEntry, type SessionExercise } from "./src/logic";
 import { MUSCLE_PARTS, JOINTS, RED_FLAGS, EXERCISES, ROTATIONS } from "./src/exercises";
 import { loadStore, saveStore, resetStore } from "./src/store";
 
@@ -16,6 +16,10 @@ function publicState() {
   return {
     today: date, profile: store.profile, pain,
     assessment: pain ? assessPain(pain) : null,
+    // Additive, backward-compatible state: duration guidance (caution only)
+    // and the auto-judged 24-hour-rule overload flags for the next session.
+    guidance: painDurationGuidance(store),
+    overload: detectOverload(store),
     todaySession: store.sessions.find((s) => s.date === date) ?? null,
     sessions: [...store.sessions].reverse(),
     stats: {

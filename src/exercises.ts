@@ -21,6 +21,29 @@ export const MUSCLE_PARTS = [
 
 export const JOINTS = ["腰", "肩", "肘", "手首", "股関節", "膝", "足首"] as const;
 
+/**
+ * Explicit joint -> muscle-part mapping. When a joint hurts, the muscle parts
+ * listed here are the ones trained by the exercises that load that joint:
+ * - 腰 (lower back): leg and core work (squats, hinges, leg raises, planks)
+ * - 肩 (shoulder): all pushing work, plus planks
+ * - 肘 (elbow): pushing and pulling work
+ * - 手首 (wrist): pushing and plank work
+ * - 股関節 (hip): leg work and leg raises
+ * - 膝 (knee): leg work, including calf jumps
+ * - 足首 (ankle): leg work, including calf jumps
+ * Joint pain level 2 reduces these parts, level 3+ excludes them — the same
+ * thresholds as the per-exercise `jointParts` lists, applied by muscle part.
+ */
+export const JOINT_TO_MUSCLE_PARTS: Record<string, string[]> = {
+  "腰": ["脚（前）", "脚（後ろ）・お尻", "腹筋", "体幹"],
+  "肩": ["胸", "肩", "体幹"],
+  "肘": ["胸", "肩", "背中"],
+  "手首": ["胸", "肩", "体幹"],
+  "股関節": ["脚（前）", "脚（後ろ）・お尻", "腹筋"],
+  "膝": ["脚（前）", "脚（後ろ）・お尻", "ふくらはぎ"],
+  "足首": ["脚（前）", "脚（後ろ）・お尻", "ふくらはぎ"],
+};
+
 export interface RedFlag { id: string; label: string }
 export const RED_FLAGS: RedFlag[] = [
   { id: "numbness", label: "しびれ・脱力がある" },

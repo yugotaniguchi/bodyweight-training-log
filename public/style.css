@@ -1,16 +1,52 @@
 :root{color-scheme:light dark}
 body{font-family:system-ui,sans-serif;max-width:820px;margin:0 auto;padding:16px;line-height:1.6}
 header h1{margin-bottom:0}.sub{opacity:.7;margin-top:4px}
+/* Big numerals use Barlow Condensed (loaded in index.html); offline it
+   falls back to the system font. */
+.num{font-family:"Barlow Condensed",system-ui,sans-serif;letter-spacing:.02em;font-weight:600}
 nav{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
 nav button,.btn{padding:8px 14px;border-radius:999px;border:1px solid #8886;background:transparent;cursor:pointer;font-size:15px}
 nav button.active{background:#0f766e;color:#fff;border-color:#0f766e}
 .card{border:1px solid #8885;border-radius:12px;padding:14px;margin:12px 0}
-.tap{display:inline-flex;flex-direction:column;align-items:center;gap:2px;margin:4px;padding:8px 10px;border-radius:10px;border:1px solid #8886;background:transparent;cursor:pointer;min-width:86px}
-.tap b{font-size:18px}.tap.lv1{background:#fef9c3}.tap.lv2{background:#fde68a}.tap.lv3{background:#fdba74}.tap.lv4{background:#fca5a5}.tap.lv5{background:#ef4444;color:#fff}
+/* Pain tiles: teal shades, deepening with the level (not a heat scale). */
+.tap{display:inline-flex;flex-direction:column;align-items:center;gap:2px;margin:4px;padding:8px 10px;border-radius:10px;border:1px solid #8886;background:transparent;cursor:pointer;min-width:86px;color:#134e4a}
+.tap b{font-size:26px;line-height:1}
+.tap.lv1{background:#f0fdfa}.tap.lv2{background:#ccfbf1}.tap.lv3{background:#99f6e4}.tap.lv4{background:#5eead4}.tap.lv5{background:#0f766e;color:#fff}
 input[type=text],input[type=number],select,textarea{padding:7px;border-radius:8px;border:1px solid #8888;font-size:16px}
 .set-input{width:56px;text-align:center}.rpe-input{width:64px;text-align:center}.note-input{width:100%;box-sizing:border-box;margin-top:6px}
 .warn{border-color:#ef4444;background:#fef2f2;color:#7f1d1d;padding:10px;border-radius:10px}
 .ok{border-color:#0f766e;background:#f0fdfa;color:#134e4a;padding:10px;border-radius:10px}
-@media(prefers-color-scheme:dark){.warn{background:#450a0a;color:#fecaca}.ok{background:#042f2e;color:#99f6e4}}
+.caution{border:1px solid #d97706;background:#fffbeb;color:#92400e;padding:10px;border-radius:10px;margin:8px 0}
+@media(prefers-color-scheme:dark){.warn{background:#450a0a;color:#fecaca}.ok{background:#042f2e;color:#99f6e4}.caution{background:#451a03;color:#fde68a}}
 .refs,.small{font-size:13px;opacity:.75}.error{color:#dc2626}
 label.row{display:block;margin:6px 0}
+/* Week dots + Day label (top of the screen) */
+.weekbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:10px 0 2px}
+.weekdots{display:flex;gap:6px}
+.dot{width:36px;height:44px;border-radius:12px;border:1.5px solid #8886;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;color:#134e4a}
+.dot .dow{font-size:11px;opacity:.75}
+.dot .dnum{font-size:18px}
+.dot.filled{background:#0f766e;border-color:#0f766e;color:#fff}
+.dot.today{box-shadow:0 0 0 2px #fff,0 0 0 4px #0f766e}
+.daylabel{font-size:22px;color:#0f766e;text-align:right}
+.daylabel small{display:block;font-family:system-ui,sans-serif;font-size:12px;font-weight:400;opacity:.7;letter-spacing:0}
+/* Ring gauge + metrics */
+.gauge-wrap{display:flex;align-items:center;gap:18px;margin:12px 0}
+.gauge{position:relative;width:96px;height:96px;flex:none}
+.gauge svg{transform:rotate(-90deg)}
+.gauge .g-bg{stroke:#d1d5db}.gauge .g-fg{stroke:#0f766e}
+.gauge-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:30px;color:#0f766e}
+.metrics{display:flex;gap:20px;flex-wrap:wrap}
+.metric{text-align:center}
+.metric .m-num{font-size:30px;line-height:1;color:#0f766e}
+.metric .m-label{font-size:12px;opacity:.75}
+/* Countdown timer on timed-exercise cards */
+.timer{margin-top:10px;border-top:1px dashed #8885;padding-top:10px}
+.timer-display{font-size:38px;line-height:1;color:#0f766e}
+.timer-display small{font-size:14px}
+.timer-bar{height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin:8px 0}
+.timer-fill{height:100%;background:#0f766e;transition:width .2s linear}
+.timer-btns{display:flex;gap:8px;flex-wrap:wrap}
+.timer.done{background:#f0fdfa;border:1px solid #0f766e;border-radius:10px;padding:10px}
+.timer.done .timer-display{color:#0f766e}
+@media(prefers-color-scheme:dark){.gauge .g-bg{stroke:#374151}.timer-bar{background:#374151}.timer.done{background:#042f2e}}
