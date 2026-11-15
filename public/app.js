@@ -1051,21 +1051,21 @@ function histCurrent() {
 }
 // Trend chart: one bar per recorded day, oldest on the left, the
 // pager's current day in the accent colour; tapping a bar jumps there.
+// It sits at the very top of the report, above the monthly chart.
 function trendChartHtml(curId) {
   const days = [...state.sessions].reverse(); // chronological
   const max = Math.max(1, ...days.map((s) => s.totalVolume));
   const bars = days.map((s) => `<button type="button" class="trend-bar${s.id === curId ? " cur" : ""}" data-hist-day="${s.id}" title="${esc(histDate(s.date))}" aria-label="${esc(histDate(s.date))}"><span class="trend-fill" style="height:${Math.max(4, Math.round((s.totalVolume / max) * 100))}%"></span></button>`).join("");
-  return `<div class="trend">${bars}</div>`;
+  return `<div class="trend" id="histTrend">${bars}</div>`;
 }
 function histDayHtml() {
   const { s, idx, total } = histCurrent();
   const editing = editingHist.has(s.id);
   const head = `<div class="pager-head">
-    <button type="button" class="pager-btn" id="histNewer" aria-label="${esc(t("histNewer"))}"${idx === 0 ? " disabled" : ""}>‹</button>
+    <button type="button" class="pager-btn" id="histOlder" aria-label="${esc(t("histOlder"))}"${idx === total - 1 ? " disabled" : ""}>‹</button>
     <div class="pager-title"><div class="pager-date num">${histDate(s.date)}</div><div class="pager-rot">${esc(sessionTitle(s))}</div><div class="pager-pos">${idx + 1} / ${total}</div></div>
-    <button type="button" class="pager-btn" id="histOlder" aria-label="${esc(t("histOlder"))}"${idx === total - 1 ? " disabled" : ""}>›</button>
-  </div>
-  ${trendChartHtml(s.id)}`;
+    <button type="button" class="pager-btn" id="histNewer" aria-label="${esc(t("histNewer"))}"${idx === 0 ? " disabled" : ""}>›</button>
+  </div>`;
   if (editing) {
     return `${head}<div class="pager-day">${s.exercises.map((ex) => menuExerciseCard(s, ex, { history: true })).join("")}<button class="edit-btn" data-exit-history="${s.id}">${esc(t("editDoneBtn"))}</button></div>`;
   }
@@ -1084,6 +1084,7 @@ function histDayHtml() {
 function renderHistory() {
   if (!state.sessions.length) return `<h2>${esc(t("reportH"))}</h2><p>${esc(t("noRecords"))}</p><button class="cta" id="histGoMenu">${esc(t("goWorkout"))}</button>`;
   return `<h2>${esc(t("reportH"))}</h2>
+  ${trendChartHtml(histCurrent().s.id)}
   <div id="histSummaries">${historySummariesHtml()}</div>
   <div id="histEntries">${histDayHtml()}</div>`;
 }
@@ -1177,19 +1178,29 @@ function bindHistoryEntries() {
   if (newer) newer.addEventListener("click", () => moveDay(-1));
   const older = document.getElementById("histOlder");
   if (older) older.addEventListener("click", () => moveDay(1));
-  root.querySelectorAll("[data-hist-day]").forEach((el) => el.addEventListener("click", () => { histSessionId = Number(el.dataset.histDay); render(); }));
-  const pagerDay = document.getElementById("pagerDay");
-  if (pagerDay) {
+  // The trend chart sits above the summaries now, outside #histEntries,
+  // so its bars are wired from the whole app root.
+  $app.querySelectorAll("[data-hist-day]").forEach((el) => el.addEventListener("click", () => { histSessionId = Number(el.dataset.histDay); render(); }));
+  // Swipe: attached to the whole pager region (header + day page) and
+  // the trend chart, not just the day page, and the region carries
+  // touch-action: pan-y (see style.css) so the browser keeps vertical
+  // scrolling but hands horizontal drags to these handlers instead of
+  // swallowing them. Skipped while the shown day is being edited.
+  const attachSwipe = (elm) => {
+    if (!elm) return;
     let touchX = null;
-    pagerDay.addEventListener("touchstart", (e) => { touchX = e.changedTouches[0].clientX; }, { passive: true });
-    pagerDay.addEventListener("touchend", (e) => {
+    elm.addEventListener("touchstart", (e) => { touchX = e.changedTouches[0].clientX; }, { passive: true });
+    elm.addEventListener("touchend", (e) => {
       if (touchX === null) return;
       const dx = e.changedTouches[0].clientX - touchX;
       touchX = null;
+      if (editingHist.has(histCurrent().s.id)) return;
       if (dx <= -40) moveDay(1);
       else if (dx >= 40) moveDay(-1);
     }, { passive: true });
-  }
+  };
+  attachSwipe(root);
+  attachSwipe(document.getElementById("histTrend"));
   root.querySelectorAll(".set-input").forEach((el) => el.addEventListener("input", () => { el.value = sanitizeDigits(el.value); }));
   root.querySelectorAll("[data-edit-history]").forEach((el) => el.addEventListener("click", () => { editingHist.add(Number(el.dataset.editHistory)); render(); }));
   root.querySelectorAll("[data-exit-history]").forEach((el) => el.addEventListener("click", () => { editingHist.delete(Number(el.dataset.exitHistory)); render(); }));

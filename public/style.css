@@ -322,7 +322,8 @@ label.row{display:block;margin:6px 0}
 .pager-date{font-size:30px;line-height:1.1;color:var(--text)}
 .pager-rot{font-size:14px;color:var(--text)}
 .pager-pos{font-size:12px;color:var(--sub)}
-.trend{display:flex;align-items:flex-end;gap:3px;height:44px;margin:10px 0 2px}
+.trend{display:flex;align-items:flex-end;gap:3px;height:44px;margin:10px 0 2px;touch-action:pan-y}
+#histEntries{touch-action:pan-y}
 .trend-bar{flex:1;background:none;border:none;padding:0;height:100%;display:flex;align-items:flex-end;cursor:pointer}
 .trend-fill{display:block;width:100%;background:var(--border);border-radius:2px 2px 0 0}
 .trend-bar.cur .trend-fill{background:var(--accent)}

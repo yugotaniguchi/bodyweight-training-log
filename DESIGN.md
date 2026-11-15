@@ -651,7 +651,7 @@ English sentences (in the client dictionary) in the same structure.
   pager**: one recorded day at a time — days are **not** stacked
   vertically. The shown day changes by **swiping left/right** on the
   day page (left = older day, right = newer day), by the circular
-  **‹ › buttons** flanking the pager title (‹ newer, › older; disabled
+  **‹ › buttons** flanking the pager title (‹ older, › newer; disabled
   at the ends), or by tapping a bar in the **trend chart**.
 - Pager header: the date as one line `MM/DD(曜)` (30px Barlow
   Condensed numerals), under it the session title (`{title}` only —
@@ -660,7 +660,10 @@ English sentences (in the client dictionary) in the same structure.
 - Trend chart: one slim bar per recorded day, chronological (oldest
   left), height relative to the largest day total; the shown day's
   bar is `--accent`, the rest `--border`. Tapping a bar jumps to
-  that day.
+  that day. It sits at the **very top of the report, above the
+  monthly chart**. The pager region and the trend chart carry
+  `touch-action: pan-y`, so horizontal swipes reach the app's touch
+  handlers while vertical scrolling stays the browser's.
 - Day page: the session total at the top right (30px numeral +
   `レップ`), then a **horizontal bar per exercise**: name in `--text`
   with `（{variation}）` and `（RPE {rpe} {word}）` in `--sub` on the
