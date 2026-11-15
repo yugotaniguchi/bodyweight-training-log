@@ -92,6 +92,12 @@ const STR = {
     dataNote: "保存先はサーバー側の data/store.json です。",
     dataFormats: "エクスポート：JSON（全データ、復元用）／ CSV（セッション記録の一覧、閲覧用）。インポート：JSONのみ（CSVは取り込めません）。",
     exportJsonBtn: "エクスポート（JSON）", exportCsvBtn: "エクスポート（CSV）", importBtn: "インポート",
+    menuDefH: "メニュー定義",
+    menuDefNote: "ワークアウトのメニュー（種目・ローテーション・代替・痛みの対象部位）をJSONで編集できます。変更は次に生成されるセッションから反映され、記録済みのセッションは変わりません。",
+    menuDefSaveBtn: "保存", menuDefExportBtn: "エクスポート", menuDefImportBtn: "インポート", menuDefResetBtn: "初期値に戻す",
+    menuDefResetArmBtn: "本当に初期値に戻す", menuDefSaved: "保存しました",
+    menuDefBtn: "メニュー編集",
+    guideStepsH: "手順", guideFocusH: "意識する部位", guideClose: "閉じる", guideBtnLabel: "解説",
     importConfirmText: "「{name}」で現在のデータをすべて置き換えます。元に戻せません。",
     importExec: "インポートする", cancelBtn: "キャンセル",
     fileFormatError: "ファイルの形式が正しくありません",
@@ -195,6 +201,12 @@ const STR = {
     dataNote: "Data is stored server-side in data/store.json.",
     dataFormats: "Export: JSON (all data, for restoring) / CSV (session records as a table, for viewing). Import: JSON only (CSV cannot be imported).",
     exportJsonBtn: "Export (JSON)", exportCsvBtn: "Export (CSV)", importBtn: "Import",
+    menuDefH: "Menu definition",
+    menuDefNote: "Edit the workout menu (exercises, rotations, substitutes, pain targets) as JSON. Changes apply to sessions generated afterwards; recorded sessions keep the names and targets they were created with.",
+    menuDefSaveBtn: "Save", menuDefExportBtn: "Export", menuDefImportBtn: "Import", menuDefResetBtn: "Reset to defaults",
+    menuDefResetArmBtn: "Tap again to reset", menuDefSaved: "Saved",
+    menuDefBtn: "Edit menu",
+    guideStepsH: "Steps", guideFocusH: "Focus on", guideClose: "Close", guideBtnLabel: "How to",
     importConfirmText: "Replace all current data with \"{name}\". This cannot be undone.",
     importExec: "Import", cancelBtn: "Cancel",
     fileFormatError: "The file format is not valid",
@@ -350,6 +362,13 @@ let histQuery = ""; // report screen: free-word filter over exercise names / not
 let profileSaveTimer = null; // settings: pending profile-autosave debounce timer
 let profileError = ""; // settings: last autosave error, shown in place under the form
 let profileSavedShow = false; // settings: whether the 保存済み indicator is shown
+let guideFor = null; // workout tab: baseId whose how-to window is open, or null
+let menuDefText = null; // settings: menu-definition JSON text (null = not loaded yet)
+let menuDefLoading = false; // settings: a /api/catalog fetch is in flight
+let menuDefError = ""; // settings: last menu-definition save/import error
+let menuDefSavedShow = false; // settings: whether the menu 保存しました indicator is shown
+let menuDefResetArm = false; // settings: two-step reset-to-defaults confirmation state
+let scrollToMenuDef = false; // navigation: scroll to the menu-definition section on arrival
 
 // ---------- browser history + per-view scroll positions ----------
 // Tab switches are real history entries (pushState / popstate), so the
@@ -914,9 +933,9 @@ function menuExerciseCard(s, ex, opts = {}) {
   return `<div class="card ex-card">
     <div class="ex-head"><div class="ex-head-left">
       <div class="ex-part">${esc(groupLabel(ex.muscleGroup))}</div>
-      <h3 class="ex-title">${esc(ex.variation || ex.name)}</h3>
+      <div class="ex-title-row"><h3 class="ex-title">${esc(ex.variation || ex.name)}</h3>${historyMode ? "" : `<button class="info-btn" type="button" data-guide="${esc(ex.baseId)}" aria-label="${esc(t("guideBtnLabel"))}">i</button>`}</div>
       <div class="ex-target-line">${esc(t("targetLine", { sets: ex.targetSets, reps: ex.targetReps, unit: unitWord(ex.targetUnit) }))}</div>
-      <p class="ex-cue">${esc(ex.cue)}</p>
+      ${historyMode ? `<p class="ex-cue">${esc(ex.cue)}</p>` : ""}
     </div>
     <div class="ex-total"><div class="num">${totalTarget}</div><div class="ex-total-label">${esc(t("totalLabelUnit", { unit: unitWord(ex.targetUnit) }))}</div></div></div>
     <div class="set-grid">${sets}</div>
@@ -929,13 +948,29 @@ function menuExerciseCard(s, ex, opts = {}) {
     <button class="cta ex-save" ${historyMode ? `data-save-history-ex="${s.id}:${ex.id}"` : `data-save-ex="${s.id}:${ex.id}"`}>${esc(recorded ? t("updateRecord") : t("saveAndDone"))}</button>
   </div>`;
 }
+// The how-to window for one exercise, opened from the i button next to
+// its name: the steps and the body part to focus on, from the catalog's
+// guide data (so it follows the user's own menu definition).
+function guideModal(s) {
+  if (!guideFor) return "";
+  const ex = s.exercises.find((e) => e.baseId === guideFor);
+  const g = state.catalog.guides?.[guideFor];
+  if (!ex || !g) return "";
+  return `<div class="guide-overlay" id="guideOverlay"><div class="guide-window" role="dialog" aria-modal="true">
+    <div class="guide-head"><h3>${esc(ex.variation || ex.name)}</h3><button class="guide-close" type="button" id="guideClose" aria-label="${esc(t("guideClose"))}">×</button></div>
+    <h4>${esc(t("guideStepsH"))}</h4>
+    <ol class="guide-steps">${g.steps.map((st) => `<li>${esc(st)}</li>`).join("")}</ol>
+    <h4>${esc(t("guideFocusH"))}</h4>
+    <p class="guide-focus">${esc(g.focus)}</p>
+  </div></div>`;
+}
 function renderMenu() {
   const s = menuSession();
   if (!s) {
     // No condition recorded today yet: this guidance takes priority over
     // the generate-session guidance.
     if (!state.pain) return `<p>${esc(t("noCondition"))}</p><button class="cta" id="goCond">${esc(t("goCondition"))}</button>`;
-    return `<p>${esc(t("noSession"))}</p><button class="cta" id="gen">${esc(t("createWorkout"))}</button><p id="genErr" class="error">${esc(menuGenError)}</p>`;
+    return `<p>${esc(t("noSession"))}</p><button class="cta" id="gen">${esc(t("createWorkout"))}</button><p id="genErr" class="error">${esc(menuGenError)}</p><p class="menu-def-nav"><button class="btn" type="button" id="goMenuDef">${esc(t("menuDefBtn"))}</button></p>`;
   }
   const remaining = s.exercises.filter((e) => !e.completed).length;
   // An unfinished session from an earlier day keeps its own date: the
@@ -954,7 +989,9 @@ function renderMenu() {
     ${menuCancelArm ? `<div class="cancel-confirm"><p>${esc(t("cancelConfirm"))}</p><div class="cancel-btns"><button class="btn danger-solid" id="cancelExec">${esc(t("cancelExec"))}</button><button class="btn" id="cancelBack">${esc(t("cancelBack"))}</button></div></div>`
       : `<button class="cancel-link" id="cancelMenu">${esc(t("cancelLink"))}</button>`}</div>`
     : `<div class="ok">${esc(t("completedBox"))}</div><button class="cta" id="goReport">${esc(t("viewReport"))}</button>`}
-  ${s.progressionNotes.length ? `<div class="adj-notes"><ul>${s.progressionNotes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>` : ""}`;
+  ${s.progressionNotes.length ? `<div class="adj-notes"><ul>${s.progressionNotes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>` : ""}
+  <p class="menu-def-nav"><button class="btn" type="button" id="goMenuDef">${esc(t("menuDefBtn"))}</button></p>
+  ${guideModal(s)}`;
 }
 // RPE number -> the word the original space shows next to it.
 function rpeWord(rpe) {
@@ -1081,6 +1118,11 @@ function renderSettings() {
   <p class="data-actions"><button class="btn" id="exportJson">${esc(t("exportJsonBtn"))}</button><button class="btn" id="exportCsv">${esc(t("exportCsvBtn"))}</button><button class="btn" id="importData">${esc(t("importBtn"))}</button><input type="file" id="importFile" accept="application/json,.json" hidden></p>
   ${importError ? `<p class="error">${esc(importError)}</p>` : ""}
   ${importArm ? `<div class="reset-confirm"><p>${esc(t("importConfirmText", { name: importFileName }))}</p><button class="btn danger-solid" id="importConfirm">${esc(t("importExec"))}</button><button class="btn" id="importCancel">${esc(t("cancelBtn"))}</button></div>` : ""}
+  <h2 id="menuDefSection">${esc(t("menuDefH"))}</h2><p class="small">${esc(t("menuDefNote"))}</p>
+  <textarea id="menuDefText" class="menu-def-text" rows="16" spellcheck="false">${esc(menuDefText ?? "")}</textarea>
+  <p class="data-actions"><button class="btn" id="menuDefSave">${esc(t("menuDefSaveBtn"))}</button><button class="btn" id="menuDefExport">${esc(t("menuDefExportBtn"))}</button><button class="btn" id="menuDefImport">${esc(t("menuDefImportBtn"))}</button><input type="file" id="menuDefFile" accept="application/json,.json" hidden><button class="btn" id="menuDefReset">${esc(menuDefResetArm ? t("menuDefResetArmBtn") : t("menuDefResetBtn"))}</button></p>
+  ${menuDefError ? `<p class="error">${esc(menuDefError)}</p>` : ""}
+  ${menuDefSavedShow ? `<p class="saved-ind">${esc(t("menuDefSaved"))}</p>` : ""}
   <button class="btn danger" id="reset">${esc(t("deleteData"))}</button>
   ${resetArm ? `<div class="reset-confirm"><p>${esc(t("resetConfirmText"))}</p><button class="btn danger-solid" id="resetConfirm">${esc(t("resetExec"))}</button><button class="btn" id="resetCancel">${esc(t("cancelBtn"))}</button></div>` : ""}`;
 }
@@ -1097,6 +1139,21 @@ function render() {
   $app.innerHTML = view === "pain" ? renderPain() : view === "menu" ? renderMenu() : view === "history" ? renderHistory() : renderSettings();
   updateHeader();
   bind();
+  // The menu-definition editor loads its JSON lazily on first arrival
+  // in the settings view, then re-renders with the text in place.
+  if (view === "settings" && menuDefText === null && !menuDefLoading) {
+    menuDefLoading = true;
+    fetch("/api/catalog").then((r) => r.json()).then((c) => {
+      menuDefText = JSON.stringify(c, null, 2); menuDefLoading = false;
+      if (view === "settings") render();
+    }).catch(() => { menuDefLoading = false; });
+  }
+  // Arriving from the workout tab's menu-edit button lands on the
+  // menu-definition section, not the top of the settings view.
+  if (view === "settings" && scrollToMenuDef) {
+    scrollToMenuDef = false;
+    requestAnimationFrame(() => document.getElementById("menuDefSection")?.scrollIntoView({ block: "start" }));
+  }
 }
 // Bindings for the report entry list only. bind() calls this on every
 // full render, and refreshHistoryList() calls it after replacing the
@@ -1291,6 +1348,62 @@ function bind() {
   const resetConfirm = document.getElementById("resetConfirm");
   if (resetConfirm) resetConfirm.addEventListener("click", async () => {
     await withBusy(resetConfirm, async () => { await api("/api/reset", {}); resetArm = false; dropAllDrafts(); painGen = 0; painSavedGen = -1; go("pain"); });
+  });
+  // Workout tab: the i button next to an exercise name opens its
+  // how-to window; the backdrop or the × button closes it.
+  $app.querySelectorAll("[data-guide]").forEach((el) => el.addEventListener("click", () => { guideFor = el.dataset.guide; render(); }));
+  const guideClose = document.getElementById("guideClose");
+  if (guideClose) guideClose.addEventListener("click", () => { guideFor = null; render(); });
+  const guideOverlay = document.getElementById("guideOverlay");
+  if (guideOverlay) guideOverlay.addEventListener("click", (e) => { if (e.target === guideOverlay) { guideFor = null; render(); } });
+  // Workout tab -> settings, straight at the menu-definition section.
+  const goMenuDef = document.getElementById("goMenuDef");
+  if (goMenuDef) goMenuDef.addEventListener("click", () => { scrollToMenuDef = true; go("settings"); });
+  // Settings: menu-definition editor (save / export / import / reset).
+  const menuDefSave = document.getElementById("menuDefSave");
+  if (menuDefSave) menuDefSave.addEventListener("click", async () => {
+    const text = document.getElementById("menuDefText")?.value ?? "";
+    await withBusy(menuDefSave, async () => {
+      try {
+        await api("/api/catalog", { catalogText: text });
+        menuDefText = null; menuDefError = ""; menuDefSavedShow = true; menuDefResetArm = false;
+      } catch (e) {
+        menuDefText = text; menuDefError = e.message; menuDefSavedShow = false;
+      }
+      render();
+    });
+  });
+  const menuDefExport = document.getElementById("menuDefExport");
+  if (menuDefExport) menuDefExport.addEventListener("click", () => { window.location.href = "/api/catalog/export"; });
+  const menuDefImport = document.getElementById("menuDefImport");
+  const menuDefFile = document.getElementById("menuDefFile");
+  if (menuDefImport && menuDefFile) {
+    menuDefImport.addEventListener("click", () => menuDefFile.click());
+    menuDefFile.addEventListener("change", async () => {
+      const f = menuDefFile.files?.[0]; if (!f) return;
+      const text = await f.text();
+      try {
+        await api("/api/catalog", { catalogText: text });
+        menuDefText = null; menuDefError = ""; menuDefSavedShow = true; menuDefResetArm = false;
+      } catch (e) {
+        menuDefError = e.message; menuDefSavedShow = false;
+      }
+      render();
+    });
+  }
+  const menuDefReset = document.getElementById("menuDefReset");
+  if (menuDefReset) menuDefReset.addEventListener("click", async () => {
+    if (!menuDefResetArm) { menuDefResetArm = true; render(); return; }
+    await withBusy(menuDefReset, async () => {
+      try {
+        await api("/api/catalog", { reset: true });
+        menuDefText = null; menuDefError = ""; menuDefSavedShow = true;
+      } catch (e) {
+        menuDefError = e.message; menuDefSavedShow = false;
+      }
+      menuDefResetArm = false;
+      render();
+    });
   });
 }
 load().catch(loadFailed);

@@ -4,8 +4,8 @@
 // A rejected write answers HTTP 400 with the reason and stores nothing.
 // Reason texts come from the i18n tables (src/i18n.ts) in the store's
 // language; every function takes an optional language, default Japanese.
-import { RED_FLAGS } from "./exercises";
-import { isLang, isTheme, VMSG, type Lang, type Theme } from "./i18n";
+import { RED_FLAGS, type Catalog, type ExerciseDef, type RotationDef } from "./exercises";
+import { CMSG, isLang, isTheme, VMSG, type Lang, type Theme } from "./i18n";
 import { sessionTotal, type PainEntry, type Profile, type ProfileHistoryEntry, type Session, type SessionExercise, type SetLog, type Store } from "./logic";
 
 export class InvalidInput extends Error {}
@@ -228,6 +228,116 @@ function parseImportedProfileHistory(v: unknown, lang: Lang): ProfileHistoryEntr
   });
 }
 
+// ---------- menu definition (catalog) ----------
+// Full structural validation of a user-supplied catalog, used by the
+// settings screen's menu editor, the catalog import, and the store
+// import (when the file carries a catalog). Unlike the store import's
+// single generic message, every failure names the exact field and
+// problem (CMSG), because the user edits this JSON by hand and needs
+// to find the mistake. The record is rebuilt field by field (unknown
+// keys are dropped). steps / focus may be omitted: they fall back to
+// the cue and the muscle group, so a catalog written before they
+// existed still imports.
+export function parseCatalogImport(v: unknown, lang: Lang = "ja"): Catalog {
+  const M = CMSG[lang];
+  const bad = (msg: string): never => { throw new InvalidInput(msg); };
+  if (!isObj(v)) bad(M.notObject);
+  for (const k of ["exercises", "rotations", "substitutes", "jointToMuscleParts", "muscleParts", "joints"]) {
+    if (!(k in v)) bad(M.missingKey(k));
+  }
+  const strList = (x: unknown, key: string): string[] => {
+    if (!Array.isArray(x) || x.length === 0
+      || x.some((s) => typeof s !== "string" || s === "")
+      || new Set(x).size !== x.length) bad(M.partsInvalid(key));
+    return x as string[];
+  };
+  const muscleParts = strList(v.muscleParts, "muscleParts");
+  const joints = strList(v.joints, "joints");
+  const partSet = new Set(muscleParts);
+  const jointSet = new Set(joints);
+
+  if (!isObj(v.exercises) || Object.keys(v.exercises).length === 0) bad(M.noExercises);
+  const exercises: Record<string, ExerciseDef> = {};
+  for (const [id, raw] of Object.entries(v.exercises)) {
+    if (!isObj(raw)) bad(M.exerciseField(id, "baseId"));
+    const field = (name: string): never => bad(M.exerciseField(id, name));
+    if (raw.baseId !== id) field("baseId");
+    if (typeof raw.name !== "string" || raw.name === "") field("name");
+    if (typeof raw.muscleGroup !== "string" || raw.muscleGroup === "") field("muscleGroup");
+    if (typeof raw.painPart !== "string" || raw.painPart === "") field("painPart");
+    if (!partSet.has(raw.painPart as string)) bad(M.painPartUnknown(id, raw.painPart as string));
+    if (!Array.isArray(raw.jointParts) || raw.jointParts.some((j) => typeof j !== "string")) field("jointParts");
+    for (const j of raw.jointParts as string[]) if (!jointSet.has(j)) bad(M.jointUnknown(id, j));
+    if (raw.unit !== "回" && raw.unit !== "秒") field("unit");
+    if (raw.unilateral !== undefined && typeof raw.unilateral !== "boolean") field("unilateral");
+    if (raw.unilateral === true && raw.unit === "秒") bad(M.unilateralTimed(id));
+    if (typeof raw.baseTarget !== "number" || !Number.isFinite(raw.baseTarget) || raw.baseTarget <= 0) field("baseTarget");
+    if (typeof raw.baseSets !== "number" || !Number.isInteger(raw.baseSets) || raw.baseSets < 1 || raw.baseSets > 10) field("baseSets");
+    if (!Array.isArray(raw.ladder) || raw.ladder.length === 0
+      || raw.ladder.some((s) => typeof s !== "string" || s === "")) bad(M.ladderInvalid(id));
+    if (typeof raw.defaultLadder !== "number" || !Number.isInteger(raw.defaultLadder)
+      || raw.defaultLadder < 0 || raw.defaultLadder >= (raw.ladder as string[]).length) bad(M.defaultLadderRange(id));
+    if (typeof raw.cue !== "string") field("cue");
+    let steps: string[];
+    if (raw.steps === undefined) steps = [raw.cue as string];
+    else if (Array.isArray(raw.steps) && raw.steps.length > 0 && raw.steps.length <= 10
+      && raw.steps.every((s) => typeof s === "string" && s !== "")) steps = raw.steps as string[];
+    else field("steps");
+    let focus: string;
+    if (raw.focus === undefined) focus = raw.muscleGroup as string;
+    else if (typeof raw.focus === "string") focus = raw.focus;
+    else field("focus");
+    exercises[id] = {
+      baseId: id, name: raw.name as string, muscleGroup: raw.muscleGroup as string,
+      painPart: raw.painPart as string, jointParts: [...(raw.jointParts as string[])],
+      unit: raw.unit as "回" | "秒",
+      ...(raw.unilateral === true ? { unilateral: true } : {}),
+      baseTarget: raw.baseTarget as number, baseSets: raw.baseSets as number,
+      defaultLadder: raw.defaultLadder as number, ladder: [...(raw.ladder as string[])],
+      cue: raw.cue as string, steps, focus,
+    };
+  }
+
+  if (!Array.isArray(v.rotations)) bad(M.rotationsInvalid);
+  const rotations: RotationDef[] = [];
+  const seenRot = new Set<string>();
+  for (const r of v.rotations as unknown[]) {
+    if (!isObj(r) || typeof r.id !== "string" || typeof r.title !== "string" || r.title === ""
+      || !Array.isArray(r.exerciseIds)) bad(M.rotationsInvalid);
+    if (seenRot.has(r.id)) bad(M.rotationIdDup(r.id));
+    seenRot.add(r.id);
+    const ids = r.exerciseIds as unknown[];
+    const seenEx = new Set<string>();
+    for (const ex of ids) {
+      if (typeof ex !== "string" || !(ex in exercises)) bad(M.rotationExerciseUnknown(r.id, String(ex)));
+      if (seenEx.has(ex)) bad(M.rotationExerciseDup(r.id, ex));
+      seenEx.add(ex);
+    }
+    if (ids.length === 0) bad(M.rotationsInvalid);
+    rotations.push({ id: r.id, title: r.title, exerciseIds: ids as string[] });
+  }
+  if (rotations.length !== 3 || !["A", "B", "C"].every((id) => seenRot.has(id))) bad(M.rotationsInvalid);
+
+  if (!isObj(v.substitutes)) bad(M.exerciseField("substitutes", "substitutes"));
+  const substitutes: Record<string, string> = {};
+  for (const [from, to] of Object.entries(v.substitutes)) {
+    if (typeof to !== "string" || !(from in exercises) || !(to in exercises)) bad(M.substituteUnknown(from, String(to)));
+    if (from === to) bad(M.substituteSelf(from));
+    substitutes[from] = to;
+  }
+
+  if (!isObj(v.jointToMuscleParts)) bad(M.exerciseField("jointToMuscleParts", "jointToMuscleParts"));
+  const jointToMuscleParts: Record<string, string[]> = {};
+  for (const [joint, parts] of Object.entries(v.jointToMuscleParts)) {
+    if (!jointSet.has(joint)) bad(M.jointMapUnknown(joint));
+    if (!Array.isArray(parts) || parts.some((p) => typeof p !== "string")) bad(M.jointMapPartUnknown(joint, ""));
+    for (const p of parts as string[]) if (!partSet.has(p)) bad(M.jointMapPartUnknown(joint, p));
+    jointToMuscleParts[joint] = [...(parts as string[])];
+  }
+
+  return { exercises, rotations, substitutes, jointToMuscleParts, muscleParts, joints };
+}
+
 export function parseStoreImport(v: unknown, lang: Lang = "ja"): Store {
   if (!isObj(v)) impFail(lang);
   for (const k of ["profile", "pain", "sessions", "nextSessionId", "nextExerciseId"]) {
@@ -247,6 +357,13 @@ export function parseStoreImport(v: unknown, lang: Lang = "ja"): Store {
     if (!isTheme(v.theme)) impFail(lang);
     importedTheme = v.theme;
   }
+  // The menu definition is optional too (exports written before it
+  // existed do not carry it); when present it goes through the full
+  // catalog validation, with its specific error messages.
+  let importedCatalog: Catalog | undefined;
+  if (v.catalog !== undefined) {
+    importedCatalog = parseCatalogImport(v.catalog, lang);
+  }
   const profile = v.profile === null ? null : isObj(v.profile) ? parseProfile(v.profile, lang, { foldLegacySex: true }) : impFail(lang);
   const sessions = (v.sessions as unknown[]).map((s) => parseImportedSession(s, lang));
   const maxSessionId = sessions.reduce((a, s) => Math.max(a, s.id), 0);
@@ -260,5 +377,6 @@ export function parseStoreImport(v: unknown, lang: Lang = "ja"): Store {
     profileHistory: parseImportedProfileHistory(v.profileHistory, lang),
     ...(importedLang ? { lang: importedLang } : {}),
     ...(importedTheme ? { theme: importedTheme } : {}),
+    ...(importedCatalog ? { catalog: importedCatalog } : {}),
   };
 }

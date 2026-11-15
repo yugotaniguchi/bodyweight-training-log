@@ -1,6 +1,6 @@
 import {
-  EXERCISES, ROTATIONS, SUBSTITUTES, INTRO_SESSIONS, JOINT_TO_MUSCLE_PARTS,
-  type ExerciseDef,
+  INTRO_SESSIONS, defaultCatalog,
+  type Catalog, type ExerciseDef,
 } from "./exercises";
 import {
   SRV, jointName, partName, redFlagLabel, subjectName, type Lang, type Theme,
@@ -84,6 +84,26 @@ export interface Store {
   /** Colour theme ("dark" | "light" | "system"); absent means "system"
    *  (follow the OS prefers-color-scheme), the default. */
   theme?: Theme;
+  /** The user's own menu definition (settings screen editor / import);
+   *  absent means the built-in catalog. Writes are fully validated
+   *  (parseCatalogImport); catalogOf() also sanity-checks on read, so a
+   *  hand-corrupted store file falls back to the built-in catalog
+   *  instead of breaking session generation. */
+  catalog?: Catalog;
+}
+
+/** The catalog a store runs on: its own when present and structurally
+ *  sane, otherwise the built-in default. The sanity check is cheap and
+ *  shallow on purpose — full validation happens on every write path. */
+export function catalogOf(store: Store): Catalog {
+  const c = store.catalog;
+  if (c && typeof c === "object"
+    && c.exercises && typeof c.exercises === "object" && Object.keys(c.exercises).length > 0
+    && Array.isArray(c.rotations) && c.rotations.length > 0
+    && Array.isArray(c.muscleParts) && Array.isArray(c.joints)) {
+    return c;
+  }
+  return defaultCatalog();
 }
 export const emptyStore = (): Store => ({ profile: null, pain: [], sessions: [], nextSessionId: 1, nextExerciseId: 1, profileHistory: [] });
 
@@ -193,7 +213,7 @@ export function detectOverload(store: Store, lang: Lang = "ja"): OverloadInfo[] 
   for (const part of new Set(usedExercises.map((e) => e.painPart))) {
     check(part, "muscle", (e) => e.soreness[part] ?? 0);
   }
-  const defOf = (e: SessionExercise) => EXERCISES[e.baseId];
+  const defOf = (e: SessionExercise) => catalogOf(store).exercises[e.baseId];
   for (const joint of new Set(usedExercises.flatMap((e) => defOf(e)?.jointParts ?? []))) {
     check(joint, "joint", (e) => e.jointPain[joint] ?? 0);
   }
@@ -255,7 +275,7 @@ export function isCannotDo(prev: SessionExercise): boolean {
   return allZero || memoCannot;
 }
 
-export function decideNext(def: ExerciseDef, prev: SessionExercise | null, intro: boolean, lang: Lang = "ja"): NextDecision {
+export function decideNext(def: ExerciseDef, prev: SessionExercise | null, intro: boolean, lang: Lang = "ja", catalog: Catalog = defaultCatalog()): NextDecision {
   const T = SRV[lang];
   const notes: string[] = [];
   let ladder = intro ? Math.max(0, def.defaultLadder - 1) : def.defaultLadder;
@@ -286,8 +306,8 @@ export function decideNext(def: ExerciseDef, prev: SessionExercise | null, intro
       ladder -= 1;
       targetReps = def.baseTarget;
       notes.push(T.noteCannotLadder(def.ladder[ladder], memo || T.noteCannotNoReps));
-    } else if (SUBSTITUTES[def.baseId]) {
-      const sub = EXERCISES[SUBSTITUTES[def.baseId]];
+    } else if (catalog.substitutes[def.baseId]) {
+      const sub = catalog.exercises[catalog.substitutes[def.baseId]];
       substitutedFrom = def.baseId; baseId = sub.baseId; ladder = 0;
       targetReps = sub.baseTarget; targetSets = intro ? Math.max(1, sub.baseSets - 1) : sub.baseSets;
       notes.push(T.noteCannotSubstitute(sub.name, sub.ladder[0]));
@@ -367,12 +387,14 @@ interface PlanCtx {
   overload: OverloadInfo[];
   overloadMuscles: Set<string>; overloadJoints: Set<string>;
   intro: boolean; lang: Lang;
+  catalog: Catalog;
 }
 function planCtx(store: Store, assessment: Assessment, intro: boolean, lang: Lang): PlanCtx {
   const painSet = (action: "exclude" | "reduce", kind: "muscle" | "joint") =>
     new Set(assessment.parts.filter((p) => p.action === action && p.kind === kind).map((p) => p.subject));
   const overload = detectOverload(store, lang);
   return {
+    catalog: catalogOf(store),
     excludedMuscles: painSet("exclude", "muscle"), reducedMuscles: painSet("reduce", "muscle"),
     excludedJoints: painSet("exclude", "joint"), reducedJoints: painSet("reduce", "joint"),
     overload,
@@ -394,17 +416,20 @@ function planExercise(store: Store, baseId: string, ctx: PlanCtx): PlanResult {
   const { lang } = ctx;
   const T = SRV[lang];
   const notes: string[] = [];
-  const def = EXERCISES[baseId];
+  const def = ctx.catalog.exercises[baseId];
+  // A hand-corrupted catalog could name a rotation exercise that is not
+  // defined; skip it silently rather than breaking generation.
+  if (!def) return { kind: "excluded", notes };
   // last completed record of this exercise (or of a substitute source)
   const prev = [...store.sessions].reverse()
     .flatMap((s) => s.exercises.map((e) => ({ s, e })))
     .find(({ s, e }) => s.status === "completed" && e.baseId === baseId)?.e ?? null;
 
-  const decision = decideNext(def, prev, ctx.intro && !prev, lang);
-  const finalDef = EXERCISES[decision.baseId];
+  const decision = decideNext(def, prev, ctx.intro && !prev, lang, ctx.catalog);
+  const finalDef = ctx.catalog.exercises[decision.baseId] ?? def;
   const jointDirect = (set: Set<string>) => finalDef.jointParts.filter((j) => set.has(j));
   const viaMap = (joints: Set<string>, part: string) =>
-    [...joints].filter((j) => (JOINT_TO_MUSCLE_PARTS[j] ?? []).includes(part));
+    [...joints].filter((j) => (ctx.catalog.jointToMuscleParts[j] ?? []).includes(part));
   const excludeWhy: string[] = [];
   if (ctx.excludedMuscles.has(finalDef.painPart)) excludeWhy.push(partName(finalDef.painPart, lang));
   for (const j of jointDirect(ctx.excludedJoints)) excludeWhy.push(T.whyJoint(jointName(j, lang)));
@@ -454,7 +479,8 @@ export function generateSession(store: Store, date: string, assessment: Assessme
   const T = SRV[lang];
   const completedCount = store.sessions.filter((s) => s.status === "completed").length;
   const intro = completedCount < INTRO_SESSIONS;
-  const rotation = ROTATIONS[store.sessions.length % ROTATIONS.length];
+  const rotations = catalogOf(store).rotations;
+  const rotation = rotations[store.sessions.length % rotations.length];
   const ctx = planCtx(store, assessment, intro, lang);
   const notes: string[] = [];
   const exercises: SessionExercise[] = [];
@@ -505,7 +531,8 @@ export function refreshPlannedSession(store: Store, session: Session, assessment
       totalVolume: sessionTotal(kept),
     };
   }
-  const rotation = ROTATIONS.find((r) => r.id === session.rotation) ?? ROTATIONS[0];
+  const rotations = catalogOf(store).rotations;
+  const rotation = rotations.find((r) => r.id === session.rotation) ?? rotations[0];
   const ctx = planCtx(store, assessment, session.intro, lang);
   const recordedBaseIds = new Set(recorded.map((e) => e.baseId));
   const recordedByBase = new Map(recorded.map((e) => [e.baseId, e]));

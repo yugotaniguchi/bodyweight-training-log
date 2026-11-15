@@ -16,6 +16,10 @@ export interface ExerciseDef {
   defaultLadder: number;
   ladder: string[];
   cue: string;
+  /** How-to for the workout tab's info window: the steps, in order. */
+  steps: string[];
+  /** The body part to focus on, for the same info window. */
+  focus: string;
 }
 
 export const MUSCLE_PARTS = [
@@ -68,6 +72,8 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     unit: "回", baseTarget: 8, baseSets: 3, defaultLadder: 1,
     ladder: ["壁プッシュアップ", "膝つきプッシュアップ", "プッシュアップ", "ダイヤモンドプッシュアップ"],
     cue: "体を一直線に保ち、胸が床に近づくまで下ろす。反動は使わない。",
+    steps: ["手を肩幅に置き、足を伸ばして体を一直線にする", "肘を曲げて、胸が床に近づくまで下ろす", "手のひらで床を押して体を持ち上げる"],
+    focus: "胸と腕の裏側",
   },
   pike: {
     baseId: "pike", name: "パイクプッシュアップ", muscleGroup: "肩", painPart: "肩",
@@ -75,6 +81,8 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     unit: "回", baseTarget: 6, baseSets: 2, defaultLadder: 1,
     ladder: ["壁際パイクプッシュアップ（浅め）", "パイクプッシュアップ（浅め）", "パイクプッシュアップ"],
     cue: "お尻を高く上げ、頭頂が床に向かうように肘を曲げる。",
+    steps: ["四つ這いから腰を高く上げ、逆V字の姿勢を作る", "肘を曲げて、頭頂が床に近づくまで下ろす", "床を押して元の姿勢に戻る"],
+    focus: "肩（特に前側）",
   },
   squat: {
     baseId: "squat", name: "スクワット", muscleGroup: "脚（前）", painPart: "脚（前）",
@@ -82,6 +90,8 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     unit: "回", baseTarget: 10, baseSets: 3, defaultLadder: 1,
     ladder: ["椅子スクワット", "スクワット", "ジャンプスクワット"],
     cue: "膝とつま先の向きをそろえ、椅子に座るように下ろす。",
+    steps: ["足を肩幅に開き、つま先を少し外に向ける", "椅子に座るように腰を下ろす（膝とつま先の向きをそろえる）", "かかとで床を押して立ち上がる"],
+    focus: "太ももの前側とお尻",
   },
   calfJump: {
     baseId: "calfJump", name: "カーフジャンプ", muscleGroup: "ふくらはぎ", painPart: "ふくらはぎ",
@@ -89,6 +99,8 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     unit: "回", baseTarget: 12, baseSets: 2, defaultLadder: 1,
     ladder: ["両脚カーフジャンプ（低く）", "カーフジャンプ", "片脚カーフジャンプ"],
     cue: "かかとを上げた勢いで軽く跳ぶ。着地は静かに。",
+    steps: ["足を腰幅に開いて立つ", "かかとを上げた勢いで軽く真上に跳ぶ", "つま先で静かに着地し、そのまま繰り返す"],
+    focus: "ふくらはぎ",
   },
   proneW: {
     baseId: "proneW", name: "プローンWレイズ", muscleGroup: "背中", painPart: "背中",
@@ -96,6 +108,8 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     unit: "回", baseTarget: 12, baseSets: 2, defaultLadder: 0,
     ladder: ["プローンWレイズ", "プローンWレイズ（トップで止める）"],
     cue: "うつ伏せで腕をWの形にし、肩甲骨を寄せながら胸を少し浮かせる。",
+    steps: ["うつ伏せで腕をWの形に曲げる", "肩甲骨を寄せながら、胸と腕を少し浮かせる", "ゆっくり元の位置に戻す"],
+    focus: "背中の中央（肩甲骨まわり）",
   },
   proneY: {
     baseId: "proneY", name: "プローンYレイズ", muscleGroup: "背中", painPart: "背中",
@@ -103,6 +117,8 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     unit: "回", baseTarget: 10, baseSets: 2, defaultLadder: 0,
     ladder: ["プローンYレイズ", "プローンYレイズ（トップで止める）"],
     cue: "うつ伏せで腕をYの形に伸ばし、親指を上にして少し浮かせる。",
+    steps: ["うつ伏せで腕をYの形に伸ばす（親指は上）", "腕と胸を少し浮かせる", "ゆっくり元の位置に戻す"],
+    focus: "背中の上部と肩の後ろ側",
   },
   gluteBridge: {
     baseId: "gluteBridge", name: "グルートブリッジ", muscleGroup: "脚（後ろ）・お尻", painPart: "脚（後ろ）・お尻",
@@ -110,6 +126,8 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     unit: "回", baseTarget: 12, baseSets: 3, defaultLadder: 0,
     ladder: ["グルートブリッジ", "グルートブリッジ（トップで止める）", "片脚グルートブリッジ"],
     cue: "かかとで床を押し、お尻を締めながら腰を持ち上げる。",
+    steps: ["仰向けで膝を曲げ、足裏を床につける", "かかとで床を押し、お尻を締めながら腰を持ち上げる", "トップで止めてから、ゆっくり下ろす"],
+    focus: "お尻と太ももの裏側",
   },
   rdl: {
     baseId: "rdl", name: "シングルレッグRDL", muscleGroup: "脚（後ろ）・お尻", painPart: "脚（後ろ）・お尻",
@@ -117,6 +135,8 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     unit: "回", unilateral: true, baseTarget: 8, baseSets: 2, defaultLadder: 1,
     ladder: ["両脚ヒップヒンジ", "シングルレッグRDL（支えあり）", "シングルレッグRDL"],
     cue: "背中をまっすぐに保ち、股関節から折りたたむ。左右それぞれ行う。",
+    steps: ["片脚で立ち、反対の脚を少し後ろに引く", "背中をまっすぐに保ち、股関節から上体を前に倒す", "太ももの裏の伸びを感じたら元に戻る（左右それぞれ行う）"],
+    focus: "太ももの裏側とお尻",
   },
   legRaise: {
     baseId: "legRaise", name: "レッグレイズ", muscleGroup: "腹筋", painPart: "腹筋",
@@ -124,6 +144,8 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     unit: "回", baseTarget: 10, baseSets: 2, defaultLadder: 1,
     ladder: ["膝曲げレッグレイズ", "レッグレイズ", "レッグレイズ（ゆっくり下ろす）"],
     cue: "腰を床に押し付けたまま、脚をゆっくり上げ下ろしする。",
+    steps: ["仰向けで両脚をそろえ、腰を床に押し付ける", "脚をゆっくり持ち上げる", "腰が浮く手前まで、ゆっくり下ろす"],
+    focus: "腹筋（特に下部）",
   },
   crunch: {
     baseId: "crunch", name: "クランチ", muscleGroup: "腹筋", painPart: "腹筋",
@@ -131,6 +153,8 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     unit: "回", baseTarget: 12, baseSets: 2, defaultLadder: 0,
     ladder: ["クランチ", "クランチ（トップで止める）"],
     cue: "腰を床につけたまま、肩甲骨が浮くところまで上体を丸める。首は引っ張らない。",
+    steps: ["仰向けで膝を曲げ、手は胸の前か耳の横に置く", "肩甲骨が浮くところまで上体を丸める", "ゆっくり元に戻す（首は引っ張らない）"],
+    focus: "腹筋（特に上部）",
   },
   plank: {
     baseId: "plank", name: "プランク", muscleGroup: "体幹", painPart: "体幹",
@@ -138,6 +162,8 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     unit: "秒", baseTarget: 40, baseSets: 2, defaultLadder: 1,
     ladder: ["膝つきプランク", "プランク", "プランク（片脚浮かせ）"],
     cue: "肘とつま先で支え、腰を反らさず一直線を保つ。",
+    steps: ["肘とつま先で体を支える", "頭からかかとまで一直線を保つ", "腰を反らさず、そのままキープする"],
+    focus: "体幹全体（腹筋と背筋）",
   },
   sidePlank: {
     baseId: "sidePlank", name: "サイドプランク", muscleGroup: "体幹（側面）", painPart: "体幹",
@@ -145,6 +171,8 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     unit: "秒", baseTarget: 30, baseSets: 2, defaultLadder: 0,
     ladder: ["サイドプランク（膝曲げ）", "サイドプランク"],
     cue: "横向きで肘をつき、体を一直線に保つ。左右それぞれ行う。",
+    steps: ["横向きで下の肘をつく", "体を一直線に持ち上げてキープする", "反対側も同じ時間行う"],
+    focus: "体幹の側面（腹斜筋）",
   },
   reverseLunge: {
     baseId: "reverseLunge", name: "リバースランジ", muscleGroup: "脚（前）", painPart: "脚（前）",
@@ -152,6 +180,8 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     unit: "回", unilateral: true, baseTarget: 8, baseSets: 2, defaultLadder: 1,
     ladder: ["スプリットスクワット（浅め）", "リバースランジ", "ブルガリアンスクワット"],
     cue: "一歩後ろに引き、上体をまっすぐに保って下ろす。左右それぞれ行う。",
+    steps: ["立った姿勢から一歩後ろに引く", "上体をまっすぐに保ったまま腰を下ろす", "前脚のかかとで押して元に戻る（左右それぞれ行う）"],
+    focus: "太ももの前側とお尻",
   },
 };
 
@@ -176,3 +206,32 @@ export const ROTATIONS: RotationDef[] = [
 ];
 
 export const INTRO_SESSIONS = 6;
+
+// ---------- user-editable catalog ----------
+// Everything that defines the workout menu — the exercises and their
+// ladders, the rotation compositions, the cannot-do substitutes, and
+// the pain vocabularies they reference — is one catalog object. The
+// constants above are the built-in default; a store may carry its own
+// catalog (edited / imported in the settings screen), and the logic
+// reads the store's catalog when present (see catalogOf in logic.ts).
+// Red flags are deliberately NOT part of the catalog: they are safety
+// criteria, not menu contents.
+export interface Catalog {
+  exercises: Record<string, ExerciseDef>;
+  rotations: RotationDef[];
+  substitutes: Record<string, string>;
+  jointToMuscleParts: Record<string, string[]>;
+  muscleParts: string[];
+  joints: string[];
+}
+
+export function defaultCatalog(): Catalog {
+  return {
+    exercises: EXERCISES,
+    rotations: ROTATIONS,
+    substitutes: SUBSTITUTES,
+    jointToMuscleParts: JOINT_TO_MUSCLE_PARTS,
+    muscleParts: [...MUSCLE_PARTS],
+    joints: [...JOINTS],
+  };
+}

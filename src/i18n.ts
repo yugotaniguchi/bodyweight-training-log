@@ -123,6 +123,72 @@ export const VMSG: Record<Lang, ValidationTexts> = {
   },
 };
 
+// ---------- catalog (menu definition) validation messages ----------
+// The settings screen's menu editor shows these verbatim, so each one
+// names the exact field and problem instead of a generic "invalid".
+export interface CatalogTexts {
+  notObject: string;
+  missingKey: (key: string) => string;
+  partsInvalid: (key: string) => string;
+  noExercises: string;
+  exerciseField: (id: string, field: string) => string;
+  painPartUnknown: (id: string, part: string) => string;
+  jointUnknown: (id: string, joint: string) => string;
+  ladderInvalid: (id: string) => string;
+  defaultLadderRange: (id: string) => string;
+  unilateralTimed: (id: string) => string;
+  rotationsInvalid: string;
+  rotationIdDup: (id: string) => string;
+  rotationExerciseUnknown: (id: string, ex: string) => string;
+  rotationExerciseDup: (id: string, ex: string) => string;
+  substituteUnknown: (from: string, to: string) => string;
+  substituteSelf: (id: string) => string;
+  jointMapUnknown: (joint: string) => string;
+  jointMapPartUnknown: (joint: string, part: string) => string;
+}
+export const CMSG: Record<Lang, CatalogTexts> = {
+  ja: {
+    notObject: "メニュー定義はJSONオブジェクトで指定してください",
+    missingKey: (key) => `メニュー定義に ${key} がありません`,
+    partsInvalid: (key) => `${key} は重複のない文字列の配列で指定してください`,
+    noExercises: "exercises に種目が1つもありません",
+    exerciseField: (id, field) => `種目 ${id} の ${field} の形式が正しくありません`,
+    painPartUnknown: (id, part) => `種目 ${id} の painPart「${part}」が muscleParts にありません`,
+    jointUnknown: (id, joint) => `種目 ${id} の jointParts「${joint}」が joints にありません`,
+    ladderInvalid: (id) => `種目 ${id} の ladder は空でない文字列の配列で指定してください`,
+    defaultLadderRange: (id) => `種目 ${id} の defaultLadder が ladder の範囲外です`,
+    unilateralTimed: (id) => `種目 ${id} は秒数の種目なので unilateral は指定できません`,
+    rotationsInvalid: "rotations は A・B・C の3つを各1回ずつ指定してください",
+    rotationIdDup: (id) => `ローテーション ${id} が重複しています`,
+    rotationExerciseUnknown: (id, ex) => `ローテーション ${id} の種目「${ex}」が exercises にありません`,
+    rotationExerciseDup: (id, ex) => `ローテーション ${id} に種目「${ex}」が重複しています`,
+    substituteUnknown: (from, to) => `substitutes の ${from} → ${to} は exercises に無い種目です`,
+    substituteSelf: (id) => `substitutes で ${id} 自身へは切り替えられません`,
+    jointMapUnknown: (joint) => `jointToMuscleParts の「${joint}」が joints にありません`,
+    jointMapPartUnknown: (joint, part) => `jointToMuscleParts の ${joint} →「${part}」が muscleParts にありません`,
+  },
+  en: {
+    notObject: "The menu definition must be a JSON object",
+    missingKey: (key) => `The menu definition is missing ${key}`,
+    partsInvalid: (key) => `${key} must be an array of unique strings`,
+    noExercises: "exercises must contain at least one exercise",
+    exerciseField: (id, field) => `Exercise ${id}: the ${field} field is not valid`,
+    painPartUnknown: (id, part) => `Exercise ${id}: painPart "${part}" is not in muscleParts`,
+    jointUnknown: (id, joint) => `Exercise ${id}: jointParts entry "${joint}" is not in joints`,
+    ladderInvalid: (id) => `Exercise ${id}: ladder must be a non-empty array of strings`,
+    defaultLadderRange: (id) => `Exercise ${id}: defaultLadder is outside the ladder range`,
+    unilateralTimed: (id) => `Exercise ${id}: unilateral cannot be set on a timed exercise`,
+    rotationsInvalid: "rotations must list A, B and C exactly once each",
+    rotationIdDup: (id) => `Rotation ${id} appears more than once`,
+    rotationExerciseUnknown: (id, ex) => `Rotation ${id}: exercise "${ex}" is not in exercises`,
+    rotationExerciseDup: (id, ex) => `Rotation ${id}: exercise "${ex}" appears more than once`,
+    substituteUnknown: (from, to) => `substitutes: ${from} -> ${to} names an exercise that is not in exercises`,
+    substituteSelf: (id) => `substitutes: ${id} cannot substitute to itself`,
+    jointMapUnknown: (joint) => `jointToMuscleParts: "${joint}" is not in joints`,
+    jointMapPartUnknown: (joint, part) => `jointToMuscleParts: ${joint} -> "${part}" is not in muscleParts`,
+  },
+};
+
 // ---------- server-generated texts ----------
 // One entry per user-visible string the server produces. Templates are
 // functions of the values they embed; embedded data (exercise names,

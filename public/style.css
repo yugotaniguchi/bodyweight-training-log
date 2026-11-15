@@ -286,3 +286,18 @@ label.row{display:block;margin:6px 0}
 .timer-fill{height:100%;background:var(--accent);transition:width .2s linear}
 .timer-btns{display:flex;gap:8px;flex-wrap:wrap}
 .timer.done{background:var(--ok-fill);border:1px solid var(--accent)}
+/* Workout tab: exercise title row with the how-to (i) button, the
+   guide window, the menu-definition editor, and the nav button to it. */
+.ex-title-row{display:flex;align-items:flex-start;gap:8px}
+.ex-title-row .ex-title{flex:1}
+.info-btn{flex:none;width:26px;height:26px;margin-top:5px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--sub);font-size:14px;font-style:italic;font-weight:700;line-height:1;cursor:pointer;padding:0}
+.guide-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:60}
+.guide-window{background:var(--bg);border:1px solid var(--border);border-radius:12px;max-width:480px;width:100%;max-height:80vh;overflow:auto;padding:18px;box-sizing:border-box}
+.guide-head{display:flex;align-items:flex-start;gap:8px}
+.guide-head h3{flex:1;font-size:19px;margin:0;line-height:1.35}
+.guide-close{flex:none;width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:18px;line-height:1;cursor:pointer;padding:0}
+.guide-window h4{font-size:14px;color:var(--sub);margin:14px 0 4px}
+.guide-steps{margin:0;padding-left:22px;line-height:1.6}
+.guide-focus{margin:0;line-height:1.6}
+.menu-def-nav{margin-top:20px;text-align:center}
+.menu-def-text{width:100%;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.5}

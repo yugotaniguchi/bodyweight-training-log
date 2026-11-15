@@ -1,9 +1,9 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
-import { assessPain, detectOverload, diffProfile, generateSession, painDurationGuidance, refreshPlannedSession, sessionTotal, setSum, type PainEntry, type SessionExercise, type SetLog, type Store } from "./src/logic";
-import { MUSCLE_PARTS, JOINTS, RED_FLAGS, EXERCISES, ROTATIONS } from "./src/exercises";
+import { assessPain, catalogOf, detectOverload, diffProfile, generateSession, painDurationGuidance, refreshPlannedSession, sessionTotal, setSum, type PainEntry, type SessionExercise, type SetLog, type Store } from "./src/logic";
+import { RED_FLAGS, EXERCISES } from "./src/exercises";
 import { loadStore, saveStore, resetStore } from "./src/store";
-import { InvalidInput, parseProfile, parseStoreImport, validNote, validPainLevel, validRpe, validSetLog } from "./src/validate";
+import { InvalidInput, parseCatalogImport, parseProfile, parseStoreImport, validNote, validPainLevel, validRpe, validSetLog } from "./src/validate";
 import { SRV, VMSG, isLang, isTheme, langOf, redFlagLabel, rotationTitle, themeOf, type Lang } from "./src/i18n";
 import { ICON_192_BASE64, ICON_512_BASE64, ICON_MASKABLE_512_BASE64, APPLE_TOUCH_ICON_BASE64 } from "./src/icons";
 import { logEvent } from "./src/log";
@@ -143,6 +143,7 @@ export function buildSessionsCsv(store: Store): string {
 function publicState() {
   const store = loadStore();
   const lang = langOf(store);
+  const cat = catalogOf(store);
   const date = today();
   const pain = store.pain.find((p) => p.date === date) ?? null;
   const todaySession = store.sessions.find((s) => s.date === date) ?? null;
@@ -175,12 +176,16 @@ function publicState() {
     // keys the stored data uses, and the client translates them for
     // display from its own dictionary.
     catalog: {
-      muscleParts: MUSCLE_PARTS, joints: JOINTS,
+      muscleParts: cat.muscleParts, joints: cat.joints,
       redFlags: RED_FLAGS.map((f) => ({ id: f.id, label: redFlagLabel(f.id, lang) })),
-      rotations: ROTATIONS.map((r) => ({ id: r.id, title: rotationTitle(r.id, r.title, lang) })),
+      rotations: cat.rotations.map((r) => ({ id: r.id, title: rotationTitle(r.id, r.title, lang) })),
       // Exercise ids recorded per side (left/right inputs); ids and
       // names are language-neutral, only the UI labels translate.
-      unilateral: Object.values(EXERCISES).filter((e) => e.unilateral).map((e) => e.baseId),
+      unilateral: Object.values(cat.exercises).filter((e) => e.unilateral).map((e) => e.baseId),
+      // How-to guides for the workout tab's info window (steps + the
+      // body part to focus on), keyed by exercise id. Catalog data, so
+      // it follows the user's own menu definition when they edit it.
+      guides: Object.fromEntries(Object.values(cat.exercises).map((e) => [e.baseId, { steps: e.steps, focus: e.focus }])),
     },
   };
 }
@@ -275,10 +280,11 @@ const server = Bun.serve({
           const v = (obj as Record<string, unknown>)[key];
           return v === undefined ? 0 : validPainLevel(v, lang);
         };
+        const cat = catalogOf(store);
         const entry: PainEntry = {
           date: today(),
-          soreness: Object.fromEntries(MUSCLE_PARTS.map((p) => [p, level(b.soreness, p)])),
-          jointPain: Object.fromEntries(JOINTS.map((j) => [j, level(b.jointPain, j)])),
+          soreness: Object.fromEntries(cat.muscleParts.map((p) => [p, level(b.soreness, p)])),
+          jointPain: Object.fromEntries(cat.joints.map((j) => [j, level(b.jointPain, j)])),
           redFlags: Array.isArray(b.redFlags) ? b.redFlags.filter((x: unknown) => RED_FLAGS.some((f) => f.id === x)) : [],
         };
         store.pain = [...store.pain.filter((p) => p.date !== entry.date), entry];
@@ -380,6 +386,41 @@ const server = Bun.serve({
       // anything is written, so a bad file answers 400 and replaces nothing.
       if (path === "/api/import" && req.method === "POST") {
         const store = parseStoreImport(await req.json(), langOf(loadStore())); // throws InvalidInput -> 400
+        saveStore(store); return json(publicState());
+      }
+
+      // Menu definition (catalog): the settings screen reads the
+      // current catalog as JSON, downloads it as a file, and saves an
+      // edited / imported one. Saving is fully validated
+      // (parseCatalogImport) before anything is written; { reset: true }
+      // drops the user's catalog and returns to the built-in one.
+      // Changes apply to sessions generated afterwards; recorded
+      // sessions keep the names and targets they were created with.
+      if (path === "/api/catalog" && req.method === "GET") {
+        return json(catalogOf(loadStore()));
+      }
+      if (path === "/api/catalog/export" && req.method === "GET") {
+        return new Response(JSON.stringify(catalogOf(loadStore()), null, 2), {
+          headers: {
+            "content-type": "application/json; charset=utf-8",
+            "content-disposition": 'attachment; filename="menu-catalog.json"',
+          },
+        });
+      }
+      if (path === "/api/catalog" && req.method === "POST") {
+        const b = await req.json();
+        const store = loadStore();
+        const lang = langOf(store);
+        if (b && b.reset === true) {
+          delete store.catalog;
+        } else {
+          let raw: unknown = b?.catalog;
+          if (typeof b?.catalogText === "string") {
+            try { raw = JSON.parse(b.catalogText); }
+            catch { throw new InvalidInput(SRV[lang].errMalformed); }
+          }
+          store.catalog = parseCatalogImport(raw, lang); // throws InvalidInput -> 400
+        }
         saveStore(store); return json(publicState());
       }
       if (path.startsWith("/api/")) { logEvent("api", `404 ${req.method} ${path}`); return json({ error: "not found" }, 404); }

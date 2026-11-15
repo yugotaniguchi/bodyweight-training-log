@@ -534,8 +534,16 @@ English sentences (in the client dictionary) in the same structure.
     `プローンWレイズ（トップで止める）`, `スーパーマンホールド`,
     `膝曲げレッグレイズ`; if the variation equals the exercise name, the
     name alone). Under that, 13px `--sub`: `目標 {sets}セット ×
-    {reps}{unit}`. Under that, the form cue: 13px `--sub`, line height
-    1.55, margin-top 8px.
+    {reps}{unit}`. The workout card shows **no form cue under the
+    name**; the cue line remains only on history-edit cards.
+  - **How-to (i) button** (workout cards only): a 26px circular outline
+    button with an italic `i`, sitting next to the exercise name
+    (title row, flex). It opens the **guide window**: a centred modal
+    (overlay, max width 480px) with the exercise name, a `手順` heading
+    and the numbered steps, then a `意識する部位` heading and the focus
+    text — both from the catalog's per-exercise guide data (`steps` /
+    `focus`), so they follow the user's own menu definition. The ×
+    button or a tap on the overlay closes it.
   - Right: the **total target** (target reps × sets, or total seconds)
     as a **36px Barlow Condensed numeral** in `--text` — the same
     bright colour as the card's other numerals; under it the label
@@ -734,6 +742,22 @@ English sentences (in the client dictionary) in the same structure.
   `エクスポート（CSV）` downloads the session records as a CSV file
   (`GET /api/export.csv` — see "Data export / import"); `インポート`
   opens a JSON file picker (import is JSON only).
+- Heading `メニュー定義`; small text (13px `--sub`) explaining that the
+  menu (exercises, rotations, substitutes, pain targets) is editable
+  as JSON, that changes apply to sessions generated afterwards, and
+  that recorded sessions never change. Below it, the current menu
+  definition in a monospace textarea (the store's own catalog, or the
+  built-in one when none is saved), and a `.btn` row: `保存` (saves the
+  edited JSON — fully validated first; a bad definition is refused
+  with the specific reason and nothing is stored), `エクスポート`
+  (downloads the definition as `menu-catalog.json`), `インポート`
+  (opens a JSON file picker and saves the picked definition through
+  the same validation), `初期値に戻す` (two-step: the button re-labels
+  to `本当に初期値に戻す`, a second tap drops the saved catalog and
+  returns to the built-in one). A successful save shows `保存しました`.
+  The workout screen carries a `メニュー編集` button (below the
+  session content, and on the no-session empty state) that navigates
+  to this section of the settings screen.
 - State — import chosen (a parseable file was picked): a confirmation
   block in the same style as the reset confirmation below (warning
   colours, stacked in normal flow, no native dialog): the text
@@ -938,6 +962,25 @@ Two export formats exist; import is JSON only:
   of every export; on import it is optional — files written before it
   existed import with an empty history, and a present history is
   type-checked like every other record.
+- The store may carry `catalog` — the user's own menu definition (see
+  Settings). Absent means the built-in catalog. On import it is
+  optional; when present it passes the full catalog validation
+  (`parseCatalogImport`): exercises keyed by id with `painPart` in
+  `muscleParts` and every `jointParts` entry in `joints`, a non-empty
+  `ladder` with `defaultLadder` in range, no `unilateral` on timed
+  exercises, rotations exactly A/B/C once each naming only defined
+  exercises, substitutes naming only defined exercises (never itself),
+  and `jointToMuscleParts` keys in `joints` with values in
+  `muscleParts`. An exercise's `steps` / `focus` (the guide window's
+  contents) may be omitted and fall back to its cue / muscle group.
+  The catalog endpoints mirror the data ones: `GET /api/catalog`
+  (the current definition as JSON), `GET /api/catalog/export`
+  (download, filename `menu-catalog.json`), `POST /api/catalog`
+  (`{ catalog }` or `{ catalogText }` to save — validated first, a bad
+  definition answers 400 with the specific reason and stores nothing;
+  `{ reset: true }` drops the saved catalog). Catalog changes apply
+  to sessions generated afterwards; recorded sessions keep the names
+  and targets they were created with.
 - Logged sets in an import may be plain numbers or left/right pairs
   (a pair's sides are each checked as reps). The store's `theme` is
   optional on import exactly like `lang`: absent is fine (it then
