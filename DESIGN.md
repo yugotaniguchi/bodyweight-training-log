@@ -668,12 +668,17 @@ English sentences (in the client dictionary) in the same structure.
   `touch-action: pan-y`, so horizontal swipes reach the app's touch
   handlers while vertical scrolling stays the browser's.
 - Day page: the session total at the top right (30px numeral +
-  `レップ`), then a **horizontal bar per exercise**: name in `--text`
-  with `（{variation}）` and `（RPE {rpe} {word}）` in `--sub` on the
-  same label, a bar whose width is the exercise's logged total
-  relative to the day's largest exercise total, and the value plus
-  unit at the right. (The old per-set `6 / 6 回` text rows are gone;
-  the per-set values live on in the edit cards and the CSV export.)
+  `レップ`), then a **horizontal bar per exercise**: the label is
+  the **variation name only** in `--text` (the base exercise name is
+  not repeated), with `RPE {rpe} {word}` — no parentheses — in
+  `--sub` on the line below it. The bar fills toward the exercise's
+  **target** (targetReps × targetSets): full width means the target
+  was reached, and the value at the right shows the numbers,
+  `{performed}/{target}` plus the unit. An exercise recorded
+  without a target falls back to width relative to the day's
+  largest exercise total and a plain performed value. (The old
+  per-set `6 / 6 回` text rows are gone; the per-set values live on
+  in the edit cards and the CSV export.)
 - A per-exercise note goes directly under its exercise bar: 12px
   `--sub`, `種目メモ： {note}`.
 - Under the bars, the edit button: margin-top 8px, padding

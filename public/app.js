@@ -1072,11 +1072,17 @@ function histDayHtml() {
   if (editing) {
     return `${head}<div class="pager-day">${s.exercises.map((ex) => menuExerciseCard(s, ex, { history: true })).join("")}<button class="edit-btn" data-exit-history="${s.id}">${esc(t("editDoneBtn"))}</button></div>`;
   }
-  const totals = s.exercises.map((ex) => ({ ex, v: ex.loggedSets.reduce((a, v) => a + setSum(v), 0) }));
+  const totals = s.exercises.map((ex) => ({ ex, v: ex.loggedSets.reduce((a, v) => a + setSum(v), 0), t: (ex.targetReps ?? 0) * (ex.targetSets ?? 0) }));
   const max = Math.max(1, ...totals.map((x) => x.v));
-  const rows = totals.map(({ ex, v }) => {
+  const rows = totals.map(({ ex, v, t }) => {
     const rpe = ex.rpe != null ? esc(t("rpePlain", { rpe: ex.rpe, word: rpeWord(ex.rpe) })) : "";
-    return `<div class="hbar-row"><div class="hbar-label">${esc(ex.variation || ex.name)}<span class="ex-sub rpe-line">${rpe}</span></div><div class="hbar-track"><div class="hbar" style="width:${Math.max(2, Math.round((v / max) * 100))}%"></div></div><div class="hbar-val num">${v}<span class="hbar-unit">${esc(unitWord(ex.targetUnit))}</span></div></div>${ex.note ? `<div class="ex-memo">${esc(t("notePrefix"))}${esc(ex.note)}</div>` : ""}`;
+    // The bar fills toward the exercise's target (targetReps × sets):
+    // full width means the target was reached. The value shows the
+    // numbers themselves, performed/target. Exercises recorded
+    // without a target fall back to relative-to-largest.
+    const pct = t > 0 ? Math.min(100, (v / t) * 100) : (v / max) * 100;
+    const val = t > 0 ? `${v}/${t}` : `${v}`;
+    return `<div class="hbar-row"><div class="hbar-label">${esc(ex.variation || ex.name)}<span class="ex-sub rpe-line">${rpe}</span></div><div class="hbar-track"><div class="hbar" style="width:${Math.max(2, Math.round(pct))}%"></div></div><div class="hbar-val num">${val}<span class="hbar-unit">${esc(unitWord(ex.targetUnit))}</span></div></div>${ex.note ? `<div class="ex-memo">${esc(t("notePrefix"))}${esc(ex.note)}</div>` : ""}`;
   }).join("");
   return `${head}<div class="pager-day" id="pagerDay">
     <div class="pager-total"><span class="num">${s.totalVolume}</span>${esc(t("repsSuffix"))}</div>
