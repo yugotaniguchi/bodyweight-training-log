@@ -1076,7 +1076,7 @@ function histDayHtml() {
   const max = Math.max(1, ...totals.map((x) => x.v));
   const rows = totals.map(({ ex, v }) => {
     const rpe = ex.rpe != null ? esc(t("rpeParen", { rpe: ex.rpe, word: rpeWord(ex.rpe) })) : "";
-    return `<div class="hbar-row"><div class="hbar-label">${esc(ex.name)}<span class="ex-sub">（${esc(ex.variation)}）${rpe}</span></div><div class="hbar-track"><div class="hbar" style="width:${Math.max(2, Math.round((v / max) * 100))}%"></div></div><div class="hbar-val num">${v}<span class="hbar-unit">${esc(unitWord(ex.targetUnit))}</span></div></div>${ex.note ? `<div class="ex-memo">${esc(t("notePrefix"))}${esc(ex.note)}</div>` : ""}`;
+    return `<div class="hbar-row"><div class="hbar-label">${esc(ex.variation || ex.name)}<span class="ex-sub">${rpe}</span></div><div class="hbar-track"><div class="hbar" style="width:${Math.max(2, Math.round((v / max) * 100))}%"></div></div><div class="hbar-val num">${v}<span class="hbar-unit">${esc(unitWord(ex.targetUnit))}</span></div></div>${ex.note ? `<div class="ex-memo">${esc(t("notePrefix"))}${esc(ex.note)}</div>` : ""}`;
   }).join("");
   return `${head}<div class="pager-day" id="pagerDay">
     <div class="pager-total"><span class="num">${s.totalVolume}</span>${esc(t("repsSuffix"))}</div>
