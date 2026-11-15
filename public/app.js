@@ -1085,8 +1085,8 @@ function renderHistory() {
   if (!state.sessions.length) return `<h2>${esc(t("reportH"))}</h2><p>${esc(t("noRecords"))}</p><button class="cta" id="histGoMenu">${esc(t("goWorkout"))}</button>`;
   return `<h2>${esc(t("reportH"))}</h2>
   ${trendChartHtml(histCurrent().s.id)}
-  <div id="histSummaries">${historySummariesHtml()}</div>
-  <div id="histEntries">${histDayHtml()}</div>`;
+  <div id="histEntries">${histDayHtml()}</div>
+  <div id="histSummaries">${historySummariesHtml()}</div>`;
 }
 // Profile-history value formatting: an unset value reads 未入力.
 const fmtHistVal = (v) => (v === null || v === undefined || v === "" ? t("notEntered") : String(v));
