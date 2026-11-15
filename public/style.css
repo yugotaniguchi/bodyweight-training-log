@@ -301,3 +301,30 @@ label.row{display:block;margin:6px 0}
 .guide-focus{margin:0;line-height:1.6}
 .menu-def-nav{margin-top:20px;text-align:center}
 .menu-def-text{width:100%;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.5}
+/* Report: summary graphs and the day pager (one day at a time,
+   changed by swiping, the ‹ › buttons, or the trend chart). */
+.vchart{display:flex;align-items:flex-end;gap:10px;height:150px;margin:6px 0 4px}
+.vbar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+.vbar-val{font-size:15px;color:var(--text)}
+.vbar{width:60%;max-width:44px;background:var(--accent);border-radius:4px 4px 0 0;margin-top:4px}
+.vbar-label{font-size:11px;color:var(--sub);text-align:center;margin-top:6px;line-height:1.4}
+.hchart{display:flex;flex-direction:column;gap:8px;margin:6px 0 4px}
+.hbar-row{display:flex;align-items:center;gap:10px}
+.hbar-label{flex:0 0 34%;font-size:13px;color:var(--text);overflow-wrap:anywhere;line-height:1.4}
+.hbar-track{flex:1;height:14px;background:var(--surface);border-radius:7px;overflow:hidden}
+.hbar{height:100%;background:var(--accent);border-radius:7px}
+.hbar-val{flex:none;font-size:16px;color:var(--text);min-width:34px;text-align:right}
+.hbar-unit{font-size:11px;color:var(--sub);margin-left:2px}
+.pager-head{display:flex;align-items:center;gap:8px;margin-top:18px}
+.pager-btn{flex:none;width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:22px;line-height:1;cursor:pointer;padding:0}
+.pager-btn:disabled{opacity:.35;cursor:default}
+.pager-title{flex:1;text-align:center}
+.pager-date{font-size:30px;line-height:1.1;color:var(--text)}
+.pager-rot{font-size:14px;color:var(--text)}
+.pager-pos{font-size:12px;color:var(--sub)}
+.trend{display:flex;align-items:flex-end;gap:3px;height:44px;margin:10px 0 2px}
+.trend-bar{flex:1;background:none;border:none;padding:0;height:100%;display:flex;align-items:flex-end;cursor:pointer}
+.trend-fill{display:block;width:100%;background:var(--border);border-radius:2px 2px 0 0}
+.trend-bar.cur .trend-fill{background:var(--accent)}
+.pager-total{text-align:right;font-size:15px;color:var(--sub);margin:8px 0 2px}
+.pager-total .num{font-size:30px;color:var(--text);margin-right:4px}

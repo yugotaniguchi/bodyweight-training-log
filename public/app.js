@@ -73,6 +73,7 @@ const STR = {
     searchPlaceholder: "種目名・メモで検索", searchAria: "記録を検索",
     sumMonthly: "月別", sumGroups: "部位別",
     monthValue: "{n}回 ／ {vol}レップ", groupValue: "{n}回 ／ {vol}",
+    monthCount: "{n}回", histNewer: "新しい日へ", histOlder: "古い日へ",
     noMatch: "該当する記録がありません。",
     notePrefix: "種目メモ： ", repsSuffix: "レップ",
     editRecord: "記録を編集", editDoneBtn: "編集を終わる",
@@ -182,6 +183,7 @@ const STR = {
     searchPlaceholder: "Search by exercise or note", searchAria: "Search records",
     sumMonthly: "By month", sumGroups: "By muscle group",
     monthValue: "{n} sessions / {vol} reps", groupValue: "{n} times / {vol}",
+    monthCount: "{n} sessions", histNewer: "Newer day", histOlder: "Older day",
     noMatch: "No matching records.",
     notePrefix: "Note: ", repsSuffix: " reps",
     editRecord: "Edit record", editDoneBtn: "Done editing",
@@ -358,7 +360,7 @@ let importArm = false; // settings: import confirmation state
 let importPending = null; // parsed JSON waiting for import confirmation
 let importFileName = "";
 let importError = "";
-let histQuery = ""; // report screen: free-word filter over exercise names / notes
+let histSessionId = null; // report screen: session shown in the day pager (null = newest)
 let profileSaveTimer = null; // settings: pending profile-autosave debounce timer
 let profileError = ""; // settings: last autosave error, shown in place under the form
 let profileSavedShow = false; // settings: whether the 保存済み indicator is shown
@@ -586,14 +588,8 @@ document.getElementById("tabs").addEventListener("click", (e) => {
   go(b.dataset.view);
 });
 document.getElementById("gear").addEventListener("click", () => { go("settings"); });
-// Report search: a delegated listener (attached once) so re-rendering
-// the entry list never loses it. Typing filters the entries only; the
-// summaries hide while a query is present.
-document.addEventListener("input", (e) => {
-  if (e.target?.id !== "histSearch") return;
-  histQuery = e.target.value;
-  refreshHistoryList();
-});
+// (The report screen's free-word search went away with the day pager:
+// one day at a time, reached by swiping or the trend chart.)
 $app.addEventListener("input", captureDraft);
 $app.addEventListener("change", captureDraft);
 
@@ -1018,6 +1014,12 @@ function monthLabel(key) {
   const y = Number(key.slice(0, 4)), m = Number(key.slice(5, 7));
   return lang === "en" ? `${MONTH_EN[m - 1]} ${y}` : `${y}年${m}月`;
 }
+// ---------- report graphs + day pager ----------
+// The report is graphs, not a vertical list: monthly totals as a
+// vertical bar chart, per-muscle-group totals as horizontal bars, and
+// the per-day detail in a pager — one day at a time, changed by
+// swiping left/right, by the ‹ › buttons, or by tapping a bar in the
+// per-day trend chart. Sessions are newest first in state.sessions.
 function historySummariesHtml() {
   const months = new Map();
   for (const s of state.sessions) {
@@ -1025,64 +1027,65 @@ function historySummariesHtml() {
     const m = months.get(k) ?? { n: 0, vol: 0 };
     m.n++; m.vol += s.totalVolume; months.set(k, m);
   }
-  const monthRows = [...months.entries()].sort((a, b) => b[0].localeCompare(a[0]))
-    .map(([k, m]) => `<div class="sum-row"><span>${esc(monthLabel(k))}</span><span class="sum-val">${esc(t("monthValue", { n: m.n, vol: m.vol }))}</span></div>`).join("");
+  const monthList = [...months.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  const monthMax = Math.max(1, ...monthList.map(([, m]) => m.vol));
+  const monthBars = monthList.map(([k, m]) => `<div class="vbar-col"><div class="vbar-val num">${m.vol}</div><div class="vbar" style="height:${Math.max(3, Math.round((m.vol / monthMax) * 100))}%"></div><div class="vbar-label">${esc(monthLabel(k))}<br>${esc(t("monthCount", { n: m.n }))}</div></div>`).join("");
   const groups = new Map();
   for (const s of state.sessions) for (const e of s.exercises) {
     if (!e.completed && !e.loggedSets.some((v) => setSum(v) > 0)) continue;
     const g = groups.get(e.muscleGroup) ?? { n: 0, vol: 0 };
     g.n++; g.vol += e.loggedSets.reduce((a, v) => a + setSum(v), 0); groups.set(e.muscleGroup, g);
   }
-  const groupRows = [...groups.entries()].sort((a, b) => b[1].vol - a[1].vol)
-    .map(([g, v]) => `<div class="sum-row"><span>${esc(groupLabel(g))}</span><span class="sum-val">${esc(t("groupValue", { n: v.n, vol: v.vol }))}</span></div>`).join("");
-  return `<h3 class="sum-head">${esc(t("sumMonthly"))}</h3>${monthRows}<h3 class="sum-head">${esc(t("sumGroups"))}</h3>${groupRows}`;
+  const groupList = [...groups.entries()].sort((a, b) => b[1].vol - a[1].vol);
+  const groupMax = Math.max(1, ...groupList.map(([, v]) => v.vol));
+  const groupRows = groupList.map(([g, v]) => `<div class="hbar-row"><div class="hbar-label">${esc(groupLabel(g))}</div><div class="hbar-track"><div class="hbar" style="width:${Math.max(2, Math.round((v.vol / groupMax) * 100))}%"></div></div><div class="hbar-val num">${v.vol}</div></div>`).join("");
+  return `<h3 class="sum-head">${esc(t("sumMonthly"))}</h3><div class="vchart">${monthBars}</div><h3 class="sum-head">${esc(t("sumGroups"))}</h3><div class="hchart">${groupRows}</div>`;
 }
-// Free-word filter: a session matches when any of its exercises matches
-// on name, variation, or per-exercise note.
-function sessionMatchesQuery(s) {
-  const q = histQuery.trim().toLowerCase();
-  if (!q) return true;
-  return s.exercises.some((e) => `${e.name} ${e.variation ?? ""} ${e.note ?? ""}`.toLowerCase().includes(q));
+// The day pager's current session: the one the user picked, else the
+// newest. Falls back to the newest when the picked one is gone.
+function histCurrent() {
+  const list = state.sessions;
+  let idx = histSessionId == null ? 0 : list.findIndex((s) => s.id === histSessionId);
+  if (idx < 0) idx = 0;
+  return { s: list[idx], idx, total: list.length };
 }
-// Re-render only the entry list (and the summaries' visibility) while
-// searching, so the search field keeps its focus and value.
-function refreshHistoryList() {
-  const ent = document.getElementById("histEntries");
-  if (!ent) return;
-  ent.innerHTML = historyEntriesHtml();
-  const sum = document.getElementById("histSummaries");
-  if (sum) sum.style.display = histQuery.trim() ? "none" : "";
-  bindHistoryEntries();
+// Trend chart: one bar per recorded day, oldest on the left, the
+// pager's current day in the accent colour; tapping a bar jumps there.
+function trendChartHtml(curId) {
+  const days = [...state.sessions].reverse(); // chronological
+  const max = Math.max(1, ...days.map((s) => s.totalVolume));
+  const bars = days.map((s) => `<button type="button" class="trend-bar${s.id === curId ? " cur" : ""}" data-hist-day="${s.id}" title="${esc(histDate(s.date))}" aria-label="${esc(histDate(s.date))}"><span class="trend-fill" style="height:${Math.max(4, Math.round((s.totalVolume / max) * 100))}%"></span></button>`).join("");
+  return `<div class="trend">${bars}</div>`;
 }
-// The old Result view is merged into History: one list, newest first, in
-// the original's layout — big day number + month/weekday on the left,
-// rotation and exercise rows in the middle, session total on the right.
-function historyEntriesHtml() {
-  const shown = state.sessions.filter(sessionMatchesQuery);
-  if (!shown.length) return `<p>${esc(t("noMatch"))}</p>`;
-  return shown.map((s) => {
-    const editing = editingHist.has(s.id);
-    const body = editing
-      ? `${s.exercises.map((ex) => menuExerciseCard(s, ex, { history: true })).join("")}<button class="edit-btn" data-exit-history="${s.id}">${esc(t("editDoneBtn"))}</button>`
-      : `${s.exercises.map((ex) => {
-          const rpe = ex.rpe != null ? esc(t("rpeParen", { rpe: ex.rpe, word: rpeWord(ex.rpe) })) : "";
-          return `<div class="ex-row"><div class="ex-name">${esc(ex.name)}<span class="ex-sub">（${esc(ex.variation)}）${rpe}</span></div><div class="ex-sets">${ex.loggedSets.map((v) => esc(setText(ex, v))).join(" / ")} ${esc(unitWord(ex.targetUnit))}</div></div>${ex.note ? `<div class="ex-memo">${esc(t("notePrefix"))}${esc(ex.note)}</div>` : ""}`;
-        }).join("")}<button class="edit-btn" data-edit-history="${s.id}">${esc(t("editRecord"))}</button>`;
-    return `<div class="hist"><div class="hist-head">
-      <div class="hist-date num">${histDate(s.date)}</div>
-      <div class="hist-main"><div class="hist-rot">${esc(sessionTitle(s))}</div>
-      ${body}</div>
-      <div class="hist-total"><span class="num">${s.totalVolume}</span>${esc(t("repsSuffix"))}</div>
-    </div></div>`;
+function histDayHtml() {
+  const { s, idx, total } = histCurrent();
+  const editing = editingHist.has(s.id);
+  const head = `<div class="pager-head">
+    <button type="button" class="pager-btn" id="histNewer" aria-label="${esc(t("histNewer"))}"${idx === 0 ? " disabled" : ""}>‹</button>
+    <div class="pager-title"><div class="pager-date num">${histDate(s.date)}</div><div class="pager-rot">${esc(sessionTitle(s))}</div><div class="pager-pos">${idx + 1} / ${total}</div></div>
+    <button type="button" class="pager-btn" id="histOlder" aria-label="${esc(t("histOlder"))}"${idx === total - 1 ? " disabled" : ""}>›</button>
+  </div>
+  ${trendChartHtml(s.id)}`;
+  if (editing) {
+    return `${head}<div class="pager-day">${s.exercises.map((ex) => menuExerciseCard(s, ex, { history: true })).join("")}<button class="edit-btn" data-exit-history="${s.id}">${esc(t("editDoneBtn"))}</button></div>`;
+  }
+  const totals = s.exercises.map((ex) => ({ ex, v: ex.loggedSets.reduce((a, v) => a + setSum(v), 0) }));
+  const max = Math.max(1, ...totals.map((x) => x.v));
+  const rows = totals.map(({ ex, v }) => {
+    const rpe = ex.rpe != null ? esc(t("rpeParen", { rpe: ex.rpe, word: rpeWord(ex.rpe) })) : "";
+    return `<div class="hbar-row"><div class="hbar-label">${esc(ex.name)}<span class="ex-sub">（${esc(ex.variation)}）${rpe}</span></div><div class="hbar-track"><div class="hbar" style="width:${Math.max(2, Math.round((v / max) * 100))}%"></div></div><div class="hbar-val num">${v}<span class="hbar-unit">${esc(unitWord(ex.targetUnit))}</span></div></div>${ex.note ? `<div class="ex-memo">${esc(t("notePrefix"))}${esc(ex.note)}</div>` : ""}`;
   }).join("");
+  return `${head}<div class="pager-day" id="pagerDay">
+    <div class="pager-total"><span class="num">${s.totalVolume}</span>${esc(t("repsSuffix"))}</div>
+    <div class="hchart">${rows}</div>
+    <button class="edit-btn" data-edit-history="${s.id}">${esc(t("editRecord"))}</button>
+  </div>`;
 }
 function renderHistory() {
   if (!state.sessions.length) return `<h2>${esc(t("reportH"))}</h2><p>${esc(t("noRecords"))}</p><button class="cta" id="histGoMenu">${esc(t("goWorkout"))}</button>`;
-  const searching = histQuery.trim() !== "";
   return `<h2>${esc(t("reportH"))}</h2>
-  <div class="hist-tools"><input type="search" id="histSearch" placeholder="${esc(t("searchPlaceholder"))}" aria-label="${esc(t("searchAria"))}" value="${esc(histQuery)}"></div>
-  <div id="histSummaries"${searching ? ` style="display:none"` : ""}>${historySummariesHtml()}</div>
-  <div id="histEntries">${historyEntriesHtml()}</div>`;
+  <div id="histSummaries">${historySummariesHtml()}</div>
+  <div id="histEntries">${histDayHtml()}</div>`;
 }
 // Profile-history value formatting: an unset value reads 未入力.
 const fmtHistVal = (v) => (v === null || v === undefined || v === "" ? t("notEntered") : String(v));
@@ -1155,11 +1158,38 @@ function render() {
     requestAnimationFrame(() => document.getElementById("menuDefSection")?.scrollIntoView({ block: "start" }));
   }
 }
-// Bindings for the report entry list only. bind() calls this on every
-// full render, and refreshHistoryList() calls it after replacing the
-// list during a search, so the edit buttons always work.
+// Bindings for the report day pager only. bind() calls this on every
+// full render, so the pager controls and edit buttons always work.
 function bindHistoryEntries() {
   const root = document.getElementById("histEntries") ?? $app;
+  // Day pager: ‹ › buttons, trend-chart taps, and left/right swipes on
+  // the day page all move the shown day (sessions are newest first, so
+  // the next page is an older day). Swiping is view-mode only; the edit
+  // cards keep their touches for inputs.
+  const moveDay = (delta) => {
+    const { idx, total } = histCurrent();
+    const next = Math.min(total - 1, Math.max(0, idx + delta));
+    if (next === idx) return;
+    histSessionId = state.sessions[next].id;
+    render();
+  };
+  const newer = document.getElementById("histNewer");
+  if (newer) newer.addEventListener("click", () => moveDay(-1));
+  const older = document.getElementById("histOlder");
+  if (older) older.addEventListener("click", () => moveDay(1));
+  root.querySelectorAll("[data-hist-day]").forEach((el) => el.addEventListener("click", () => { histSessionId = Number(el.dataset.histDay); render(); }));
+  const pagerDay = document.getElementById("pagerDay");
+  if (pagerDay) {
+    let touchX = null;
+    pagerDay.addEventListener("touchstart", (e) => { touchX = e.changedTouches[0].clientX; }, { passive: true });
+    pagerDay.addEventListener("touchend", (e) => {
+      if (touchX === null) return;
+      const dx = e.changedTouches[0].clientX - touchX;
+      touchX = null;
+      if (dx <= -40) moveDay(1);
+      else if (dx >= 40) moveDay(-1);
+    }, { passive: true });
+  }
   root.querySelectorAll(".set-input").forEach((el) => el.addEventListener("input", () => { el.value = sanitizeDigits(el.value); }));
   root.querySelectorAll("[data-edit-history]").forEach((el) => el.addEventListener("click", () => { editingHist.add(Number(el.dataset.editHistory)); render(); }));
   root.querySelectorAll("[data-exit-history]").forEach((el) => el.addEventListener("click", () => { editingHist.delete(Number(el.dataset.exitHistory)); render(); }));

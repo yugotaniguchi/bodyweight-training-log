@@ -272,17 +272,19 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 ### Report screen
 - Heading: `レポート`; empty state: `記録はまだありません。`, followed by a
   primary CTA `ワークアウトへ` (goes to the ワークアウト screen).
-- Search field (generic input, full width, under the heading):
-  placeholder `種目名・メモで検索`. While a query is present the
-  summaries below are hidden and the entries are filtered; no match
-  shows `該当する記録がありません。`
-- Summary headings: `月別` / `部位別`. Summary rows are two-column
-  lines (label left, value right in `--sub`):
-  - Monthly: `{YYYY}年{M}月` and `{n}回 ／ {total}レップ` (session count
-    and summed session totals, newest month first).
-  - Muscle group: `{muscleGroup}` and `{n}回 ／ {total}` (performed
-    count and the raw sum of logged sets — seconds for timed
-    exercises), ordered by total descending.
+- The report is **graphs and a day pager**, not a vertical list (the
+  free-word search field is gone). Summary headings: `月別` / `部位別`.
+  - Monthly: a **vertical bar chart** (oldest month on the left): each
+    bar's height is the month's summed session totals relative to the
+    largest month, the total sits above the bar, and the label under
+    it is `{YYYY}年{M}月` plus the session count `{n}回`.
+  - Muscle group: **horizontal bars** ordered by total descending —
+    group label, a bar whose width is the total relative to the
+    largest group, and the total at the right (performed count and
+    the raw sum of logged sets — seconds for timed exercises — as
+    before).
+  - Day pager: one recorded day at a time (see "History entries"
+    below for the pager itself).
 - Entry date: a single line `MM/DD(曜)` (zero-padded month and day,
   weekday as one character in half-width parentheses), e.g. `11/13(金)`
 - Per-exercise note prefix: `種目メモ： {note}`
@@ -645,39 +647,33 @@ English sentences (in the client dictionary) in the same structure.
 - There is no separate Result screen. Completing today's session — and
   the condition screen's `今日の結果を見る` CTA — lands on レポート,
   which is both the result view and the history.
-- Heading `レポート`. Entries newest first, separated by a 1px
-  `--border` bottom border — **no card frames**, a quiet list. Entry
-  padding 16px 0 14px.
-- Entry header (flex, gap 14px, top-aligned):
-  - Left: the date as **one line**, `MM/DD(曜)` — zero-padded month and
-    day, the weekday as one character in half-width parentheses (e.g.
-    `11/13(金)`, `11/08(土)`) — **17px**, the numerals in Barlow
-    Condensed, `--text`, line height 1.3, in a **78px**-wide column
-    with 2px top padding, no wrapping. There is no stacked day-number
-    block; the whole date string is one size, balanced against the
-    16px list text.
-  - Centre (flexible): the session title in 16px weight 700 `--text`
-    (`{title}` — the title only, e.g. `押す + 脚`; the rotation letter
-    is never shown, and no adjustment-note line appears here).
-  - Right: the session's total reps as a **36px Barlow Condensed
-    numeral** in `--text` (line height 1), followed by `レップ` in 12px
-    `--sub`.
-- Exercise rows (flex, space-between, gap 12px, padding 1px 0): name
-  in `--text`; then, in `--sub` on the same line, `（{variation}）` and
-  `（RPE {rpe} {word}）` when an RPE is set. Logged sets right-aligned,
-  `--sub`, no wrapping: values joined with ` / ` plus the unit. The
-  name side wraps (`overflow-wrap: anywhere`) rather than pushing the
-  sets out of the entry.
-- Above the entries: a full-width search field (generic control) and,
-  while no query is entered, the two summaries (see "Exact UI text —
-  Report screen" for their exact shapes). Typing filters the entries
-  live and hides the summaries; the search field keeps focus.
-- A per-exercise note goes directly under its exercise row: 12px
+- Heading `レポート`. Below the summary graphs sits the **day
+  pager**: one recorded day at a time — days are **not** stacked
+  vertically. The shown day changes by **swiping left/right** on the
+  day page (left = older day, right = newer day), by the circular
+  **‹ › buttons** flanking the pager title (‹ newer, › older; disabled
+  at the ends), or by tapping a bar in the **trend chart**.
+- Pager header: the date as one line `MM/DD(曜)` (30px Barlow
+  Condensed numerals), under it the session title (`{title}` only —
+  the rotation letter is never shown), under it the position
+  `{n} / {total}` in `--sub`.
+- Trend chart: one slim bar per recorded day, chronological (oldest
+  left), height relative to the largest day total; the shown day's
+  bar is `--accent`, the rest `--border`. Tapping a bar jumps to
+  that day.
+- Day page: the session total at the top right (30px numeral +
+  `レップ`), then a **horizontal bar per exercise**: name in `--text`
+  with `（{variation}）` and `（RPE {rpe} {word}）` in `--sub` on the
+  same label, a bar whose width is the exercise's logged total
+  relative to the day's largest exercise total, and the value plus
+  unit at the right. (The old per-set `6 / 6 回` text rows are gone;
+  the per-set values live on in the edit cards and the CSV export.)
+- A per-exercise note goes directly under its exercise bar: 12px
   `--sub`, `種目メモ： {note}`.
-- Under the exercise rows, the edit button: margin-top 8px, padding
+- Under the bars, the edit button: margin-top 8px, padding
   5px 14px, radius 999px, 1px solid `--border`, `--surface` fill, 12px
   weight 700: `記録を編集`.
-- State — editing (after tapping `記録を編集`): the exercise rows are
+- State — editing (after tapping `記録を編集`): the day's bars are
   replaced, in place, by **the workout screen's exercise cards** —
   the identical card (see "Workout exercise cards"): muscle group,
   variation heading, target line and cue, the total target at the
