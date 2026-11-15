@@ -969,7 +969,7 @@ function renderMenu() {
   if (!s) {
     // No condition recorded today yet: this guidance takes priority over
     // the generate-session guidance.
-    if (!state.pain) return `<p>${esc(t("noCondition"))}</p><button class="cta" id="goCond">${esc(t("goCondition"))}</button>`;
+    if (!state.pain) return `<p>${esc(t("noCondition"))}</p><button class="cta" id="goCond">${esc(t("goCondition"))}</button><p class="menu-def-nav"><button class="btn" type="button" id="goMenuDef">${esc(t("menuDefBtn"))}</button></p>`;
     return `<p>${esc(t("noSession"))}</p><button class="cta" id="gen">${esc(t("createWorkout"))}</button><p id="genErr" class="error">${esc(menuGenError)}</p><p class="menu-def-nav"><button class="btn" type="button" id="goMenuDef">${esc(t("menuDefBtn"))}</button></p>`;
   }
   const remaining = s.exercises.filter((e) => !e.completed).length;
