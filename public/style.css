@@ -316,6 +316,9 @@ label.row{display:block;margin:6px 0}
 .hbar-val{flex:none;font-size:16px;color:var(--text);min-width:34px;text-align:right}
 .hbar-unit{font-size:11px;color:var(--sub);margin-left:2px}
 .pager-head{display:flex;align-items:center;gap:8px;margin-top:18px}
+.seg{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:4px;margin:4px 0 6px}
+.seg-btn{flex:1;border:none;background:transparent;color:var(--muted);border-radius:999px;padding:7px 0;font-size:14px;font-weight:600;cursor:pointer}
+.seg-btn.on{background:var(--accent);color:#fff}
 .pager-btn{flex:none;width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:22px;line-height:1;cursor:pointer;padding:0}
 .pager-btn:disabled{opacity:.35;cursor:default}
 .pager-title{flex:1;text-align:center}

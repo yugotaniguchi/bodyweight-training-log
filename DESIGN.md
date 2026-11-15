@@ -273,7 +273,10 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Heading: `レポート`; empty state: `記録はまだありません。`, followed by a
   primary CTA `ワークアウトへ` (goes to the ワークアウト screen).
 - The report is **graphs and a day pager**, not a vertical list (the
-  free-word search field is gone). Summary headings: `月別` / `部位別`.
+  free-word search field is gone). A segmented **日別 / 月別 toggle**
+  under the heading switches views: the **daily view** shows the
+  trend chart and the day pager; the **monthly view** shows the two
+  summaries. Summary headings: `月別` / `部位別`.
   - Monthly: a **vertical bar chart** (oldest month on the left): each
     bar's height is the month's summed session totals relative to the
     largest month, the total sits above the bar, and the label under

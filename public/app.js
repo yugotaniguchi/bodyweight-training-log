@@ -74,6 +74,7 @@ const STR = {
     sumMonthly: "月別", sumGroups: "部位別",
     monthValue: "{n}回 ／ {vol}レップ", groupValue: "{n}回 ／ {vol}",
     monthCount: "{n}回", histNewer: "新しい日へ", histOlder: "古い日へ",
+    histDayView: "日別", histMonthView: "月別",
     noMatch: "該当する記録がありません。",
     notePrefix: "種目メモ： ", repsSuffix: "レップ",
     editRecord: "記録を編集", editDoneBtn: "編集を終わる",
@@ -184,6 +185,7 @@ const STR = {
     sumMonthly: "By month", sumGroups: "By muscle group",
     monthValue: "{n} sessions / {vol} reps", groupValue: "{n} times / {vol}",
     monthCount: "{n} sessions", histNewer: "Newer day", histOlder: "Older day",
+    histDayView: "Daily", histMonthView: "Monthly",
     noMatch: "No matching records.",
     notePrefix: "Note: ", repsSuffix: " reps",
     editRecord: "Edit record", editDoneBtn: "Done editing",
@@ -361,6 +363,7 @@ let importPending = null; // parsed JSON waiting for import confirmation
 let importFileName = "";
 let importError = "";
 let histSessionId = null; // report screen: session shown in the day pager (null = newest)
+let reportView = "day"; // report screen: "day" (trend + pager) or "month" (monthly + muscle-group charts)
 let profileSaveTimer = null; // settings: pending profile-autosave debounce timer
 let profileError = ""; // settings: last autosave error, shown in place under the form
 let profileSavedShow = false; // settings: whether the 保存済み indicator is shown
@@ -1083,10 +1086,19 @@ function histDayHtml() {
 }
 function renderHistory() {
   if (!state.sessions.length) return `<h2>${esc(t("reportH"))}</h2><p>${esc(t("noRecords"))}</p><button class="cta" id="histGoMenu">${esc(t("goWorkout"))}</button>`;
-  return `<h2>${esc(t("reportH"))}</h2>
-  ${trendChartHtml(histCurrent().s.id)}
-  <div id="histEntries">${histDayHtml()}</div>
+  const toggle = `<div class="seg" role="group" aria-label="${esc(t("reportH"))}">
+    <button type="button" class="seg-btn${reportView === "day" ? " on" : ""}" data-report-view="day">${esc(t("histDayView"))}</button>
+    <button type="button" class="seg-btn${reportView === "month" ? " on" : ""}" data-report-view="month">${esc(t("histMonthView"))}</button>
+  </div>`;
+  if (reportView === "month") {
+    return `<h2>${esc(t("reportH"))}</h2>
+  ${toggle}
   <div id="histSummaries">${historySummariesHtml()}</div>`;
+  }
+  return `<h2>${esc(t("reportH"))}</h2>
+  ${toggle}
+  ${trendChartHtml(histCurrent().s.id)}
+  <div id="histEntries">${histDayHtml()}</div>`;
 }
 // Profile-history value formatting: an unset value reads 未入力.
 const fmtHistVal = (v) => (v === null || v === undefined || v === "" ? t("notEntered") : String(v));
@@ -1163,6 +1175,8 @@ function render() {
 // full render, so the pager controls and edit buttons always work.
 function bindHistoryEntries() {
   const root = document.getElementById("histEntries") ?? $app;
+  // 日別/月別 view toggle (present in both views).
+  $app.querySelectorAll("[data-report-view]").forEach((el) => el.addEventListener("click", () => { reportView = el.dataset.reportView; render(); }));
   // Day pager: ‹ › buttons, trend-chart taps, and left/right swipes on
   // the day page all move the shown day (sessions are newest first, so
   // the next page is an older day). Swiping is view-mode only; the edit
