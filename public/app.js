@@ -78,7 +78,7 @@ const STR = {
     noMatch: "該当する記録がありません。",
     notePrefix: "種目メモ： ", repsSuffix: "レップ",
     editRecord: "記録を編集", editDoneBtn: "編集を終わる",
-    rpeParen: "（RPE {rpe} {word}）",
+    rpeParen: "（RPE {rpe} {word}）", rpePlain: "RPE {rpe} {word}",
     backHome: "← ホームに戻る",
     profileH: "プロフィール（初回設定）",
     fAge: "年齢", fSex: "性別", fHeight: "身長（cm）", fWeight: "体重（kg）",
@@ -189,7 +189,7 @@ const STR = {
     noMatch: "No matching records.",
     notePrefix: "Note: ", repsSuffix: " reps",
     editRecord: "Edit record", editDoneBtn: "Done editing",
-    rpeParen: "(RPE {rpe} {word})",
+    rpeParen: "(RPE {rpe} {word})", rpePlain: "RPE {rpe} {word}",
     backHome: "← Back to home",
     profileH: "Profile (first-time setup)",
     fAge: "Age", fSex: "Sex", fHeight: "Height (cm)", fWeight: "Weight (kg)",
@@ -1075,8 +1075,8 @@ function histDayHtml() {
   const totals = s.exercises.map((ex) => ({ ex, v: ex.loggedSets.reduce((a, v) => a + setSum(v), 0) }));
   const max = Math.max(1, ...totals.map((x) => x.v));
   const rows = totals.map(({ ex, v }) => {
-    const rpe = ex.rpe != null ? esc(t("rpeParen", { rpe: ex.rpe, word: rpeWord(ex.rpe) })) : "";
-    return `<div class="hbar-row"><div class="hbar-label">${esc(ex.variation || ex.name)}<span class="ex-sub">${rpe}</span></div><div class="hbar-track"><div class="hbar" style="width:${Math.max(2, Math.round((v / max) * 100))}%"></div></div><div class="hbar-val num">${v}<span class="hbar-unit">${esc(unitWord(ex.targetUnit))}</span></div></div>${ex.note ? `<div class="ex-memo">${esc(t("notePrefix"))}${esc(ex.note)}</div>` : ""}`;
+    const rpe = ex.rpe != null ? esc(t("rpePlain", { rpe: ex.rpe, word: rpeWord(ex.rpe) })) : "";
+    return `<div class="hbar-row"><div class="hbar-label">${esc(ex.variation || ex.name)}<span class="ex-sub rpe-line">${rpe}</span></div><div class="hbar-track"><div class="hbar" style="width:${Math.max(2, Math.round((v / max) * 100))}%"></div></div><div class="hbar-val num">${v}<span class="hbar-unit">${esc(unitWord(ex.targetUnit))}</span></div></div>${ex.note ? `<div class="ex-memo">${esc(t("notePrefix"))}${esc(ex.note)}</div>` : ""}`;
   }).join("");
   return `${head}<div class="pager-day" id="pagerDay">
     <div class="pager-total"><span class="num">${s.totalVolume}</span>${esc(t("repsSuffix"))}</div>

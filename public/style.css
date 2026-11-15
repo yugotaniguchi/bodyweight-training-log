@@ -182,6 +182,7 @@ label.row{display:block;margin:6px 0}
 .ex-row{display:flex;justify-content:space-between;gap:12px;padding:1px 0}
 .ex-name{min-width:0}
 .ex-sub{color:var(--sub)}
+.rpe-line{display:block}
 /* Report search + summaries */
 .hist-tools{margin:10px 0 4px}
 .hist-tools input{width:100%}
