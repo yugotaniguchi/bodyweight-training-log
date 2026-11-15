@@ -148,6 +148,15 @@ describe("joint -> muscle part mapping", () => {
     expect(squat.targetReps).toBe(8); // 10 * 0.8
     expect(s.progressionNotes.join("")).toContain("軽減");
   });
+  test("spine joint pain level 3 excludes back and core work but not push-ups", () => {
+    const store = emptyStore();
+    const s = generateSession(store, "2026-01-01", assessPain({ date: "2026-01-01", soreness: {}, jointPain: { "背骨": 3 }, redFlags: [] }));
+    const ids = s.exercises.map((e) => e.baseId);
+    expect(ids).not.toContain("proneW"); // 背中 is in the 背骨 map
+    expect(ids).not.toContain("plank");  // 体幹 is in the 背骨 map
+    expect(ids).toContain("pushup");
+    expect(s.progressionNotes.join("")).toContain("関節");
+  });
   test("elbow joint pain level 3 excludes pushing and pulling exercises", () => {
     const store = emptyStore();
     const s = generateSession(store, "2026-01-01", assessPain({ date: "2026-01-01", soreness: {}, jointPain: { "肘": 3 }, redFlags: [] }));

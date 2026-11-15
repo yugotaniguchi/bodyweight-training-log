@@ -117,7 +117,7 @@ const STR = {
     noteH3: "継続日数と関節痛",
     noteP3a: "継続日数チェック：同じ部位の筋肉痛が5日以上、関節痛が2週間改善しない場合は受診目安として注意表示します（関節痛は7日でも注意表示）。",
     noteP3b: "開始を止めるのは警告サインだけです。",
-    noteP3c: "関節痛は部位にも効きます（腰→脚・体幹、肩→押す系、肘→押す系・引く系、手首→押す系・プランク系、股関節・膝・足首→脚系）。",
+    noteP3c: "関節痛は部位にも効きます（腰→脚・体幹、背骨→背中・腹筋・体幹、肩→押す系、肘→押す系・引く系、手首→押す系・プランク系、股関節・膝・足首→脚系）。",
     noteRefs: "参考文献：ACSM ポジションスタンド／ACSM 筋肉痛（DOMS）資料、Silbernagel et al. 2007 (Am J Sports Med)、NHS 関節痛・腰痛、CDC/NIOSH 横紋筋融解症。",
   },
   en: {
@@ -232,7 +232,7 @@ function t(key, vars) {
 // Display labels for the canonical Japanese data keys (parts, joints,
 // muscle groups). Exercise names and variations are data and stay as-is.
 const PART_EN = { "胸": "Chest", "肩": "Shoulders", "上腕": "Upper arms", "前腕": "Forearms", "背中": "Back", "脚（前）": "Legs (front)", "脚（後ろ）・お尻": "Legs (back) / Glutes", "ふくらはぎ": "Calves", "腹筋": "Abs", "体幹": "Core" };
-const JOINT_EN = { "腰": "Lower back", "肩": "Shoulders", "肘": "Elbows", "手首": "Wrists", "股関節": "Hips", "膝": "Knees", "足首": "Ankles" };
+const JOINT_EN = { "腰": "Lower back", "背骨": "Spine", "肩": "Shoulders", "肘": "Elbows", "手首": "Wrists", "股関節": "Hips", "膝": "Knees", "足首": "Ankles" };
 const GROUP_EN = { "胸・三頭": "Chest & Triceps", "肩": "Shoulders", "脚（前）": "Legs (front)", "ふくらはぎ": "Calves", "背中": "Back", "脚（後ろ）・お尻": "Legs (back) / Glutes", "腹筋": "Abs", "体幹": "Core", "体幹（側面）": "Core (sides)" };
 const partLabel = (p) => (lang === "en" ? PART_EN[p] ?? p : p);
 const jointLabel = (j) => (lang === "en" ? JOINT_EN[j] ?? j : j);

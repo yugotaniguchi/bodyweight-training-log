@@ -33,7 +33,7 @@ export const PART_EN: Record<string, string> = {
   "腹筋": "Abs", "体幹": "Core",
 };
 export const JOINT_EN: Record<string, string> = {
-  "腰": "Lower back", "肩": "Shoulders", "肘": "Elbows", "手首": "Wrists",
+  "腰": "Lower back", "背骨": "Spine", "肩": "Shoulders", "肘": "Elbows", "手首": "Wrists",
   "股関節": "Hips", "膝": "Knees", "足首": "Ankles",
 };
 export const GROUP_EN: Record<string, string> = {

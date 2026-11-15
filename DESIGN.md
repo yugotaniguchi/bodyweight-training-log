@@ -207,7 +207,7 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Legend badges, joints: `0–1 通常` `2 軽減` `3以上 除外` `サインあり 受診目安`
 - Muscle parts (10, in order): 胸・肩・上腕・前腕・背中・脚（前）・
   脚（後ろ）・お尻・ふくらはぎ・腹筋・体幹
-- Joints (7, in order): 腰・肩・肘・手首・股関節・膝・足首
+- Joints (8, in order): 腰・背骨・肩・肘・手首・股関節・膝・足首
 - Level words (0–5): `なし` `軽い` `普通` `強い` `かなり強い` `激しい`
 - Primary CTA, two states:
   - `保存してワークアウトを開始` — always, while today's session is not
@@ -369,7 +369,7 @@ English sentences (in the client dictionary) in the same structure.
 > **継続日数と関節痛**
 > - 継続日数チェック：同じ部位の筋肉痛が5日以上、関節痛が2週間改善しない場合は受診目安として注意表示します（関節痛は7日でも注意表示）。
 > - 開始を止めるのは警告サインだけです。
-> - 関節痛は部位にも効きます（腰→脚・体幹、肩→押す系、肘→押す系・引く系、手首→押す系・プランク系、股関節・膝・足首→脚系）。
+> - 関節痛は部位にも効きます（腰→脚・体幹、背骨→背中・腹筋・体幹、肩→押す系、肘→押す系・引く系、手首→押す系・プランク系、股関節・膝・足首→脚系）。
 >
 > 参考文献：ACSM ポジションスタンド／ACSM 筋肉痛（DOMS）資料、Silbernagel et al. 2007 (Am J Sports Med)、NHS 関節痛・腰痛、CDC/NIOSH 横紋筋融解症。
 

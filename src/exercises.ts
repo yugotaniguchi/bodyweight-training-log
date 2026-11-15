@@ -22,12 +22,13 @@ export const MUSCLE_PARTS = [
   "胸", "肩", "上腕", "前腕", "背中", "脚（前）", "脚（後ろ）・お尻", "ふくらはぎ", "腹筋", "体幹",
 ] as const;
 
-export const JOINTS = ["腰", "肩", "肘", "手首", "股関節", "膝", "足首"] as const;
+export const JOINTS = ["腰", "背骨", "肩", "肘", "手首", "股関節", "膝", "足首"] as const;
 
 /**
  * Explicit joint -> muscle-part mapping. When a joint hurts, the muscle parts
  * listed here are the ones trained by the exercises that load that joint:
  * - 腰 (lower back): leg and core work (squats, hinges, leg raises, planks)
+ * - 背骨 (spine): back, abs and core work (prone raises, crunches, leg raises, planks)
  * - 肩 (shoulder): all pushing work, plus planks
  * - 肘 (elbow): pushing and pulling work
  * - 手首 (wrist): pushing and plank work
@@ -39,6 +40,7 @@ export const JOINTS = ["腰", "肩", "肘", "手首", "股関節", "膝", "足�
  */
 export const JOINT_TO_MUSCLE_PARTS: Record<string, string[]> = {
   "腰": ["脚（前）", "脚（後ろ）・お尻", "腹筋", "体幹"],
+  "背骨": ["背中", "腹筋", "体幹"],
   "肩": ["胸", "肩", "体幹"],
   "肘": ["胸", "肩", "背中"],
   "手首": ["胸", "肩", "体幹"],
@@ -90,14 +92,14 @@ export const EXERCISES: Record<string, ExerciseDef> = {
   },
   proneW: {
     baseId: "proneW", name: "プローンWレイズ", muscleGroup: "背中", painPart: "背中",
-    jointParts: ["肩","腰"],
+    jointParts: ["肩","腰","背骨"],
     unit: "回", baseTarget: 12, baseSets: 2, defaultLadder: 0,
     ladder: ["プローンWレイズ", "プローンWレイズ（トップで止める）"],
     cue: "うつ伏せで腕をWの形にし、肩甲骨を寄せながら胸を少し浮かせる。",
   },
   proneY: {
     baseId: "proneY", name: "プローンYレイズ", muscleGroup: "背中", painPart: "背中",
-    jointParts: ["肩","腰"],
+    jointParts: ["肩","腰","背骨"],
     unit: "回", baseTarget: 10, baseSets: 2, defaultLadder: 0,
     ladder: ["プローンYレイズ", "プローンYレイズ（トップで止める）"],
     cue: "うつ伏せで腕をYの形に伸ばし、親指を上にして少し浮かせる。",
@@ -118,28 +120,28 @@ export const EXERCISES: Record<string, ExerciseDef> = {
   },
   legRaise: {
     baseId: "legRaise", name: "レッグレイズ", muscleGroup: "腹筋", painPart: "腹筋",
-    jointParts: ["腰","股関節"],
+    jointParts: ["腰","股関節","背骨"],
     unit: "回", baseTarget: 10, baseSets: 2, defaultLadder: 1,
     ladder: ["膝曲げレッグレイズ", "レッグレイズ", "レッグレイズ（ゆっくり下ろす）"],
     cue: "腰を床に押し付けたまま、脚をゆっくり上げ下ろしする。",
   },
   crunch: {
     baseId: "crunch", name: "クランチ", muscleGroup: "腹筋", painPart: "腹筋",
-    jointParts: ["腰"],
+    jointParts: ["腰","背骨"],
     unit: "回", baseTarget: 12, baseSets: 2, defaultLadder: 0,
     ladder: ["クランチ", "クランチ（トップで止める）"],
     cue: "腰を床につけたまま、肩甲骨が浮くところまで上体を丸める。首は引っ張らない。",
   },
   plank: {
     baseId: "plank", name: "プランク", muscleGroup: "体幹", painPart: "体幹",
-    jointParts: ["肩","肘","手首","腰"],
+    jointParts: ["肩","肘","手首","腰","背骨"],
     unit: "秒", baseTarget: 40, baseSets: 2, defaultLadder: 1,
     ladder: ["膝つきプランク", "プランク", "プランク（片脚浮かせ）"],
     cue: "肘とつま先で支え、腰を反らさず一直線を保つ。",
   },
   sidePlank: {
     baseId: "sidePlank", name: "サイドプランク", muscleGroup: "体幹（側面）", painPart: "体幹",
-    jointParts: ["肩","肘","腰"],
+    jointParts: ["肩","肘","腰","背骨"],
     unit: "秒", baseTarget: 30, baseSets: 2, defaultLadder: 0,
     ladder: ["サイドプランク（膝曲げ）", "サイドプランク"],
     cue: "横向きで肘をつき、体を一直線に保つ。左右それぞれ行う。",
