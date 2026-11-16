@@ -154,7 +154,7 @@ textarea{height:auto;min-height:42px;padding:9px 10px;line-height:1.5;resize:ver
 .warn{border:1px solid var(--warn-border);background:var(--warn-fill);color:var(--warn-text);padding:10px;border-radius:10px;margin:10px 0}
 .ok{border:1px solid var(--badge);background:var(--ok-fill);color:var(--ok-text);padding:10px;border-radius:10px;margin:10px 0}
 .caution{border:1px solid var(--caution-border);background:var(--caution-fill);color:var(--caution-text);padding:10px;border-radius:10px;margin:8px 0}
-.refs,.small{font-size:13px;color:var(--sub)}.error{color:var(--danger)}
+.small{font-size:13px;color:var(--sub)}.error{color:var(--danger)}
 /* Fallback UI: while a button's request runs it is disabled and dimmed;
    a failed request leaves an error line right after its button. */
 button:disabled{opacity:.55;cursor:default}
@@ -166,11 +166,6 @@ button:disabled{opacity:.55;cursor:default}
 .action-err{margin:8px 0 0;font-size:14px}
 .cancel-btns .action-err{flex:0 0 100%;margin:2px 0 0;text-align:center}
 label.row{display:block;margin:6px 0}
-.note h2{color:var(--text)}
-.note-sub{font-size:14px;color:var(--text);margin:14px 0 2px}
-.note-list{color:var(--sub);font-size:13px;line-height:1.7;margin:0;padding-left:18px}
-.note-list li{margin:2px 0}
-.note .refs{margin-top:12px}
 
 /* Merged history list (image-5 form): no card frames, hairline dividers */
 .hist{border-bottom:1px solid var(--border);padding:16px 0 14px}

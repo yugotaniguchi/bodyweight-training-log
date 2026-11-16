@@ -113,19 +113,6 @@ const STR = {
     vWeightRequired: "体重を入力してください", vWeightRange: "体重は20〜300kgで入力してください",
     vNoteField: "補足は500文字以内で入力してください",
     vSexInvalid: "性別は選択肢から選んでください",
-    noteTitle: "判定基準について",
-    noteH1: "警告サインと休養",
-    noteP1a: "警告サイン（レッドフラッグ）がある日は開始できません。",
-    noteP1b: "筋肉痛はレベル2で軽減・3以上で部位除外、関節痛はより厳しく（2で軽減・3以上で除外）判定します。",
-    noteP1c: "完全休養はレベル4以上の筋肉痛が2部位以上の日だけです。",
-    noteH2: "24時間ルール",
-    noteP2a: "24時間ルール：運動中・運動後の痛みが翌朝までに元の水準へ戻らなければ、前回の負荷が高すぎたサインです。",
-    noteP2b: "痛みの記録は次回のメニュー生成で痛み係数として反映され、痛い部位の負荷だけが下がります。他の部位には振り替えません（Silbernagelらの痛みモニタリングモデル）。",
-    noteH3: "継続日数と関節痛",
-    noteP3a: "継続日数チェック：同じ部位の筋肉痛が5日以上、関節痛が2週間改善しない場合は受診目安として注意表示します（関節痛は7日でも注意表示）。",
-    noteP3b: "開始を止めるのは警告サインだけです。",
-    noteP3c: "関節痛は部位にも効きます（腰→脚・体幹、背骨→背中・腹筋・体幹、肩→押す系、肘→押す系・引く系、手首→押す系・プランク系、股関節・膝・足首→脚系）。",
-    noteRefs: "参考文献：ACSM ポジションスタンド（2026年版）、Robinson et al. 2024／Refalo et al. 2023（限界接近度）、Zourdos et al. 2016／Helms et al. 2016（RPE・RIR）、Silbernagel et al. 2007／Smith et al. 2017／Tran et al. 2025（痛みモニタリング）、Finucane et al. 2020（レッドフラッグ）、NICE ガイドライン NG59・NG226／Foster et al. 2018、Cheung et al. 2003／Hotfiel et al. 2018（DOMS）、McHugh 2003（反復バウト効果）、Davies et al. 2015（プライオメトリクス）、Pelland et al. 2025（量・頻度）、CDC/NIOSH 横紋筋融解症。種目の階段・負荷値：Overcoming Gravity（Low）／r/bodyweightfitness Recommended Routine／Hybrid Calisthenics、Ebben et al. 2011、Ekstrom et al. 2003、Harøy et al. 2019、ほか実践ガイド群。",
   },
   en: {
     appTitle: "Bodyweight Training Log",
@@ -223,19 +210,6 @@ const STR = {
     vWeightRequired: "Enter your weight", vWeightRange: "Enter weight between 20 and 300 kg",
     vNoteField: "Keep the note within 500 characters",
     vSexInvalid: "Choose sex from the options",
-    noteTitle: "About the decision rules",
-    noteH1: "Warning signs and rest",
-    noteP1a: "You cannot start on a day when a warning sign (red flag) applies.",
-    noteP1b: "Muscle soreness reduces the load at level 2 and excludes the part at level 3 or higher; joint pain is judged more strictly (reduce at 2, exclude at 3 or higher).",
-    noteP1c: "A full rest day happens only when soreness at level 4 or higher is present in 2 or more parts.",
-    noteH2: "24-hour rule",
-    noteP2a: "24-hour rule: if pain during or after exercise has not returned to its baseline by the next morning, the previous load was probably too high.",
-    noteP2b: "Your pain records feed the next menu as pain coefficients, lowering only the painful parts' load; the freed load is not moved to other parts (the pain-monitoring model of Silbernagel et al.).",
-    noteH3: "Duration and joint pain",
-    noteP3a: "Duration check: soreness in the same part lasting 5 or more days, or joint pain that does not improve within 2 weeks, is shown as see-a-doctor guidance (joint pain is already flagged at 7 days).",
-    noteP3b: "Only warning signs stop a start.",
-    noteP3c: "Joint pain also reaches body parts (lower back → legs and core, shoulders → pushing, elbows → pushing and pulling, wrists → pushing and planks, hips, knees and ankles → legs).",
-    noteRefs: "References: ACSM position stand (2026 edition), Robinson et al. 2024 / Refalo et al. 2023 (proximity to failure), Zourdos et al. 2016 / Helms et al. 2016 (RPE and RIR), Silbernagel et al. 2007 / Smith et al. 2017 / Tran et al. 2025 (pain monitoring), Finucane et al. 2020 (red flags), NICE guidelines NG59 and NG226 / Foster et al. 2018, Cheung et al. 2003 / Hotfiel et al. 2018 (DOMS), McHugh 2003 (repeated bout effect), Davies et al. 2015 (plyometrics), Pelland et al. 2025 (volume and frequency), CDC/NIOSH rhabdomyolysis. Ladders and load values: Overcoming Gravity (Low), the r/bodyweightfitness Recommended Routine, Hybrid Calisthenics, Ebben et al. 2011, Ekstrom et al. 2003, Harøy et al. 2019, and practitioner progression guides.",
   },
 };
 function t(key, vars) {
@@ -312,8 +286,8 @@ function sessionTitle(s) {
   const alt = s.title.endsWith("（代替）") || s.title.endsWith("(alternative)");
   return `${base}${alt ? t("titleAltSuffix") : ""}`;
 }
-// Strings that live in index.html (tabs, header, footer note) are
-// re-applied on every render, so a language switch needs no reload.
+// Strings that live in index.html (tabs, header) are re-applied on
+// every render, so a language switch needs no reload.
 function applyStatic() {
   document.documentElement.lang = lang === "en" ? "en" : "ja";
   document.title = t("appTitle");
@@ -322,21 +296,6 @@ function applyStatic() {
   setText("ah-purpose", "purpose");
   setText("ah-total-label", "totalLabel");
   setText("ah-total-unit", "totalUnit");
-  setText("note-title", "noteTitle");
-  setText("note-h1", "noteH1");
-  setText("note-h2", "noteH2");
-  setText("note-h3", "noteH3");
-  // The footer note is a set of bullet lists (one item per original
-  // sentence — the wording itself never changes, only the layout).
-  const fillList = (id, keys) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.replaceChildren(...keys.map((k) => { const li = document.createElement("li"); li.textContent = t(k); return li; }));
-  };
-  fillList("note-l1", ["noteP1a", "noteP1b", "noteP1c"]);
-  fillList("note-l2", ["noteP2a", "noteP2b"]);
-  fillList("note-l3", ["noteP3a", "noteP3b", "noteP3c"]);
-  setText("note-refs", "noteRefs");
   const gear = document.getElementById("gear");
   if (gear) { gear.setAttribute("aria-label", t("gear")); gear.title = t("gear"); }
 }
