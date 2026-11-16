@@ -290,42 +290,31 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     steps: ["プランクの姿勢で肘を伸ばしたまま構える", "肩甲骨を開いて体を少し沈める", "肩甲骨を寄せて体を持ち上げる"],
     focus: "前鋸筋（肩甲骨まわり）",
   },
-  superman: {
-    baseId: "superman", name: "スーパーマン", muscleGroup: "背中", painPart: "脊柱起立筋",
-    jointParts: ["腰","背骨","肩"],
-    unit: "回", baseTarget: 10, baseSets: 2, defaultLadder: 1,
-    ladder: ["スーパーマン（腕のみ）", "スーパーマン", "スーパーマン（トップで2秒止める）", "スーパーマンスイム（対角を交互に引く）"],
-    loads: [25, 35, 45, 55], pattern: "pull",
-    cue: "うつ伏せで腕と脚を少し浮かせる。反動は使わず、腰を反らしすぎない。",
-    steps: ["うつ伏せで腕を前に伸ばす", "腕と脚を床から少し浮かせる", "ゆっくり元の位置に戻す"],
+  floorBackExtension: {
+    // Superman and back extension merged (2026-11-16, research
+    // round 2): both are prone spinal extension for the same part
+    // with almost fully overlapping load bands, so their steps now
+    // interleave by load in one ladder — every step keeps the price
+    // it had in its old family, and recorded data migrates by index
+    // (data version 4).
+    baseId: "floorBackExtension", name: "フロアバックエクステンション", muscleGroup: "背中", painPart: "脊柱起立筋",
+    jointParts: ["腰","背骨","肩","股関節"],
+    unit: "回", baseTarget: 10, baseSets: 2, defaultLadder: 2,
+    ladder: ["コブラ", "スーパーマン（腕のみ）", "バックエクステンション（手は体の横）", "スーパーマン", "バックエクステンション（手を頭の後ろ）", "スーパーマン（トップで2秒止める）", "バックエクステンション（手を前方へ伸ばす）", "スーパーマンスイム（対角を交互に引く）"],
+    loads: [20, 25, 30, 35, 40, 45, 50, 55], pattern: "pull",
+    cue: "うつ伏せで上体を少し浮かせる（段に応じて腕・脚も浮かせる）。反動は使わず、腰を反らしすぎない。",
+    steps: ["うつ伏せで、手と腕の位置を段の指定に合わせる", "胸と上体を床から少し浮かせる（段に応じて腕・脚も浮かせる）", "ゆっくり元の位置に戻す"],
     focus: "脊柱起立筋と臀部",
-  },
-  backExtension: {
-    baseId: "backExtension", name: "バックエクステンション", muscleGroup: "背中", painPart: "脊柱起立筋",
-    jointParts: ["腰","背骨","股関節"],
-    unit: "回", baseTarget: 10, baseSets: 2, defaultLadder: 1,
-    ladder: ["コブラ", "バックエクステンション（手は体の横）", "バックエクステンション（手を頭の後ろ）", "バックエクステンション（手を前方へ伸ばす）"],
-    loads: [20, 30, 40, 50], pattern: "pull",
-    cue: "うつ伏せで上体を少し浮かせる。首は背中の延長に保ち、反らしすぎない。",
-    steps: ["うつ伏せで手を指定の位置に置く", "胸と上体を床から少し浮かせる", "ゆっくり元の位置に戻す"],
-    focus: "脊柱起立筋",
-  },
-  reverseSnowAngel: {
-    baseId: "reverseSnowAngel", name: "リバーススノーエンジェル", muscleGroup: "背中", painPart: "背中上部",
-    jointParts: ["肩","背骨"],
-    unit: "回", baseTarget: 10, baseSets: 2, defaultLadder: 0,
-    ladder: ["スノーエンジェル（腕を床につけたまま滑らせる）", "リバーススノーエンジェル", "リバーススノーエンジェル（浮かせて止める）"],
-    loads: [20, 30, 40], pattern: "pull",
-    cue: "うつ伏せで腕を弧を描くように頭上から体の横へ動かす。肩甲骨を寄せながら行う。",
-    steps: ["うつ伏せで腕を頭上に伸ばす", "肩甲骨を寄せながら、腕を弧を描いて体の横まで動かす", "ゆっくり頭上へ戻す"],
-    focus: "背中上部と肩後部",
   },
   proneT: {
     baseId: "proneT", name: "プローンTレイズ", muscleGroup: "背中", painPart: "肩後部",
     jointParts: ["肩","背骨"],
     unit: "回", baseTarget: 10, baseSets: 2, defaultLadder: 0,
-    ladder: ["Tスライド（腕を床につけたまま）", "プローンTレイズ", "プローンTレイズ（トップで止める）"],
-    loads: [25, 35, 45], pattern: "pull",
+    // The reverse snow angel family was absorbed here (2026-11-16):
+    // its easiest step opens this ladder; the old steps shift by one
+    // at unchanged prices (data version 4 migrates the indexes).
+    ladder: ["スノーエンジェル（腕を床につけたまま滑らせる）", "Tスライド（腕を床につけたまま）", "プローンTレイズ", "プローンTレイズ（トップで止める）"],
+    loads: [20, 25, 35, 45], pattern: "pull",
     cue: "うつ伏せで腕をTの形に広げ、親指を上にして少し浮かせる。",
     steps: ["うつ伏せで腕を横に伸ばしてTの形を作る（親指は上）", "腕と胸を少し浮かせる", "ゆっくり元の位置に戻す"],
     focus: "肩後部と背中上部",
@@ -741,12 +730,10 @@ export const SUBSTITUTES: Record<string, string> = {
   handstandPushup: "pike",
   plankUpDown: "plank",
   scapularPushup: "pushup",
-  superman: "backExtension",
-  backExtension: "superman",
-  reverseSnowAngel: "proneT",
+  floorBackExtension: "birdDog",
   proneT: "proneW",
   backWidow: "proneW",
-  pronePull: "superman",
+  pronePull: "floorBackExtension",
   tableRow: "proneW",
   doorRow: "tableRow",
   pistolSquat: "squat",
