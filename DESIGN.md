@@ -280,8 +280,8 @@ All three notice boxes share: 1px solid border, radius 10px, padding
   trend chart and the day pager; the **monthly view** shows the two
   summaries. Summary headings: `月別` / `部位別`.
   - Monthly: a **vertical bar chart** (oldest month on the left): each
-    bar's height is the month's summed session totals relative to the
-    largest month, the total sits above the bar, and the label under
+    bar's height is the month's summed session load scores relative
+    to the largest month, the total sits above the bar, and the label under
     it is `{YYYY}年{M}月` plus the session count `{n}回`.
   - Muscle group: **horizontal bars** ordered by total descending —
     group label, a bar whose width is the total relative to the
@@ -406,8 +406,9 @@ English sentences (in the client dictionary) in the same structure.
   line height 0.95. The day count is the number of calendar days since
   the first recorded session's date, counting that first day as Day 1
   (Day 1 when there are no sessions yet). Under it, 12px `--sub`:
-  `累計 {totalVolume} レップ` — the cumulative reps summed from the
-  logged session history.
+  `累計 {totalLoad} 負荷` — the cumulative load score summed from the
+  logged session history. Totals are always load scores; reps and
+  seconds are never added together into one number.
 
 ### Settings gear button
 - Settings is **not** a nav segment. The button is deliberately
@@ -663,14 +664,17 @@ English sentences (in the client dictionary) in the same structure.
   the rotation letter is never shown), under it the position
   `{n} / {total}` in `--sub`.
 - Trend chart: one slim bar per recorded day, chronological (oldest
-  left), height relative to the largest day total; the shown day's
+  left), height relative to the largest day's load score; the shown day's
   bar is `--accent`, the rest `--border`. Tapping a bar jumps to
   that day. It sits at the **very top of the report, above the
   monthly chart**. The pager region and the trend chart carry
   `touch-action: pan-y`, so horizontal swipes reach the app's touch
   handlers while vertical scrolling stays the browser's.
-- Day page: the session total at the top right (30px numeral +
-  `レップ`), then a **horizontal bar per exercise**: the label is
+- Day page: the session's load score at the top right (30px numeral +
+  `負荷`), with the day's performed reps and seconds as a small
+  supplementary line under it in their own units (`{reps}回 + {seconds}秒`,
+  each part shown only when non-zero), then a **horizontal bar per
+  exercise**: the label is
   the **variation name only** in `--text` (the base exercise name is
   not repeated), with `RPE {rpe} {word}` — no parentheses — in
   `--sub` on the line below it. The bar fills toward the exercise's
@@ -1265,7 +1269,7 @@ assessment, treating what is already recorded as fixed premises
 
 ### 1. Condition （コンディション）
 1. Missing-profile warning box (only when no profile is saved)
-2. Header (date + purpose / Day + cumulative reps)
+2. Header (date + purpose / Day + cumulative load score)
 3. Segment navigation （コンディション active)
 4. Settings gear (fixed, top-right — present on every screen,
    visible only while scrolled to the very top)
