@@ -40,8 +40,8 @@ export const PART_EN: Record<string, string> = {
   "腹筋": "Abs", "体幹": "Core",
 };
 export const JOINT_EN: Record<string, string> = {
-  "腰": "Lower back", "背骨": "Spine", "肩": "Shoulders", "肘": "Elbows", "手首": "Wrists",
-  "股関節": "Hips", "膝": "Knees", "足首": "Ankles",
+  "腰": "Lower back", "背骨": "Spine", "肩": "Shoulders", "肘": "Elbows", "手首": "Wrists", "手指": "Fingers",
+  "股関節": "Hips", "膝": "Knees", "足首": "Ankles", "足指": "Toes",
 };
 export const GROUP_EN: Record<string, string> = {
   "胸・三頭": "Chest & Triceps", "肩": "Shoulders", "脚（前）": "Legs (front)", "ふくらはぎ": "Calves",

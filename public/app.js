@@ -238,7 +238,7 @@ const PART_GROUPS = [
   { ja: "脚", en: "Legs", parts: ["大腿四頭筋", "ハムストリング", "臀部", "内転筋", "ふくらはぎ", "脛"] },
   { ja: "体幹", en: "Core", parts: ["腹筋上部", "腹筋下部", "腹斜筋", "体幹深部"] },
 ];
-const JOINT_EN = { "腰": "Lower back", "背骨": "Spine", "肩": "Shoulders", "肘": "Elbows", "手首": "Wrists", "股関節": "Hips", "膝": "Knees", "足首": "Ankles" };
+const JOINT_EN = { "腰": "Lower back", "背骨": "Spine", "肩": "Shoulders", "肘": "Elbows", "手首": "Wrists", "手指": "Fingers", "股関節": "Hips", "膝": "Knees", "足首": "Ankles", "足指": "Toes" };
 const GROUP_EN = { "胸・三頭": "Chest & Triceps", "肩": "Shoulders", "脚（前）": "Legs (front)", "ふくらはぎ": "Calves", "背中": "Back", "脚（後ろ）・お尻": "Legs (back) / Glutes", "腹筋": "Abs", "体幹": "Core", "体幹（側面）": "Core (sides)", "上腕": "Upper arms", "脛": "Shins" };
 const partLabel = (p) => (lang === "en" ? PART_EN[p] ?? p : p);
 const jointLabel = (j) => (lang === "en" ? JOINT_EN[j] ?? j : j);

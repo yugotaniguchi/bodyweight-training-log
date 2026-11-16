@@ -52,7 +52,7 @@ export const MUSCLE_PARTS = [
   "腹筋上部", "腹筋下部", "腹斜筋", "体幹深部",
 ] as const;
 
-export const JOINTS = ["腰", "背骨", "肩", "肘", "手首", "股関節", "膝", "足首"] as const;
+export const JOINTS = ["腰", "背骨", "肩", "肘", "手首", "手指", "股関節", "膝", "足首", "足指"] as const;
 
 /**
  * Explicit joint -> muscle-part mapping. When a joint hurts, the muscle parts
@@ -62,9 +62,12 @@ export const JOINTS = ["腰", "背骨", "肩", "肘", "手首", "股関節", "�
  * - 肩 (shoulder): all pushing work, plus planks
  * - 肘 (elbow): pushing and pulling work
  * - 手首 (wrist): pushing and plank work
+ * - 手指 (fingers): pulling work — the grip is what loads them (rows)
  * - 股関節 (hip): leg work and leg raises
  * - 膝 (knee): leg work, including calf jumps
  * - 足首 (ankle): leg work, including calf jumps
+ * - 足指 (toes): standing leg and calf work — push-off and balance run
+ *   through the forefoot
  * Joint pain level 2 reduces these parts, level 3+ excludes them — the same
  * thresholds as the per-exercise `jointParts` lists, applied by muscle part.
  */
@@ -77,9 +80,11 @@ export const JOINT_TO_MUSCLE_PARTS: Record<string, string[]> = {
   "肩": ["胸上部", "胸下部", "肩前部", "肩後部", "腹斜筋", "体幹深部"],
   "肘": ["胸上部", "胸下部", "肩前部", "肩後部", "背中上部", "広背筋", "脊柱起立筋"],
   "手首": ["胸上部", "胸下部", "肩前部", "肩後部", "腹斜筋", "体幹深部"],
+  "手指": ["背中上部", "広背筋", "上腕二頭", "前腕"],
   "股関節": ["大腿四頭筋", "ハムストリング", "臀部", "腹筋上部", "腹筋下部"],
   "膝": ["大腿四頭筋", "ハムストリング", "臀部", "ふくらはぎ"],
   "足首": ["大腿四頭筋", "ハムストリング", "臀部", "ふくらはぎ", "脛"],
+  "足指": ["大腿四頭筋", "臀部", "ふくらはぎ", "脛"],
 };
 
 export interface RedFlag { id: string; label: string }
@@ -127,7 +132,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
   },
   calfJump: {
     baseId: "calfJump", name: "カーフジャンプ", muscleGroup: "ふくらはぎ", painPart: "ふくらはぎ",
-    jointParts: ["足首","膝"],
+    jointParts: ["足首","膝","足指"],
     unit: "回", baseTarget: 12, baseSets: 2, defaultLadder: 1,
     ladder: ["両脚カーフジャンプ（低く）", "カーフジャンプ", "片脚カーフジャンプ", "片脚カーフジャンプ（高く・連続）"],
     loads: [20, 30, 50, 60], pattern: "legs",
@@ -341,7 +346,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
   },
   tableRow: {
     baseId: "tableRow", name: "テーブルロウ", muscleGroup: "背中", painPart: "背中上部",
-    jointParts: ["肘","肩","手首"],
+    jointParts: ["肘","肩","手首","手指"],
     unit: "回", unilateralFrom: 3, baseTarget: 8, baseSets: 2, defaultLadder: 0,
     ladder: ["膝曲げテーブルロウ", "テーブルロウ", "足上げテーブルロウ", "片手テーブルロウ"],
     loads: [45, 60, 75, 95], pattern: "pull",
@@ -351,7 +356,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
   },
   doorRow: {
     baseId: "doorRow", name: "ドアフレームロウ", muscleGroup: "背中", painPart: "広背筋",
-    jointParts: ["肘","肩","手首"],
+    jointParts: ["肘","肩","手首","手指"],
     unit: "回", unilateralFrom: 2, baseTarget: 8, baseSets: 2, defaultLadder: 0,
     ladder: ["ドアフレームロウ（浅い角度）", "ドアフレームロウ（深い角度）", "片手ドアフレームロウ"],
     loads: [40, 55, 75], pattern: "pull",
@@ -481,7 +486,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
   },
   calf: {
     baseId: "calf", name: "カーフレイズ", muscleGroup: "ふくらはぎ", painPart: "ふくらはぎ",
-    jointParts: ["足首","膝"],
+    jointParts: ["足首","膝","足指"],
     unit: "回", unilateralFrom: 2, baseTarget: 12, baseSets: 2, defaultLadder: 0,
     ladder: ["両脚カーフレイズ", "段差カーフレイズ", "片脚カーフレイズ", "片脚段差カーフレイズ", "片脚エキセントリックヒールドロップ"],
     loads: [20, 30, 50, 60, 65], pattern: "legs",
@@ -491,7 +496,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
   },
   soleusRaise: {
     baseId: "soleusRaise", name: "ヒラメ筋レイズ", muscleGroup: "ふくらはぎ", painPart: "ふくらはぎ",
-    jointParts: ["足首","膝"],
+    jointParts: ["足首","膝","足指"],
     unit: "回", unilateralFrom: 2, baseTarget: 12, baseSets: 2, defaultLadder: 1,
     ladder: ["座位カーフレイズ", "膝曲げカーフレイズ（立位）", "片脚膝曲げカーフレイズ"],
     loads: [15, 25, 40], pattern: "legs",
@@ -501,7 +506,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
   },
   tibialisRaise: {
     baseId: "tibialisRaise", name: "前脛骨筋レイズ", muscleGroup: "脛", painPart: "脛",
-    jointParts: ["足首"],
+    jointParts: ["足首","足指"],
     unit: "回", unilateralFrom: 3, baseTarget: 15, baseSets: 2, defaultLadder: 1,
     ladder: ["座位トゥレイズ", "壁ティビアリスレイズ（足を壁から近く）", "壁ティビアリスレイズ（足を遠く）", "片脚壁ティビアリスレイズ"],
     loads: [10, 15, 20, 30], pattern: "legs",
@@ -671,7 +676,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
   },
   skaterJump: {
     baseId: "skaterJump", name: "スケータージャンプ", muscleGroup: "脚（前）", painPart: "臀部",
-    jointParts: ["膝","股関節","足首"],
+    jointParts: ["膝","股関節","足首","足指"],
     unit: "回", baseTarget: 8, baseSets: 2, defaultLadder: 0,
     ladder: ["ラテラルステップタッチ", "スケータージャンプ（小さく）", "スケータージャンプ", "スケータージャンプ（着地で止める）"],
     loads: [30, 50, 65, 70], pattern: "legs",

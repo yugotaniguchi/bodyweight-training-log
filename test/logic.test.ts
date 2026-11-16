@@ -53,6 +53,20 @@ describe("painFactorOf", () => {
     // an unrelated joint does not reach the exercise
     expect(painFactorOf(EXERCISES.pushup, entry({ jointPain: { "足首": 5 } }), cat)).toBe(1);
   });
+  test("finger pain reaches pulling work via grip, toe pain reaches calf work", () => {
+    // doorRow grips the frame: finger pain loads it directly
+    expect(painFactorOf(EXERCISES.doorRow, entry({ jointPain: { "手指": 3 } }), cat)).toBeCloseTo(0.25);
+    expect(painFactorOf(EXERCISES.doorRow, entry({ jointPain: { "手指": 5 } }), cat)).toBe(0);
+    // the finger map also reaches pulling parts (a prone pull's painPart is 広背筋）
+    expect(painFactorOf(EXERCISES.pronePull, entry({ jointPain: { "手指": 2 } }), cat)).toBeCloseTo(0.55);
+    // finger pain does not reach pushing work
+    expect(painFactorOf(EXERCISES.pushup, entry({ jointPain: { "手指": 5 } }), cat)).toBe(1);
+    // calf work pushes off the forefoot: toe pain loads it directly
+    expect(painFactorOf(EXERCISES.calf, entry({ jointPain: { "足指": 2 } }), cat)).toBeCloseTo(0.55);
+    expect(painFactorOf(EXERCISES.calf, entry({ jointPain: { "足指": 5 } }), cat)).toBe(0);
+    // toe pain does not reach upper-body work
+    expect(painFactorOf(EXERCISES.pushup, entry({ jointPain: { "足指": 5 } }), cat)).toBe(1);
+  });
   test("muscle and joint factors multiply", () => {
     const f = painFactorOf(EXERCISES.pushup, entry({ soreness: { "胸下部": 2 }, jointPain: { "肘": 2 } }), cat);
     expect(f).toBeCloseTo(0.7 * 0.55);
