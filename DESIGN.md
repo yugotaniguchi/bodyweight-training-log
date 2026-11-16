@@ -160,17 +160,12 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Show with UI whatever UI can show — icons, badges, bars, buttons,
   gauges, dots, ticks — instead of sentences. Keep visible text as short
   as the labels listed in this document.
-- Explanatory prose is allowed **only** where a decision needs it, in
-  exactly two places:
-  1. The one-line section descriptions (`.desc`, 13px, `--sub`) directly
-     under a condition-screen heading.
-  2. The single footer section `判定基準について` at the very bottom of
-     the page (after the app area, on every screen): `h2` heading,
-     then three groups — a small sub-heading (14px `--text`) and a
-     bulleted list (13px `--sub`, line height 1.7) each — ending with
-     the references line. Its exact wording and structure are listed
-     under "Footer note (`判定基準について`) — wording fixed,
-     structure only".
+- Explanatory prose is allowed **only** where a decision needs it:
+  the one-line section descriptions (`.desc`, 13px, `--sub`) directly
+  under a condition-screen heading. (A footer section
+  `判定基準について` explaining the decision rules used to sit at
+  the bottom of every screen; it was removed on 2026-11-16 at the
+  user's instruction — see "Footer note" below.)
 - Do not add explanatory paragraphs anywhere else. Status information is
   carried by the notice boxes and badges, not by new copy.
 
@@ -228,8 +223,8 @@ All three notice boxes share: 1px solid border, radius 10px, padding
   - care: `受診目安：{reasons joined with " / "}`
   - rest day: `完全休養日：{reason}`
   - OK: `開始できます。{reasons joined with " / "}`
-- Duration-guidance cautions (the footer note's 継続日数と関節痛 rules)
-  appear as caution boxes under the assessment box. There is no
+- Duration-guidance cautions (the duration rules) appear as caution
+  boxes under the assessment box. There is no
   separate 24-hour-rule notice: next-day pain reaches the next menu
   through the planner's pain coefficients instead.
 
@@ -352,40 +347,18 @@ All three notice boxes share: 1px solid border, radius 10px, padding
   `本当に全データを消しますか？プロフィール・痛みの記録・セッション履歴がすべて消え、元に戻せません。`
 - Confirmation buttons: `本当に全データを消す` / `キャンセル`
 
-### Footer note (`判定基準について`) — wording fixed, structure only
+### Footer note (`判定基準について`) — removed 2026-11-16
 
-Shown at the bottom of every screen, after the app area. **The
-wording is fixed**: the sentences below are quoted exactly and must
-never be paraphrased, shortened, or added to. Only the layout may
-change — the text is grouped under three small sub-headings as
-bulleted lists, one bullet per original sentence (list markers and
-line breaks are the only additions). The English UI shows the
-English sentences (in the client dictionary) in the same structure.
-
-> 判定基準について
->
-> **警告サインと休養**
-> - 警告サイン（レッドフラッグ）がある日は開始できません。
-> - 筋肉痛はレベル2で軽減・3以上で部位除外、関節痛はより厳しく（2で軽減・3以上で除外）判定します。
-> - 完全休養はレベル4以上の筋肉痛が2部位以上の日だけです。
->
-> **24時間ルール**
-> - 24時間ルール：運動中・運動後の痛みが翌朝までに元の水準へ戻らなければ、前回の負荷が高すぎたサインです。
-> - 痛みの記録は次回のメニュー生成で痛み係数として反映され、痛い部位の負荷だけが下がります。他の部位には振り替えません（Silbernagelらの痛みモニタリングモデル）。
->
-> **継続日数と関節痛**
-> - 継続日数チェック：同じ部位の筋肉痛が5日以上、関節痛が2週間改善しない場合は受診目安として注意表示します（関節痛は7日でも注意表示）。
-> - 開始を止めるのは警告サインだけです。
-> - 関節痛は部位にも効きます（腰→脚・体幹、背骨→背中・腹筋・体幹、肩→押す系、肘→押す系・引く系、手首→押す系・プランク系、股関節・膝・足首→脚系）。
->
-> 参考文献：ACSM ポジションスタンド（2026年版）、Robinson et al. 2024／Refalo et al. 2023（限界接近度）、Zourdos et al. 2016／Helms et al. 2016（RPE・RIR）、Silbernagel et al. 2007／Smith et al. 2017／Tran et al. 2025（痛みモニタリング）、Finucane et al. 2020（レッドフラッグ）、NICE ガイドライン NG59・NG226／Foster et al. 2018、Cheung et al. 2003／Hotfiel et al. 2018（DOMS）、McHugh 2003（反復バウト効果）、Davies et al. 2015（プライオメトリクス）、Pelland et al. 2025（量・頻度）、CDC/NIOSH 横紋筋融解症。種目の階段・負荷値：Overcoming Gravity（Low）／r/bodyweightfitness Recommended Routine／Hybrid Calisthenics、Ebben et al. 2011、Ekstrom et al. 2003、Harøy et al. 2019、ほか実践ガイド群。
-
-(The rule sentences above remain fixed. The closing reference line
-is the bibliography and tracks the adopted reference set — it was
-expanded on 2026-11-16 when the ten researched proposals were
-adopted, and the catalog sources behind the ladders and load
-values were added to it the same day; the rule wording itself did
-not change.)
+Until 2026-11-16 a footer section `判定基準について` sat at the
+bottom of every screen, after the app area: the decision rules in
+three groups （警告サインと休養 / 24時間ルール / 継続日数と関節痛）
+plus the references line. The user instructed its removal, so the
+section, its client-dictionary strings (both languages) and its
+styles are gone. The decision rules themselves are unchanged —
+they are documented in the README's "Decision rules and
+references" section — and the functional notices (assessment box,
+duration and overload caution boxes) still appear where the rules
+bite. Do not re-add explanatory footer prose.
 
 ## Layout (exact)
 
@@ -519,8 +492,7 @@ not change.)
 - Under it, 13px `--sub`, margin-top 3px: `あと{n}種目` — or `全種目完了`
   when every exercise is completed.
 - Adjustment / progression notes sit at the **bottom of the whole
-  menu** (after the exercise cards and the finish area, just before
-  the footer note): a bulleted list in a block of max-width 540px,
+  menu** (after the exercise cards and the finish area): a bulleted list in a block of max-width 540px,
   centred, margin-top 14px; 12px `--sub`, line height 1.55, list
   padding-left 18px. There is no focus-note line: no
   alternative-workout wording is shown anywhere (the title's
@@ -1362,7 +1334,6 @@ assessment, treating what is already recorded as fixed premises
    assessment exists
 10. Guidance caution boxes (duration notices), if any
 11. Overload caution box (24-hour rule), if any
-12. Footer note `判定基準について` (present on every screen)
 
 ### 2. Workout （ワークアウト）
 1. Header; segment navigation （ワークアウト active); gear as on every
@@ -1380,7 +1351,6 @@ assessment, treating what is already recorded as fixed premises
    `今日のワークアウトを作る` CTA + error line
 8. Adjustment / progression notes (bottom of the menu, after the
    cards and the finish area)
-9. Footer note
 
 ### 3. Report （レポート）
 1. Header; segment navigation （レポート active); gear as on every
@@ -1391,7 +1361,6 @@ assessment, treating what is already recorded as fixed premises
 4. Summaries `月別` and `部位別` (quiet two-column rows)
 5. Entries, newest first, in the list form above; an entry in edit
    mode shows its edit cards in place
-6. Footer note
 
 ### 4. Settings （設定， via the gear)
 1. Header; segment navigation (no segment active); gear in its
@@ -1407,7 +1376,6 @@ assessment, treating what is already recorded as fixed premises
    `エクスポート（JSON）` / `エクスポート（CSV）` / `インポート` (with the
    import confirmation block when a file is chosen); `データを消す`; the
    confirmation block below it when open
-8. Footer note
 
 ## Scope boundary for design work
 
