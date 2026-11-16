@@ -114,7 +114,7 @@ describe("language setting (real server)", () => {
     expect(st.catalog.rotations[0].title).toBe("Push + Legs");
 
     // Validation errors come back in English now.
-    const bad = await post("/api/pain", { soreness: { "胸": 9 }, jointPain: {}, redFlags: [] });
+    const bad = await post("/api/pain", { soreness: { "胸下部": 9 }, jointPain: {}, redFlags: [] });
     expect(bad.status).toBe(400);
     expect(String(bad.data.error)).toContain("between 0 and 5");
 
@@ -127,7 +127,7 @@ describe("language setting (real server)", () => {
     expect(String(blocked.data.error)).toContain("Cannot start");
 
     // A generated session's notes are written in the current language.
-    await post("/api/pain", { soreness: { "胸": 2 }, jointPain: {}, redFlags: [] });
+    await post("/api/pain", { soreness: { "胸下部": 2 }, jointPain: {}, redFlags: [] });
     const gen = await post("/api/session/generate", {});
     expect(gen.status).toBe(200);
     const notes = (gen.data.todaySession.progressionNotes as string[]).join("\n");

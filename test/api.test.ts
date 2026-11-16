@@ -41,12 +41,12 @@ afterAll(() => {
 
 describe("API input validation", () => {
   test("pain levels: out-of-range / decimal / negative are 400, valid is 200", async () => {
-    expect((await post("/api/pain", { soreness: { "胸": 6 }, jointPain: {}, redFlags: [] })).status).toBe(400);
-    expect((await post("/api/pain", { soreness: { "胸": 1.5 }, jointPain: {}, redFlags: [] })).status).toBe(400);
+    expect((await post("/api/pain", { soreness: { "胸下部": 6 }, jointPain: {}, redFlags: [] })).status).toBe(400);
+    expect((await post("/api/pain", { soreness: { "胸下部": 1.5 }, jointPain: {}, redFlags: [] })).status).toBe(400);
     const neg = await post("/api/pain", { soreness: {}, jointPain: { "膝": -1 }, redFlags: [] });
     expect(neg.status).toBe(400);
     expect(String(neg.data.error)).toContain("0〜5");
-    expect((await post("/api/pain", { soreness: { "胸": 2 }, jointPain: {}, redFlags: [] })).status).toBe(200);
+    expect((await post("/api/pain", { soreness: { "胸下部": 2 }, jointPain: {}, redFlags: [] })).status).toBe(200);
   });
 
   test("profile: ranges enforced and required fields cannot be empty", async () => {

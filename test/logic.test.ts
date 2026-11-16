@@ -4,10 +4,10 @@ import {
   assessPain, painFactorOf, personalAdjustment, achievedLoad, exerciseLoad, generateSession, painDurationGuidance, emptyStore, setSum,
   type PainEntry, type Profile, type Session, type SessionExercise, type Store,
 } from "../src/logic";
-import { diffProfile, migrateProfile } from "../src/logic";
+import { diffProfile, migrateProfile, migrateStoreData } from "../src/logic";
 
 const prev = (over: Partial<SessionExercise>): SessionExercise => ({
-  id: 1, baseId: "pushup", name: "プッシュアップ", muscleGroup: "胸・三頭", painPart: "胸",
+  id: 1, baseId: "pushup", name: "プッシュアップ", muscleGroup: "胸・三頭", painPart: "胸下部",
   variation: "膝つきプッシュアップ", ladderIndex: 1, targetSets: 3, targetReps: 8, targetUnit: "回",
   cue: "", loggedSets: [8, 8, 8], rpe: 8, completed: true, note: "", ...over,
 });
@@ -21,13 +21,13 @@ describe("assessPain", () => {
     expect(a.care).toBe(true);
   });
   test("level2 reduces, level3 excludes", () => {
-    const a = assessPain({ date: "2026-01-01", soreness: { "胸": 2, "背中": 3 }, jointPain: { "腰": 2 } });
-    expect(a.reducedParts).toContain("胸"); expect(a.excludedParts).toContain("背中"); expect(a.rest).toBe(false);
+    const a = assessPain({ date: "2026-01-01", soreness: { "胸下部": 2, "背中上部": 3 }, jointPain: { "腰": 2 } });
+    expect(a.reducedParts).toContain("胸下部"); expect(a.excludedParts).toContain("背中上部"); expect(a.rest).toBe(false);
   });
   test("full rest only at 4+ in 2+ parts", () => {
-    const a = assessPain({ date: "2026-01-01", soreness: { "胸": 4, "背中": 5 }, jointPain: {} });
+    const a = assessPain({ date: "2026-01-01", soreness: { "胸下部": 4, "背中上部": 5 }, jointPain: {} });
     expect(a.rest).toBe(true);
-    const b = assessPain({ date: "2026-01-01", soreness: { "胸": 4 }, jointPain: {} });
+    const b = assessPain({ date: "2026-01-01", soreness: { "胸下部": 4 }, jointPain: {} });
     expect(b.rest).toBe(false);
   });
 });
@@ -39,22 +39,22 @@ describe("painFactorOf", () => {
     expect(painFactorOf(EXERCISES.pushup, entry({}), cat)).toBe(1);
   });
   test("muscle soreness scales by the 5-step table", () => {
-    expect(painFactorOf(EXERCISES.pushup, entry({ soreness: { "胸": 1 } }), cat)).toBeCloseTo(0.9);
-    expect(painFactorOf(EXERCISES.pushup, entry({ soreness: { "胸": 2 } }), cat)).toBeCloseTo(0.7);
-    expect(painFactorOf(EXERCISES.pushup, entry({ soreness: { "胸": 3 } }), cat)).toBeCloseTo(0.45);
-    expect(painFactorOf(EXERCISES.pushup, entry({ soreness: { "胸": 5 } }), cat)).toBe(0);
+    expect(painFactorOf(EXERCISES.pushup, entry({ soreness: { "胸下部": 1 } }), cat)).toBeCloseTo(0.9);
+    expect(painFactorOf(EXERCISES.pushup, entry({ soreness: { "胸下部": 2 } }), cat)).toBeCloseTo(0.7);
+    expect(painFactorOf(EXERCISES.pushup, entry({ soreness: { "胸下部": 3 } }), cat)).toBeCloseTo(0.45);
+    expect(painFactorOf(EXERCISES.pushup, entry({ soreness: { "胸下部": 5 } }), cat)).toBe(0);
   });
   test("joint pain uses the steeper table, directly and via the map", () => {
     // squat loads the knee directly
     expect(painFactorOf(EXERCISES.squat, entry({ jointPain: { "膝": 3 } }), cat)).toBeCloseTo(0.25);
-    // the lower back maps to 脚（前）, so it reaches the squat too
+    // the lower back maps to 大腿四頭筋, so it reaches the squat too
     expect(painFactorOf(EXERCISES.squat, entry({ jointPain: { "腰": 2 } }), cat)).toBeCloseTo(0.55);
     expect(painFactorOf(EXERCISES.squat, entry({ jointPain: { "腰": 5 } }), cat)).toBe(0);
     // an unrelated joint does not reach the exercise
     expect(painFactorOf(EXERCISES.pushup, entry({ jointPain: { "足首": 5 } }), cat)).toBe(1);
   });
   test("muscle and joint factors multiply", () => {
-    const f = painFactorOf(EXERCISES.pushup, entry({ soreness: { "胸": 2 }, jointPain: { "肘": 2 } }), cat);
+    const f = painFactorOf(EXERCISES.pushup, entry({ soreness: { "胸下部": 2 }, jointPain: { "肘": 2 } }), cat);
     expect(f).toBeCloseTo(0.7 * 0.55);
   });
 });
@@ -123,7 +123,7 @@ describe("load planner (generateSession)", () => {
     expect(achievedLoad(s, defaultCatalog())).toBe(loadOf(EXERCISES.pushup, 2) * 24);
   });
   test("legacy exercises missing from the catalog still score at the generic anchor", () => {
-    const legacy = prev({ baseId: "deadBug", name: "デッドバグ", ladderIndex: 0, loggedSets: [10, 10] });
+    const legacy = prev({ baseId: "diamond", name: "ダイヤモンドプッシュアップ", ladderIndex: 0, loggedSets: [10, 10] });
     expect(exerciseLoad(legacy, defaultCatalog())).toBe(60 * 20); // 60 points per rep
     const timed = prev({ baseId: "oldTimer", targetUnit: "秒", loggedSets: [30, 30] });
     expect(exerciseLoad(timed, defaultCatalog())).toBe(4 * 60); // 4 points per second
@@ -140,7 +140,7 @@ describe("load planner (generateSession)", () => {
   test("muscle soreness 5 removes the part; level 2 scales it and nothing else grows", () => {
     const base = storeWith([], [fullHistory("2026-01-01")]);
     const plain = generateSession(structuredClone(base), "2026-01-03", null);
-    const pained = generateSession(structuredClone(base), "2026-01-03", entry({ date: "2026-01-03", soreness: { "胸": 2 } }));
+    const pained = generateSession(structuredClone(base), "2026-01-03", entry({ date: "2026-01-03", soreness: { "胸下部": 2 } }));
     const plainSquat = plain.exercises.find((e) => e.baseId === "squat")!;
     const painedSquat = pained.exercises.find((e) => e.baseId === "squat")!;
     const plainPush = plain.exercises.find((e) => e.baseId === "pushup")!;
@@ -148,7 +148,7 @@ describe("load planner (generateSession)", () => {
     expect(painedSquat.targetReps).toBe(plainSquat.targetReps); // no redistribution
     expect(painedPush.targetReps).toBeLessThan(plainPush.targetReps);
     expect(pained.progressionNotes.join("")).toContain("痛み係数");
-    const excluded = generateSession(structuredClone(base), "2026-01-03", entry({ date: "2026-01-03", soreness: { "胸": 5 } }));
+    const excluded = generateSession(structuredClone(base), "2026-01-03", entry({ date: "2026-01-03", soreness: { "胸下部": 5 } }));
     expect(excluded.exercises.map((e) => e.baseId)).not.toContain("pushup");
     expect(excluded.title).toContain("代替");
   });
@@ -162,21 +162,32 @@ describe("load planner (generateSession)", () => {
     expect(mid.progressionNotes.join("")).toContain("25%");
   });
   test("a cannot-do exercise comes back one ladder step easier", () => {
-    const history = doneSession("2025-12-25", [
-      prev({ loggedSets: [0, 0, 0], rpe: 10 }),
-      prev({ id: 2, baseId: "pike", name: "パイクプッシュアップ", muscleGroup: "肩", painPart: "肩", variation: "パイクプッシュアップ（浅め）", targetReps: 6, targetSets: 2, loggedSets: [6, 6] }),
-      prev({ id: 3, baseId: "squat", name: "スクワット", muscleGroup: "脚（前）", painPart: "脚（前）", variation: "スクワット", targetReps: 10, loggedSets: [10, 10, 10] }),
-      prev({ id: 4, baseId: "proneW", name: "プローンWレイズ", muscleGroup: "背中", painPart: "背中", variation: "プローンWレイズ", targetReps: 12, targetSets: 2, loggedSets: [12, 12] }),
-      prev({ id: 5, baseId: "legRaise", name: "レッグレイズ", muscleGroup: "腹筋", painPart: "腹筋", variation: "レッグレイズ", targetReps: 10, targetSets: 2, loggedSets: [10, 10] }),
-      prev({ id: 6, baseId: "plank", name: "プランク", muscleGroup: "体幹", painPart: "体幹", variation: "プランク", targetUnit: "秒", targetReps: 40, targetSets: 2, loggedSets: [40, 40] }),
-    ]);
-    const s = generateSession(storeWith([], [history]), "2026-01-01", null);
+    // History spread over nine realistic sessions (six exercises
+    // each, the whole catalog covered), with pushup's record in the
+    // oldest session replaced by an all-zero cannot-do record:
+    // pushup is the stalest exercise, so it is selected again, and
+    // the directive steps it down from 膝つき (1) to 壁 (0).
+    const defs = Object.values(EXERCISES);
+    const sessions: Session[] = [];
+    for (let d = 0; d * 6 < defs.length; d++) {
+      const date = `2025-12-${23 + d}`;
+      sessions.push(doneSession(date, defs.slice(d * 6, d * 6 + 6).map((def, i) => ({
+        id: d * 6 + i + 1, baseId: def.baseId, name: def.name, muscleGroup: def.muscleGroup, painPart: def.painPart,
+        variation: def.ladder[def.defaultLadder], ladderIndex: def.defaultLadder,
+        targetSets: def.baseSets, targetReps: def.baseTarget, targetUnit: def.unit, cue: "",
+        loggedSets: Array(def.baseSets).fill(def.baseTarget), rpe: 8, completed: true, note: "",
+      }))));
+    }
+    const pushupRec = sessions[0].exercises.find((e) => e.baseId === "pushup")!;
+    pushupRec.loggedSets = [0, 0, 0];
+    pushupRec.rpe = 10;
+    const s = generateSession(storeWith([], sessions), "2026-01-01", null);
     const pushup = s.exercises.find((e) => e.baseId === "pushup")!;
     expect(pushup.ladderIndex).toBe(0);
     expect(s.progressionNotes.join("")).toContain("できない種目の切り替え");
   });
   test("next-day pain is priced by the coefficient, not a separate 24-hour rule", () => {
-    const s = generateSession(storeWith([], [fullHistory("2026-01-02")]), "2026-01-03", entry({ date: "2026-01-03", soreness: { "胸": 2 } }));
+    const s = generateSession(storeWith([], [fullHistory("2026-01-02")]), "2026-01-03", entry({ date: "2026-01-03", soreness: { "胸下部": 2 } }));
     expect(s.progressionNotes.join("")).not.toContain("24時間ルール");
     expect(s.progressionNotes.join("")).toContain("痛み係数");
   });
@@ -189,12 +200,12 @@ describe("pain duration guidance", () => {
       return { date: d, soreness: kind === "soreness" ? { [part]: level } : {}, jointPain: kind === "jointPain" ? { [part]: level } : {}, redFlags: [] };
     });
   test("muscle soreness on 5 consecutive days gives see-a-doctor guidance", () => {
-    const g = painDurationGuidance(storeWith(series("soreness", "胸", "2026-01-01", 5), []));
-    expect(g.some((x) => x.subject === "胸" && x.days === 5 && x.severity === "care")).toBe(true);
+    const g = painDurationGuidance(storeWith(series("soreness", "胸下部", "2026-01-01", 5), []));
+    expect(g.some((x) => x.subject === "胸下部" && x.days === 5 && x.severity === "care")).toBe(true);
   });
   test("muscle soreness for 4 days gives no guidance yet", () => {
-    const g = painDurationGuidance(storeWith(series("soreness", "胸", "2026-01-01", 4), []));
-    expect(g.filter((x) => x.subject === "胸")).toHaveLength(0);
+    const g = painDurationGuidance(storeWith(series("soreness", "胸下部", "2026-01-01", 4), []));
+    expect(g.filter((x) => x.subject === "胸下部")).toHaveLength(0);
   });
   test("joint pain: 7 days is a caution, 14 days is see-a-doctor guidance", () => {
     const g7 = painDurationGuidance(storeWith(series("jointPain", "膝", "2026-01-01", 7), []));
@@ -203,8 +214,8 @@ describe("pain duration guidance", () => {
     expect(g14.some((x) => x.subject === "膝" && x.days === 14 && x.severity === "care")).toBe(true);
   });
   test("a resolved day breaks the streak", () => {
-    const entries = [...series("soreness", "胸", "2026-01-01", 4), { date: "2026-01-05", soreness: { "胸": 0 }, jointPain: {}, redFlags: [] }, ...series("soreness", "胸", "2026-01-06", 2)];
-    expect(painDurationGuidance(storeWith(entries, [])).filter((x) => x.subject === "胸")).toHaveLength(0);
+    const entries = [...series("soreness", "胸下部", "2026-01-01", 4), { date: "2026-01-05", soreness: { "胸下部": 0 }, jointPain: {}, redFlags: [] }, ...series("soreness", "胸下部", "2026-01-06", 2)];
+    expect(painDurationGuidance(storeWith(entries, [])).filter((x) => x.subject === "胸下部")).toHaveLength(0);
   });
 });
 
@@ -234,5 +245,53 @@ describe("profile migration (two note fields -> one, sex -> select values)", () 
     const diff = diffProfile(before, after);
     expect(diff).toHaveLength(1);
     expect(diff[0]).toMatchObject({ field: "note", label: "補足", from: "", to: "週2回" });
+  });
+});
+
+describe("migrateStoreData (catalog expansion, data version 2)", () => {
+  const v1Store = (): Store => ({
+    ...emptyStore(),
+    pain: [
+      { date: "2026-01-01", soreness: { "胸": 2, "背中": 3, "ふくらはぎ": 1 }, jointPain: { "腰": 2 }, redFlags: [] },
+      { date: "2026-01-02", soreness: { "胸": 1, "胸下部": 4 }, jointPain: {}, redFlags: [] },
+    ],
+    sessions: [{
+      id: 1, date: "2026-01-01", rotation: "A", title: "押す + 脚", status: "completed", intro: false,
+      focusNote: "", progressionNotes: [], totalVolume: 100,
+      exercises: [
+        prev({ baseId: "pushup", ladderIndex: 3 }),   // was ダイヤモンド (80)
+        prev({ id: 2, baseId: "plank", ladderIndex: 1, targetUnit: "秒" }), // was プランク (6)
+        prev({ id: 3, baseId: "deadBug", ladderIndex: 0 }), // legacy standard form
+        prev({ id: 4, baseId: "crunch", ladderIndex: 1 }),  // append-only family: unchanged
+      ],
+    }],
+  });
+
+  test("renames pain parts to their primary successors, larger level wins", () => {
+    const s = migrateStoreData(v1Store());
+    expect(s.dataVersion).toBe(2);
+    expect(s.pain[0].soreness).toEqual({ "胸下部": 2, "背中上部": 3, "ふくらはぎ": 1 });
+    expect(s.pain[0].jointPain).toEqual({ "腰": 2 }); // joints are not renamed
+    expect(s.pain[1].soreness).toEqual({ "胸下部": 4 });
+  });
+
+  test("remaps ladder indexes whose ladders gained inserted steps", () => {
+    const s = migrateStoreData(v1Store());
+    const byBase = Object.fromEntries(s.sessions[0].exercises.map((e) => [e.baseId, e.ladderIndex]));
+    expect(byBase.pushup).toBe(5);  // ダイヤモンド sits at 5 in the new ladder
+    expect(byBase.plank).toBe(2);   // プランク sits at 2
+    expect(byBase.deadBug).toBe(1); // the standard form
+    expect(byBase.crunch).toBe(1);  // untouched
+    // The remapped indexes price the records at the same steps as before.
+    expect(loadOf(EXERCISES.pushup, byBase.pushup)).toBe(80);
+    expect(loadOf(EXERCISES.plank, byBase.plank)).toBe(6);
+  });
+
+  test("is idempotent and leaves current stores untouched", () => {
+    const once = migrateStoreData(v1Store());
+    const snapshot = structuredClone(once);
+    expect(migrateStoreData(once)).toEqual(snapshot);
+    const current: Store = { ...emptyStore(), dataVersion: 2 };
+    expect(migrateStoreData(current)).toBe(current);
   });
 });

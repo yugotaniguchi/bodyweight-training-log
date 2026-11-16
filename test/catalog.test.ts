@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { defaultCatalog, type Catalog } from "../src/exercises";
+import { readFileSync } from "node:fs";
+import { defaultCatalog, patternOf, type Catalog } from "../src/exercises";
+import { GROUP_EN } from "../src/i18n";
 import { catalogOf, emptyStore, generateSession, type Store } from "../src/logic";
 import { InvalidInput, parseCatalogImport, parseStoreImport } from "../src/validate";
 
@@ -8,22 +10,22 @@ const clone = (c: Catalog): Catalog => JSON.parse(JSON.stringify(c)) as Catalog;
 describe("parseCatalogImport", () => {
   test("the built-in catalog round-trips", () => {
     const c = parseCatalogImport(clone(defaultCatalog()));
-    expect(Object.keys(c.exercises).length).toBe(13);
+    expect(Object.keys(c.exercises).length).toBe(54);
     expect(c.exercises.pushup.steps.length).toBe(3);
-    expect(c.exercises.pushup.focus).toBe("胸と腕の裏側");
+    expect(c.exercises.pushup.focus).toBe("胸下部と上腕三頭");
     expect(c.joints).toContain("背骨");
   });
 
   test("loads and pattern round-trip; bad loads are rejected", () => {
     const c = parseCatalogImport(clone(defaultCatalog()));
-    expect(c.exercises.pushup.loads).toEqual([30, 45, 60, 80]);
+    expect(c.exercises.pushup.loads).toEqual([30, 45, 55, 60, 70, 80, 95, 120]);
     expect(c.exercises.pushup.pattern).toBe("push");
     const raw = clone(defaultCatalog()) as unknown as { exercises: Record<string, Record<string, unknown>> };
     raw.exercises.pushup.loads = [30, 45];
     expect(() => parseCatalogImport(raw)).toThrow(InvalidInput);
-    raw.exercises.pushup.loads = [30, 45, -1, 80];
+    raw.exercises.pushup.loads = [30, 45, 55, 60, 70, 80, 95, -1];
     expect(() => parseCatalogImport(raw)).toThrow(InvalidInput);
-    raw.exercises.pushup.loads = [30, 45, 60, 80];
+    raw.exercises.pushup.loads = [30, 45, 55, 60, 70, 80, 95, 120];
     raw.exercises.pushup.pattern = "";
     expect(() => parseCatalogImport(raw)).toThrow(InvalidInput);
   });
@@ -54,7 +56,7 @@ describe("parseCatalogImport", () => {
     raw.rotations = [{ id: "A", title: "A", exerciseIds: ["pushup", "nope"] }];
     const c = parseCatalogImport(raw);
     expect("rotations" in c).toBe(false);
-    expect(Object.keys(c.exercises).length).toBe(13);
+    expect(Object.keys(c.exercises).length).toBe(54);
   });
 
   test("rejects an empty ladder and an out-of-range defaultLadder", () => {
@@ -77,7 +79,7 @@ describe("parseCatalogImport", () => {
 
   test("rejects a joint map naming an unknown joint or part", () => {
     const a = clone(defaultCatalog());
-    a.jointToMuscleParts = { "存在しない関節": ["胸"] };
+    a.jointToMuscleParts = { "存在しない関節": ["胸下部"] };
     expect(() => parseCatalogImport(a)).toThrow(InvalidInput);
     const b = clone(defaultCatalog());
     b.jointToMuscleParts = { "腰": ["存在しない部位"] };
@@ -88,6 +90,24 @@ describe("parseCatalogImport", () => {
     const raw = clone(defaultCatalog());
     raw.exercises.plank.unilateral = true;
     expect(() => parseCatalogImport(raw)).toThrow(InvalidInput);
+  });
+
+  test("unilateralFrom round-trips and is validated", () => {
+    const c = parseCatalogImport(clone(defaultCatalog()));
+    expect(c.exercises.pushup.unilateralFrom).toBe(6);
+    expect(c.exercises.tableRow.unilateralFrom).toBe(3);
+    // Out of range: 0 would mean the whole family (use unilateral),
+    // and the ladder length itself is past the last step.
+    const a = clone(defaultCatalog());
+    a.exercises.pushup.unilateralFrom = 0;
+    expect(() => parseCatalogImport(a)).toThrow(InvalidInput);
+    const b = clone(defaultCatalog());
+    b.exercises.pushup.unilateralFrom = b.exercises.pushup.ladder.length;
+    expect(() => parseCatalogImport(b)).toThrow(InvalidInput);
+    // Timed exercises cannot carry it either.
+    const d = clone(defaultCatalog());
+    d.exercises.wallSit.unilateralFrom = 1;
+    expect(() => parseCatalogImport(d)).toThrow(InvalidInput);
   });
 });
 
@@ -110,10 +130,10 @@ describe("custom catalog in the store", () => {
 
   test("a custom joint mapping drives exclusion through the map", () => {
     const cat = clone(defaultCatalog());
-    // Map 肩 to 胸 as well: shoulder joint pain at level 5 then makes
-    // the chest exercise's (pushup) pain coefficient 0 through the
-    // mapping, so it cannot be selected.
-    cat.jointToMuscleParts["肩"] = ["肩", "胸"];
+    // Map 肩 to the chest parts as well: shoulder joint pain at
+    // level 5 then makes the chest exercise's (pushup) pain
+    // coefficient 0 through the mapping, so it cannot be selected.
+    cat.jointToMuscleParts["肩"] = ["肩前部", "胸下部"];
     const store: Store = { ...emptyStore(), catalog: cat };
     const s = generateSession(store, "2026-01-05", { date: "2026-01-05", soreness: {}, jointPain: { "肩": 5 }, redFlags: [] });
     expect(s.exercises.map((e) => e.baseId)).not.toContain("pushup");
@@ -130,5 +150,38 @@ describe("custom catalog in the store", () => {
     expect(() => parseStoreImport({ ...base, catalog: badCat })).toThrow(InvalidInput);
     const none = parseStoreImport(base);
     expect(none.catalog).toBeUndefined();
+  });
+});
+
+describe("catalog / client / i18n parity", () => {
+  test("every family's muscle group has an English label", () => {
+    // A group missing from GROUP_EN falls back to raw Japanese in
+    // the English report chart.
+    for (const def of Object.values(defaultCatalog().exercises)) {
+      expect(GROUP_EN[def.muscleGroup]).toBeDefined();
+    }
+  });
+
+  test("the client's pain-grid groups cover exactly the catalog's parts", () => {
+    // PART_GROUPS in public/app.js is a hand-maintained copy of the
+    // part taxonomy; if it drifts from MUSCLE_PARTS a part silently
+    // lands in the client's "other" bucket.
+    const appJs = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+    const block = appJs.match(/const PART_GROUPS = \[([\s\S]*?)\];/);
+    expect(block).not.toBeNull();
+    const parts = defaultCatalog().muscleParts;
+    const grouped = [...block![1].matchAll(/"([^"]+)"/g)]
+      .map((m) => m[1])
+      .filter((s) => parts.includes(s));
+    expect(new Set(grouped)).toEqual(new Set(parts));
+    expect(grouped.length).toBe(parts.length);
+  });
+
+  test("every part has a fallback pattern (patternOf never returns a raw part name)", () => {
+    const c = defaultCatalog();
+    for (const part of c.muscleParts) {
+      const probe = { ...c.exercises.pushup, painPart: part, pattern: undefined };
+      expect(["push", "pull", "legs", "core"]).toContain(patternOf(probe));
+    }
   });
 });

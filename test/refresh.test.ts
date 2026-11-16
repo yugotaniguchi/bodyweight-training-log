@@ -23,7 +23,7 @@ describe("refreshPlannedSession", () => {
   test("a newly pained part lowers the unrecorded target; other parts are unchanged", () => {
     const { store, s } = gen();
     const before = byBase(s, "pushup")!.targetReps;
-    const out = refreshPlannedSession(store, s, entry({ soreness: { "胸": 2 } }));
+    const out = refreshPlannedSession(store, s, entry({ soreness: { "胸下部": 2 } }));
     expect(byBase(out, "pushup")!.targetReps).toBeLessThan(before);
     expect(byBase(out, "squat")!.targetReps).toBe(byBase(s, "squat")!.targetReps);
     expect(out.progressionNotes.join("")).toContain("痛み係数");
@@ -32,7 +32,7 @@ describe("refreshPlannedSession", () => {
 
   test("a part at pain level 5 drops out, and returns when the pain clears", () => {
     const { store, s } = gen();
-    const out = refreshPlannedSession(store, s, entry({ soreness: { "肩": 5 } }));
+    const out = refreshPlannedSession(store, s, entry({ soreness: { "肩前部": 5 } }));
     expect(out.exercises.map((e) => e.baseId)).not.toContain("pike");
     expect(out.exercises.map((e) => e.baseId)).toContain("pushup");
     expect(out.title).toContain("（代替）");
@@ -45,7 +45,7 @@ describe("refreshPlannedSession", () => {
     const pushup = byBase(s, "pushup")!;
     pushup.loggedSets = [5, 5, 0]; pushup.rpe = 8; pushup.completed = true;
     const targetBefore = pushup.targetReps;
-    const out = refreshPlannedSession(store, s, entry({ soreness: { "胸": 5 } }));
+    const out = refreshPlannedSession(store, s, entry({ soreness: { "胸下部": 5 } }));
     const kept = byBase(out, "pushup")!;
     expect(kept).toBeDefined();
     expect(kept.loggedSets).toEqual([5, 5, 0]);
@@ -57,7 +57,7 @@ describe("refreshPlannedSession", () => {
   test("a note-only record also counts as recorded", () => {
     const { store, s } = gen();
     byBase(s, "squat")!.note = "左がきつい";
-    const out = refreshPlannedSession(store, s, entry({ soreness: { "脚（前）": 5 } }));
+    const out = refreshPlannedSession(store, s, entry({ soreness: { "大腿四頭筋": 5 } }));
     expect(byBase(out, "squat")!.note).toBe("左がきつい");
   });
 
@@ -71,7 +71,7 @@ describe("refreshPlannedSession", () => {
 
   test("full rest strips unrecorded exercises too", () => {
     const { store, s } = gen();
-    const out = refreshPlannedSession(store, s, entry({ soreness: { "胸": 4, "背中": 5 } }));
+    const out = refreshPlannedSession(store, s, entry({ soreness: { "胸下部": 4, "背中上部": 5 } }));
     expect(out.exercises).toHaveLength(0);
     expect(out.progressionNotes.length).toBeGreaterThan(0);
   });
@@ -79,14 +79,14 @@ describe("refreshPlannedSession", () => {
   test("a completed session is never touched", () => {
     const { store, s } = gen();
     s.status = "completed";
-    const out = refreshPlannedSession(store, s, entry({ soreness: { "胸": 3 } }));
+    const out = refreshPlannedSession(store, s, entry({ soreness: { "胸下部": 3 } }));
     expect(out).toBe(s);
   });
 });
 
 // Left/right pairs for unilateral exercises.
 const uniPrev = (loggedSets: SessionExercise["loggedSets"]): SessionExercise => ({
-  id: 1, baseId: "rdl", name: "シングルレッグRDL", muscleGroup: "脚（後ろ）・お尻", painPart: "脚（後ろ）・お尻",
+  id: 1, baseId: "rdl", name: "シングルレッグRDL", muscleGroup: "脚（後ろ）・お尻", painPart: "ハムストリング",
   variation: "シングルレッグRDL（支えあり）", ladderIndex: 1, targetSets: 2, targetReps: 8, targetUnit: "回",
   cue: "", loggedSets, rpe: 6, completed: true, note: "",
 });
@@ -94,7 +94,7 @@ const uniPrev = (loggedSets: SessionExercise["loggedSets"]): SessionExercise => 
 describe("unilateral pairs", () => {
   test("the flagged exercises are rep-based only", () => {
     const flagged = Object.values(EXERCISES).filter((e) => e.unilateral);
-    expect(flagged.map((e) => e.baseId).sort()).toEqual(["rdl", "reverseLunge"]);
+    expect(flagged.map((e) => e.baseId).sort()).toEqual(["pistolSquat", "rdl", "reverseLunge", "sideLyingAbduction", "stepUp"]);
     for (const e of flagged) expect(e.unit).toBe("回");
   });
 
@@ -124,7 +124,7 @@ describe("unilateral pairs", () => {
         id: 1, date: "2026-01-01", rotation: "B", title: "x", status: "completed", intro: false,
         focusNote: "", progressionNotes: [],
         exercises: [{
-          id: 1, baseId: "rdl", name: "シングルレッグRDL", muscleGroup: "脚（後ろ）・お尻", painPart: "脚（後ろ）・お尻",
+          id: 1, baseId: "rdl", name: "シングルレッグRDL", muscleGroup: "脚（後ろ）・お尻", painPart: "ハムストリング",
           variation: "v", ladderIndex: 1, targetSets: 2, targetReps: 8, targetUnit: "回", cue: "",
           loggedSets: [{ l: 11, r: 10 }, 7], rpe: 8, completed: true, note: "",
         }],

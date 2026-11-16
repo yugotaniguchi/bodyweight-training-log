@@ -63,7 +63,7 @@ describe("condition re-save rebuilds the planned session", () => {
   test("excluding a part drops its unrecorded exercise; the recorded one stays; clearing restores", async () => {
     // 肩 level 5 makes pike's pain coefficient 0 (unrecorded, so it
     // drops out); pushup is already recorded and stays.
-    expect((await post("/api/pain", { soreness: { "肩": 5 }, jointPain: {}, redFlags: [] })).status).toBe(200);
+    expect((await post("/api/pain", { soreness: { "肩前部": 5 }, jointPain: {}, redFlags: [] })).status).toBe(200);
     const st = await getState();
     const ids = st.activeSession.exercises.map((e: { baseId: string }) => e.baseId);
     expect(ids).not.toContain("pike");
@@ -81,7 +81,7 @@ describe("condition re-save rebuilds the planned session", () => {
     const s = st.activeSession;
     expect((await post(`/api/session/${s.id}/complete`, {})).status).toBe(200);
     const before = (await getState()).sessions.find((x: { id: number }) => x.id === s.id);
-    expect((await post("/api/pain", { soreness: { "肩": 3 }, jointPain: {}, redFlags: [] })).status).toBe(200);
+    expect((await post("/api/pain", { soreness: { "肩前部": 3 }, jointPain: {}, redFlags: [] })).status).toBe(200);
     const after = (await getState()).sessions.find((x: { id: number }) => x.id === s.id);
     expect(after.exercises.map((e: { baseId: string }) => e.baseId))
       .toEqual(before.exercises.map((e: { baseId: string }) => e.baseId));
