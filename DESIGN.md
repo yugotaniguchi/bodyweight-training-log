@@ -1144,6 +1144,19 @@ Two export formats exist; import is JSON only:
   does not bump the version — only a change that reinterprets stored
   values does. Safety notes were added to the sissy-squat steps,
   chair dips and the Nordic curl from the same round's sources.
+- The same round's two merges were applied afterwards, bringing the
+  catalog to **57 families**: superman and back extension — both
+  prone spinal extension with almost fully overlapping load bands —
+  are now one family, **floorBackExtension**, whose ladder
+  interleaves the old steps by load so every step keeps its price;
+  and the reverse snow angel family was absorbed into proneT, its
+  easiest step opening the proneT ladder. That is **data version
+  4**: `migrateStoreData` rewrites a retired family's records to
+  the absorbing family with the index mapped onto the merged
+  ladder (proneT's own records shift by one for the inserted step).
+  The two upper snow-angel steps land on proneT's floating steps
+  (30 → 35 and 40 → 45 points); every other mapped record keeps
+  its exact price.
 
 ## Condition re-save rebuilds the planned session
 
