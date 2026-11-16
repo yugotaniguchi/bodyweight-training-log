@@ -1,5 +1,5 @@
 import {
-  INTRO_SESSIONS, defaultCatalog,
+  INTRO_SESSIONS, defaultCatalog, loadOf, patternOf,
   type Catalog, type ExerciseDef,
 } from "./exercises";
 import {
@@ -99,7 +99,6 @@ export function catalogOf(store: Store): Catalog {
   const c = store.catalog;
   if (c && typeof c === "object"
     && c.exercises && typeof c.exercises === "object" && Object.keys(c.exercises).length > 0
-    && Array.isArray(c.rotations) && c.rotations.length > 0
     && Array.isArray(c.muscleParts) && Array.isArray(c.joints)) {
     return c;
   }
@@ -133,9 +132,11 @@ export function diffProfile(prev: Profile | null, next: Profile): ProfileChange[
 // Criteria (see README): red flags first; muscle soreness 2 = reduce, 3+ = exclude;
 // joint pain stricter (2 = reduce, 3+ = exclude) and also applies through the
 // explicit JOINT_TO_MUSCLE_PARTS mapping; full rest only when level 4+ soreness
-// is present in 2+ parts. The 24-hour rule (below) is auto-judged from the pain
-// history: it reduces the next session, it never blocks a start. Only red
-// flags block.
+// is present in 2+ parts. This assessment drives the start gates (only red
+// flags block) and the condition screen's per-part display; the menu planner
+// itself prices pain through the finer 5-step coefficients (painFactorOf),
+// and next-day pain reaches it through the next day's own pain entry —
+// there is no separate 24-hour-rule adjustment anymore.
 export interface PartAssessment { subject: string; kind: "muscle" | "joint"; level: number; action: "train" | "reduce" | "exclude"; reasons: string[] }
 export interface Assessment {
   care: boolean; careReasons: string[]; rest: boolean; restReason: string;
@@ -179,47 +180,6 @@ const fmtDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 export const addDays = (d: string, n: number) => fmtDay(parseDay(d) + n * DAY_MS);
 export const diffDays = (from: string, to: string) => Math.round((parseDay(to) - parseDay(from)) / DAY_MS);
 
-// ---------- 24-hour rule (auto-judged from pain history) ----------
-// If, on the day after the last completed session, the pain level of a part
-// that session used is still above its pre-session level (the most recent
-// record before the session day), that part was overloaded: the next session
-// reduces it and does not progress it.
-export interface OverloadInfo {
-  subject: string; kind: "muscle" | "joint";
-  sessionDate: string; baseline: number; nextLevel: number; reason: string;
-}
-export function detectOverload(store: Store, lang: Lang = "ja"): OverloadInfo[] {
-  const completed = store.sessions.filter((s) => s.status === "completed").sort((a, b) => a.date.localeCompare(b.date));
-  const last = completed[completed.length - 1];
-  if (!last) return [];
-  const used = last.exercises.filter((e) => e.completed || e.loggedSets.some((v) => setSum(v) > 0));
-  const usedExercises = used.length ? used : last.exercises;
-  if (!usedExercises.length) return [];
-  const entries = [...store.pain].sort((a, b) => a.date.localeCompare(b.date));
-  const pre = [...entries].reverse().find((p) => p.date < last.date) ?? null;
-  const next = entries.find((p) => p.date === addDays(last.date, 1)) ?? entries.find((p) => p.date > last.date) ?? null;
-  if (!next) return [];
-  const out: OverloadInfo[] = [];
-  const check = (subject: string, kind: "muscle" | "joint", get: (e: PainEntry) => number) => {
-    const baseline = pre ? get(pre) : 0;
-    const nextLevel = get(next);
-    if (nextLevel > baseline) {
-      out.push({
-        subject, kind, sessionDate: last.date, baseline, nextLevel,
-        reason: SRV[lang].overloadReason(subjectName(subject, lang), baseline, nextLevel),
-      });
-    }
-  };
-  for (const part of new Set(usedExercises.map((e) => e.painPart))) {
-    check(part, "muscle", (e) => e.soreness[part] ?? 0);
-  }
-  const defOf = (e: SessionExercise) => catalogOf(store).exercises[e.baseId];
-  for (const joint of new Set(usedExercises.flatMap((e) => defOf(e)?.jointParts ?? []))) {
-    check(joint, "joint", (e) => e.jointPain[joint] ?? 0);
-  }
-  return out;
-}
-
 // ---------- pain duration guidance (caution only, never a block) ----------
 // Counts, per part, the run of consecutive days (ending at the latest record)
 // with pain level >= 1, i.e. days it has not resolved. Muscle soreness that
@@ -259,247 +219,348 @@ export function painDurationGuidance(store: Store, lang: Lang = "ja"): PainGuida
   return out;
 }
 
-// ---------- next-load decision ----------
-// Priority: pain criteria (applied by caller) > per-exercise memo > cannot-do
-// (all sets 0) switch > RPE adjustment.
-export interface NextDecision {
-  baseId: string; ladderIndex: number; targetReps: number; targetSets: number;
-  notes: string[]; substitutedFrom?: string;
-}
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const round5 = (v: number) => Math.max(10, Math.round(v / 5) * 5);
 
+/** A record counts as "cannot do" when every logged set is 0, or the
+ *  per-exercise memo says so. */
 export function isCannotDo(prev: SessionExercise): boolean {
   const allZero = prev.loggedSets.length > 0 && prev.loggedSets.every((v) => setSum(v) === 0);
   const memoCannot = /できない|1回もでき|一回もでき/.test(prev.note ?? "");
   return allZero || memoCannot;
 }
 
-export function decideNext(def: ExerciseDef, prev: SessionExercise | null, intro: boolean, lang: Lang = "ja", catalog: Catalog = defaultCatalog()): NextDecision {
+// ---------- load-based menu planning ----------
+// The menu is planned in load points, not rotations. Every ladder
+// step carries a load value (points per rep, per second for timed
+// exercises — see loadOf). A session has a load budget; exercises
+// are selected for movement-pattern coverage and part recency, the
+// budget is distributed across them in proportion to their usual
+// load, each exercise's share is scaled by its pain coefficient,
+// and reps are solved back from the share: reps = share / (step
+// load x personal factor x sets). The personal factor prices one
+// rep for this user today (the design's "second value"): after an
+// easy session a rep is estimated cheaper, so more reps fit the
+// same load; after a hard one, costlier. A pain coefficient only
+// ever shrinks its own exercise's share — the freed load is not
+// redistributed, so the session total drops on painful days, and
+// two exercises on the same part split that part's portion of the
+// budget instead of each receiving a full independent target.
+
+export const PAIN_FACTOR_MUSCLE: readonly number[] = [1, 0.9, 0.7, 0.45, 0.2, 0];
+export const PAIN_FACTOR_JOINT: readonly number[] = [1, 0.8, 0.55, 0.25, 0.1, 0];
+const factorAt = (table: readonly number[], level: number): number =>
+  table[clamp(Math.round(Number.isFinite(level) ? level : 0), 0, 5)];
+
+/** Pain coefficient for one exercise under today's entry: the
+ *  muscle part's soreness factor times the worst joint factor among
+ *  the joints the exercise loads, directly or through the
+ *  joint-to-part map. 1 = unaffected, 0 = cannot be selected. */
+export function painFactorOf(def: ExerciseDef, entry: PainEntry | null, catalog: Catalog): number {
+  if (!entry) return 1;
+  const muscle = factorAt(PAIN_FACTOR_MUSCLE, entry.soreness?.[def.painPart] ?? 0);
+  if (muscle === 0) return 0;
+  let joint = 1;
+  for (const j of catalog.joints) {
+    const loads = def.jointParts.includes(j)
+      || (catalog.jointToMuscleParts[j] ?? []).includes(def.painPart);
+    if (loads) joint = Math.min(joint, factorAt(PAIN_FACTOR_JOINT, entry.jointPain?.[j] ?? 0));
+    if (joint === 0) break;
+  }
+  return muscle * joint;
+}
+
+const weakTotal = (ex: SessionExercise): number =>
+  ex.loggedSets.reduce((a: number, v) => a + setWeak(v), 0);
+
+/** The load a completed session actually delivered, in points:
+ *  step load x performed amount, summed over exercises (the weaker
+ *  side for unilateral exercises, as in the achievement measure). */
+export function achievedLoad(s: Session, catalog: Catalog): number {
+  return s.exercises.reduce((sum, ex) => {
+    const def = catalog.exercises[ex.baseId];
+    return def ? sum + loadOf(def, ex.ladderIndex) * weakTotal(ex) : sum;
+  }, 0);
+}
+
+/** The load an exercise was planned to deliver (its target load). */
+export function targetLoadOf(ex: SessionExercise, catalog: Catalog): number {
+  const def = catalog.exercises[ex.baseId];
+  return def ? loadOf(def, ex.ladderIndex) * ex.targetReps * ex.targetSets : 0;
+}
+
+export interface PersonalAdj {
+  /** Scales the exercise's share of the budget (memo feedback). */
+  shareScale: number;
+  /** Prices one rep for this user (the second value's coefficient). */
+  repFactor: number;
+  cannotDo: boolean;
+  notes: string[];
+}
+
+/** What the exercise's last completed record says about today.
+ *  Priority mirrors the old per-exercise decision: cannot-do first,
+ *  then the per-exercise memo (share of the budget), then RPE +
+ *  achievement (the price of one rep). */
+export function personalAdjustment(def: ExerciseDef, prev: SessionExercise | null, intro: boolean, lang: Lang = "ja"): PersonalAdj {
   const T = SRV[lang];
-  const notes: string[] = [];
-  let ladder = intro ? Math.max(0, def.defaultLadder - 1) : def.defaultLadder;
-  let targetSets = intro ? Math.max(1, def.baseSets - 1) : def.baseSets;
-  let targetReps = def.baseTarget;
-  let baseId = def.baseId;
-  let substitutedFrom: string | undefined;
-
   if (!prev) {
-    notes.push(intro ? T.noteFirstIntro : T.noteFirst);
-    return { baseId, ladderIndex: ladder, targetReps, targetSets, notes };
+    return { shareScale: 1, repFactor: 1, cannotDo: false, notes: [intro ? T.noteFirstIntro : T.noteFirst] };
   }
-
-  ladder = prev.ladderIndex;
-  targetSets = prev.targetSets;
-  targetReps = prev.targetReps;
-  // Achievement (actual ÷ target) is judged on the weaker side for
-  // unilateral exercises: a set logged as a left/right pair counts by
-  // its smaller side, so a strong side cannot mask a lagging one.
-  const loggedTotal = prev.loggedSets.reduce((a: number, v) => a + setWeak(v), 0);
-  const goalTotal = prev.targetReps * prev.targetSets;
-  const achievement = goalTotal > 0 ? loggedTotal / goalTotal : 0;
+  if (isCannotDo(prev)) return { shareScale: 1, repFactor: 1, cannotDo: true, notes: [] };
   const memo = (prev.note ?? "").trim();
-
-  // 1) cannot-do switch (memo is per-exercise, so it can only refer to this one)
-  if (isCannotDo(prev)) {
-    if (ladder > 0) {
-      ladder -= 1;
-      targetReps = def.baseTarget;
-      notes.push(T.noteCannotLadder(def.ladder[ladder], memo || T.noteCannotNoReps));
-    } else if (catalog.substitutes[def.baseId]) {
-      const sub = catalog.exercises[catalog.substitutes[def.baseId]];
-      substitutedFrom = def.baseId; baseId = sub.baseId; ladder = 0;
-      targetReps = sub.baseTarget; targetSets = intro ? Math.max(1, sub.baseSets - 1) : sub.baseSets;
-      notes.push(T.noteCannotSubstitute(sub.name, sub.ladder[0]));
-    } else {
-      targetReps = Math.max(1, Math.floor(targetReps / 2));
-      notes.push(T.noteCannotHalve);
-    }
-    return { baseId, ladderIndex: ladder, targetReps, targetSets, notes, substitutedFrom };
-  }
-
-  // 2) per-exercise memo keywords
   if (memo) {
-    if (/痛|違和感/.test(memo)) {
-      if (ladder > 0) ladder -= 1; else targetReps = def.unit === "秒" ? round5(targetReps * 0.8) : Math.max(1, targetReps - 3);
-      notes.push(T.noteMemoPain(memo));
-      return { baseId, ladderIndex: ladder, targetReps, targetSets, notes };
-    }
-    if (/きつ|しんど|つら|限界/.test(memo)) {
-      targetReps = def.unit === "秒" ? round5(targetReps * 0.9) : Math.max(1, targetReps - 2);
-      notes.push(T.noteMemoHard(memo));
-      return { baseId, ladderIndex: ladder, targetReps, targetSets, notes };
-    }
-    if (/楽だった|楽に|余裕/.test(memo)) {
-      targetReps = def.unit === "秒" ? round5(targetReps * 1.25) : targetReps + 3;
-      notes.push(T.noteMemoEasy(memo));
-      return { baseId, ladderIndex: ladder, targetReps, targetSets, notes };
-    }
-    if (/ちょうど/.test(memo)) {
-      notes.push(T.noteMemoJust(memo));
-      return { baseId, ladderIndex: ladder, targetReps, targetSets, notes };
-    }
+    if (/痛|違和感/.test(memo)) return { shareScale: 0.7, repFactor: 1, cannotDo: false, notes: [T.noteMemoPain(memo)] };
+    if (/きつ|しんど|つら|限界/.test(memo)) return { shareScale: 0.85, repFactor: 1, cannotDo: false, notes: [T.noteMemoHard(memo)] };
+    if (/楽だった|楽に|余裕/.test(memo)) return { shareScale: 1.15, repFactor: 1, cannotDo: false, notes: [T.noteMemoEasy(memo)] };
+    if (/ちょうど/.test(memo)) return { shareScale: 1, repFactor: 1, cannotDo: false, notes: [T.noteMemoJust(memo)] };
   }
-
-  // 3) RPE + achievement step adjustment (at most one ladder step per session)
   const rpe = prev.rpe;
   if (rpe === null || rpe === undefined) {
-    notes.push(T.noteNoRpe);
-    return { baseId, ladderIndex: ladder, targetReps, targetSets, notes };
+    return { shareScale: 1, repFactor: 1, cannotDo: false, notes: [T.noteNoRpe] };
   }
+  const goalTotal = prev.targetReps * prev.targetSets;
+  const achievement = goalTotal > 0 ? weakTotal(prev) / goalTotal : 0;
   const achPct = Math.round(achievement * 100);
-  if (rpe <= 6.5 && achievement >= 0.8) {
-    if (achievement >= 1 && rpe <= 7 && ladder < def.ladder.length - 1) {
-      ladder += 1; targetReps = def.baseTarget;
-      notes.push(T.noteRpeLadderUp(rpe, achPct, def.ladder[ladder]));
-    } else if (def.unit === "秒") {
-      targetReps = round5(targetReps * 1.25);
-      notes.push(T.noteRpeSecondsUp(rpe, achPct));
-    } else {
-      targetReps = clamp(targetReps + 3, 1, 40);
-      notes.push(T.noteRpeRepsPlus3(rpe, achPct));
-    }
-  } else if (rpe <= 8.5) {
-    if (def.unit === "秒") { targetReps = round5(targetReps * 1.1); notes.push(T.noteRpeMidSeconds(rpe, achPct)); }
-    else { targetReps = clamp(targetReps + 1, 1, 40); notes.push(T.noteRpeMidPlus1(rpe, achPct)); }
-  } else if (rpe >= 9.5) {
-    if (achievement < 0.6 && ladder > 0) {
-      ladder -= 1; targetReps = def.baseTarget;
-      notes.push(T.noteRpeLadderDown(rpe, achPct, def.ladder[ladder]));
-    } else {
-      targetReps = def.unit === "秒" ? round5(targetReps * 0.85) : Math.max(1, targetReps - 2);
-      notes.push(T.noteRpeLoadDown(rpe, achPct));
-    }
-  } else { // rpe 9前後
-    if (achievement >= 0.8) notes.push(T.noteRpeKeep(rpe, achPct));
-    else { targetReps = Math.max(1, targetReps - 1); notes.push(T.noteRpeMinus1(rpe, achPct)); }
-  }
-  return { baseId, ladderIndex: ladder, targetReps, targetSets, notes };
-}
-
-// ---------- session generation ----------
-// Pain application sets. A joint problem reaches an exercise two ways:
-// directly (the exercise loads that joint) and through the explicit
-// JOINT_TO_MUSCLE_PARTS mapping (the exercise trains a mapped muscle part).
-interface PlanCtx {
-  excludedMuscles: Set<string>; reducedMuscles: Set<string>;
-  excludedJoints: Set<string>; reducedJoints: Set<string>;
-  overload: OverloadInfo[];
-  overloadMuscles: Set<string>; overloadJoints: Set<string>;
-  intro: boolean; lang: Lang;
-  catalog: Catalog;
-}
-function planCtx(store: Store, assessment: Assessment, intro: boolean, lang: Lang): PlanCtx {
-  const painSet = (action: "exclude" | "reduce", kind: "muscle" | "joint") =>
-    new Set(assessment.parts.filter((p) => p.action === action && p.kind === kind).map((p) => p.subject));
-  const overload = detectOverload(store, lang);
-  return {
-    catalog: catalogOf(store),
-    excludedMuscles: painSet("exclude", "muscle"), reducedMuscles: painSet("reduce", "muscle"),
-    excludedJoints: painSet("exclude", "joint"), reducedJoints: painSet("reduce", "joint"),
-    overload,
-    overloadMuscles: new Set(overload.filter((o) => o.kind === "muscle").map((o) => o.subject)),
-    overloadJoints: new Set(overload.filter((o) => o.kind === "joint").map((o) => o.subject)),
-    intro, lang,
-  };
-}
-
-type PlanResult =
-  | { kind: "exercise"; exercise: SessionExercise; notes: string[] }
-  | { kind: "excluded"; notes: string[] };
-
-/** Plan one rotation slot against the pain assessment: the decision
- *  engine (decideNext) first, then exclusion, reduction, and the
- *  24-hour rule. Shared by fresh generation and by the rebuild of a
- *  planned session's unrecorded remainder (refreshPlannedSession). */
-function planExercise(store: Store, baseId: string, ctx: PlanCtx): PlanResult {
-  const { lang } = ctx;
-  const T = SRV[lang];
+  let repFactor = 1;
+  if (achievement >= 1 && rpe <= 7) repFactor = 0.9;
+  else if (rpe <= 6.5 && achievement >= 0.8) repFactor = 0.95;
+  else if (rpe >= 9.5) repFactor = achievement < 0.6 ? 1.15 : 1.1;
+  else if (rpe > 8.5) repFactor = achievement >= 0.8 ? 1 : 1.05;
   const notes: string[] = [];
-  const def = ctx.catalog.exercises[baseId];
-  // A hand-corrupted catalog could name a rotation exercise that is not
-  // defined; skip it silently rather than breaking generation.
-  if (!def) return { kind: "excluded", notes };
-  // last completed record of this exercise (or of a substitute source)
-  const prev = [...store.sessions].reverse()
-    .flatMap((s) => s.exercises.map((e) => ({ s, e })))
-    .find(({ s, e }) => s.status === "completed" && e.baseId === baseId)?.e ?? null;
-
-  const decision = decideNext(def, prev, ctx.intro && !prev, lang, ctx.catalog);
-  const finalDef = ctx.catalog.exercises[decision.baseId] ?? def;
-  const jointDirect = (set: Set<string>) => finalDef.jointParts.filter((j) => set.has(j));
-  const viaMap = (joints: Set<string>, part: string) =>
-    [...joints].filter((j) => (ctx.catalog.jointToMuscleParts[j] ?? []).includes(part));
-  const excludeWhy: string[] = [];
-  if (ctx.excludedMuscles.has(finalDef.painPart)) excludeWhy.push(partName(finalDef.painPart, lang));
-  for (const j of jointDirect(ctx.excludedJoints)) excludeWhy.push(T.whyJoint(jointName(j, lang)));
-  for (const j of viaMap(ctx.excludedJoints, finalDef.painPart)) excludeWhy.push(T.whyJointMap(jointName(j, lang), partName(finalDef.painPart, lang)));
-  if (excludeWhy.length) {
-    notes.push(T.genExcluded(finalDef.name, [...new Set(excludeWhy)].join(" / ")));
-    return { kind: "excluded", notes };
-  }
-  let { targetReps, targetSets } = decision;
-  const reduceWhy: string[] = [];
-  if (ctx.reducedMuscles.has(finalDef.painPart)) reduceWhy.push(partName(finalDef.painPart, lang));
-  for (const j of jointDirect(ctx.reducedJoints)) reduceWhy.push(T.whyJoint(jointName(j, lang)));
-  for (const j of viaMap(ctx.reducedJoints, finalDef.painPart)) reduceWhy.push(T.whyJointMap(jointName(j, lang), partName(finalDef.painPart, lang)));
-  const reduce = (why: string) => {
-    targetReps = finalDef.unit === "秒" ? round5(targetReps * 0.8) : Math.max(1, Math.floor(targetReps * 0.8));
-    notes.push(why);
-  };
-  let reducedByPain = false;
-  if (reduceWhy.length) {
-    reduce(T.genReduced(finalDef.name, [...new Set(reduceWhy)].join(" / ")));
-    reducedByPain = true;
-  }
-  // 24-hour rule: an overloaded part is reduced and not progressed. If the
-  // pain criteria already reduced it, say so without reducing twice.
-  const overloadHit = ctx.overloadMuscles.has(finalDef.painPart)
-    ? ctx.overload.find((o) => o.kind === "muscle" && o.subject === finalDef.painPart)
-    : ctx.overload.find((o) => o.kind === "joint" && finalDef.jointParts.includes(o.subject));
-  if (overloadHit) {
-    if (reducedByPain) notes.push(T.genOverloadNote(finalDef.name, overloadHit.reason));
-    else reduce(T.genOverloadReduce(finalDef.name, overloadHit.reason));
-  }
-  notes.push(...decision.notes.map((n) => `${finalDef.name}: ${n}`));
-  return {
-    kind: "exercise",
-    notes,
-    exercise: {
-      id: store.nextExerciseId++, baseId: finalDef.baseId, name: finalDef.name,
-      muscleGroup: finalDef.muscleGroup, painPart: finalDef.painPart,
-      variation: finalDef.ladder[decision.ladderIndex], ladderIndex: decision.ladderIndex,
-      targetSets, targetReps, targetUnit: finalDef.unit, cue: finalDef.cue,
-      loggedSets: Array(targetSets).fill(0), rpe: null, completed: false, note: "",
-    },
-  };
+  if (repFactor < 1) notes.push(T.planRepEasy(rpe, achPct));
+  else if (repFactor > 1) notes.push(T.planRepHard(rpe, achPct));
+  return { shareScale: 1, repFactor, cannotDo: false, notes };
 }
 
-export function generateSession(store: Store, date: string, assessment: Assessment, lang: Lang = "ja"): Session {
+// ---------- exercise selection (no rotations) ----------
+export interface MenuCandidate {
+  def: ExerciseDef; factor: number; partDays: number; exDays: number;
+}
+const NEVER_DAYS = 100000; // days-since sentinel for "never trained"
+export const MENU_SIZE = 6;
+const MAX_PER_PART = 2;
+const PATTERN_ORDER = ["push", "pull", "legs", "core"];
+
+function recencyOf(store: Store, date: string): { partDays: (part: string) => number; exDays: (baseId: string) => number } {
+  const partLast = new Map<string, string>();
+  const exLast = new Map<string, string>();
+  for (const s of store.sessions) {
+    if (s.status !== "completed") continue;
+    for (const ex of s.exercises) {
+      if ((exLast.get(ex.baseId) ?? "") < s.date) exLast.set(ex.baseId, s.date);
+      if ((partLast.get(ex.painPart) ?? "") < s.date) partLast.set(ex.painPart, s.date);
+    }
+  }
+  const days = (m: Map<string, string>, k: string) => {
+    const d = m.get(k);
+    return d ? Math.max(0, diffDays(d, date)) : NEVER_DAYS;
+  };
+  return { partDays: (p) => days(partLast, p), exDays: (id) => days(exLast, id) };
+}
+
+/** Pick the menu's exercises: movement-pattern coverage first, then
+ *  the stalest parts and exercises, at most MAX_PER_PART exercises
+ *  per muscle part. Exercises whose pain coefficient is 0 under the
+ *  given entry are not candidates (pass entry = null to ignore pain,
+ *  e.g. for the next-menu preview). */
+export function selectExercises(
+  store: Store, catalog: Catalog, entry: PainEntry | null, date: string,
+  opts: { exclude?: Set<string>; partCounts?: Map<string, number>; count?: number } = {},
+): MenuCandidate[] {
+  const recency = recencyOf(store, date);
+  const exclude = opts.exclude ?? new Set<string>();
+  const counts = new Map<string, number>(opts.partCounts ?? []);
+  const count = opts.count ?? MENU_SIZE;
+  const cands: MenuCandidate[] = [];
+  for (const def of Object.values(catalog.exercises)) {
+    if (exclude.has(def.baseId)) continue;
+    const factor = painFactorOf(def, entry, catalog);
+    if (factor <= 0) continue;
+    cands.push({ def, factor, partDays: recency.partDays(def.painPart), exDays: recency.exDays(def.baseId) });
+  }
+  // Stable sort: full ties keep the catalog's definition order, so a
+  // fresh start prefers the exercises defined first (pushup before
+  // pike, squat before calf jump).
+  cands.sort((a, b) => b.partDays - a.partDays || b.exDays - a.exDays);
+  const picked: MenuCandidate[] = [];
+  const pickedIds = new Set<string>();
+  const tryPick = (c: MenuCandidate): boolean => {
+    if (pickedIds.has(c.def.baseId)) return false;
+    const n = counts.get(c.def.painPart) ?? 0;
+    if (n >= MAX_PER_PART) return false;
+    counts.set(c.def.painPart, n + 1);
+    picked.push(c); pickedIds.add(c.def.baseId);
+    return true;
+  };
+  const patterns = [...PATTERN_ORDER, ...cands.map((c) => patternOf(c.def))];
+  for (const p of new Set(patterns)) {
+    if (picked.length >= count) break;
+    for (const c of cands) {
+      if (patternOf(c.def) === p && tryPick(c)) break;
+    }
+  }
+  for (const c of cands) {
+    if (picked.length >= count) break;
+    tryPick(c);
+  }
+  return picked;
+}
+
+const PATTERN_LABEL: Record<string, Record<Lang, string>> = {
+  push: { ja: "押す", en: "Push" }, pull: { ja: "引く", en: "Pull" },
+  legs: { ja: "脚", en: "Legs" }, core: { ja: "体幹", en: "Core" },
+};
+/** A session title from its movement patterns, in order: the
+ *  patterns joined with " + ", or the full-body label when all four
+ *  main patterns are present. Stored titles use the Japanese form;
+ *  the preview passes the display language. */
+export function menuTitleOf(patterns: string[], lang: Lang = "ja"): string {
+  const uniq = [...new Set(patterns)];
+  if (PATTERN_ORDER.every((p) => uniq.includes(p))) return lang === "en" ? "Full body" : "全身";
+  return uniq.map((p) => PATTERN_LABEL[p]?.[lang] ?? p).join(" + ");
+}
+
+/** Title of the next menu, ignoring pain (a preview for displays
+ *  that cannot know tomorrow's pain check yet). */
+export function previewNextTitle(store: Store, date: string, lang: Lang = "ja"): string {
+  const picked = selectExercises(store, catalogOf(store), null, date, {});
+  return menuTitleOf(picked.map((c) => patternOf(c.def)), lang);
+}
+
+// ---------- planning ----------
+const REP_RANGE: Record<string, [number, number]> = { "回": [3, 40], "秒": [10, 120] };
+
+function lastCompletedOf(store: Store, baseId: string): SessionExercise | null {
+  const found = [...store.sessions].reverse()
+    .flatMap((s) => s.exercises.map((e) => ({ s, e })))
+    .find(({ s, e }) => s.status === "completed" && e.baseId === baseId);
+  return found?.e ?? null;
+}
+
+interface PlanResult { exercises: SessionExercise[]; notes: string[]; title: string; alt: boolean }
+
+/** Plan the unrecorded part of a menu. `fixed` exercises (already
+ *  recorded in a session being rebuilt) stay out of the selection,
+ *  count toward the per-part cap, and consume their planned load
+ *  from the budget. */
+function planMenu(store: Store, date: string, entry: PainEntry | null, lang: Lang, opts: { intro: boolean; fixed?: SessionExercise[] }): PlanResult {
   const T = SRV[lang];
+  const catalog = catalogOf(store);
+  const fixed = opts.fixed ?? [];
+  const fixedIds = new Set(fixed.map((e) => e.baseId));
+  const fixedParts = new Map<string, number>();
+  for (const e of fixed) fixedParts.set(e.painPart, (fixedParts.get(e.painPart) ?? 0) + 1);
+  const fixedLoad = fixed.reduce((a, e) => a + targetLoadOf(e, catalog), 0);
+  const slotsLeft = Math.max(0, MENU_SIZE - fixed.length);
+
+  const picked = selectExercises(store, catalog, entry, date, { exclude: fixedIds, partCounts: fixedParts, count: slotsLeft });
+  const noPain = selectExercises(store, catalog, null, date, { exclude: fixedIds, partCounts: fixedParts, count: slotsLeft });
+  const pickedIds = new Set(picked.map((c) => c.def.baseId));
+  const dropped = noPain.filter((c) => !pickedIds.has(c.def.baseId));
+
+  interface Slot {
+    cand: MenuCandidate; def: ExerciseDef; adj: PersonalAdj;
+    step: number; sets: number; weight: number; notes: string[];
+  }
+  const slots: Slot[] = [];
+  for (const cand of picked) {
+    let def = cand.def;
+    const prev = lastCompletedOf(store, def.baseId);
+    const adj = personalAdjustment(def, prev, opts.intro && !prev, lang);
+    const notes = [...adj.notes];
+    let step = prev ? prev.ladderIndex : (opts.intro ? Math.max(0, def.defaultLadder - 1) : def.defaultLadder);
+    let sets = prev ? prev.targetSets : (opts.intro ? Math.max(1, def.baseSets - 1) : def.baseSets);
+    let baseReps = prev ? prev.targetReps : def.baseTarget;
+    if (adj.cannotDo) {
+      const memo = (prev?.note ?? "").trim();
+      const subId = catalog.substitutes[def.baseId];
+      if (step > 0) {
+        step -= 1; baseReps = def.baseTarget;
+        notes.push(T.noteCannotLadder(def.ladder[step], memo || T.noteCannotNoReps));
+      } else if (subId && catalog.exercises[subId] && !fixedIds.has(subId)
+        && !picked.some((c) => c.def.baseId === subId)) {
+        def = catalog.exercises[subId];
+        step = 0; sets = opts.intro ? Math.max(1, def.baseSets - 1) : def.baseSets; baseReps = def.baseTarget;
+        notes.push(T.noteCannotSubstitute(def.name, def.ladder[0]));
+      } else {
+        adj.shareScale *= 0.5;
+        notes.push(T.noteCannotHalve);
+      }
+    }
+    const weight = loadOf(def, step) * baseReps * sets * adj.shareScale;
+    slots.push({ cand, def, adj, step, sets, weight, notes });
+  }
+
+  const sumW = slots.reduce((a, s) => a + s.weight, 0);
+  const completed = store.sessions.filter((s) => s.status === "completed")
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const recent = completed.slice(-3);
+  let budget: number;
+  const notes: string[] = [];
+  if (recent.length) {
+    const ref = recent.reduce((a, s) => a + achievedLoad(s, catalog), 0) / recent.length;
+    budget = ref * 1.02;
+    notes.push(T.planBudget(Math.round(budget)));
+  } else {
+    budget = sumW + fixedLoad;
+    notes.push(T.planBudgetFirst);
+  }
+  const remaining = Math.max(0, budget - fixedLoad);
+  for (const d of dropped) notes.push(T.planDropped(d.def.name));
+
+  interface Solved { slot: Slot; step: number; reps: number; load: number }
+  const solved: Solved[] = [];
+  for (const slot of slots) {
+    const share = sumW > 0 ? remaining * (slot.weight / sumW) : 0;
+    const target = share * slot.cand.factor;
+    const [min, max] = REP_RANGE[slot.def.unit];
+    let step = slot.step;
+    let reps = min;
+    for (let i = 0; i < 10; i++) {
+      const d = loadOf(slot.def, step) * slot.adj.repFactor;
+      const raw = target / (d * slot.sets);
+      if (raw > max && step < slot.def.ladder.length - 1) { step++; continue; }
+      if (raw < min && step > 0) { step--; continue; }
+      reps = slot.def.unit === "秒" ? round5(clamp(raw, min, max)) : clamp(Math.round(raw), min, max);
+      break;
+    }
+    if (step !== slot.step) slot.notes.push(T.planStepChange(slot.def.ladder[step]));
+    if (slot.cand.factor < 0.999) slot.notes.push(T.planPainFactor(Math.round(slot.cand.factor * 100)));
+    solved.push({ slot, step, reps, load: loadOf(slot.def, step) * reps * slot.sets });
+  }
+  solved.sort((a, b) => b.load - a.load);
+  const exercises: SessionExercise[] = [];
+  for (const { slot, step, reps } of solved) {
+    notes.push(...slot.notes.map((n) => `${slot.def.name}: ${n}`));
+    exercises.push({
+      id: store.nextExerciseId++, baseId: slot.def.baseId, name: slot.def.name,
+      muscleGroup: slot.def.muscleGroup, painPart: slot.def.painPart,
+      variation: slot.def.ladder[step], ladderIndex: step,
+      targetSets: slot.sets, targetReps: reps, targetUnit: slot.def.unit, cue: slot.def.cue,
+      loggedSets: Array(slot.sets).fill(0), rpe: null, completed: false, note: "",
+    });
+  }
+  const titlePatterns = [...fixed, ...exercises].map((e) => {
+    const def = catalog.exercises[e.baseId];
+    return def ? patternOf(def) : "";
+  }).filter((p) => p !== "");
+  return { exercises, notes, title: menuTitleOf(titlePatterns, "ja"), alt: dropped.length > 0 };
+}
+
+export function generateSession(store: Store, date: string, entry: PainEntry | null, lang: Lang = "ja"): Session {
   const completedCount = store.sessions.filter((s) => s.status === "completed").length;
   const intro = completedCount < INTRO_SESSIONS;
-  const rotations = catalogOf(store).rotations;
-  const rotation = rotations[store.sessions.length % rotations.length];
-  const ctx = planCtx(store, assessment, intro, lang);
-  const notes: string[] = [];
-  const exercises: SessionExercise[] = [];
-  let excludedFlag = false;
-  for (const baseId of rotation.exerciseIds) {
-    const r = planExercise(store, baseId, ctx);
-    notes.push(...r.notes);
-    if (r.kind === "excluded") { excludedFlag = true; continue; }
-    exercises.push(r.exercise);
-  }
+  const plan = planMenu(store, date, entry, lang, { intro });
   return {
-    id: store.nextSessionId++, date, rotation: rotation.id,
-    title: rotation.title + (excludedFlag ? T.titleAltSuffix : ""),
+    id: store.nextSessionId++, date, rotation: "",
+    title: plan.title + (plan.alt ? SRV[lang].titleAltSuffix : ""),
     status: "planned", intro,
-    // focusNote stays a data field for compatibility, but no text is
-    // generated for it anymore (the alternative-workout note was
-    // removed); the title's （代替）suffix still marks such sessions.
+    // focusNote stays a data field for compatibility; no text is
+    // generated for it (the title's （代替）suffix marks menus that
+    // pain changed, as before).
     focusNote: "",
-    progressionNotes: notes, exercises, totalVolume: 0,
+    progressionNotes: plan.notes, exercises: plan.exercises, totalVolume: 0,
   };
 }
 
@@ -510,18 +571,20 @@ export function generateSession(store: Store, date: string, assessment: Assessme
 // - recorded exercises (isRecordedExercise) are fixed as they are —
 //   exercise, target, and log all stay, and no remaining slot may
 //   duplicate one of them;
-// - every remaining slot is re-planned from the rotation with the
-//   normal generation pipeline, treating the recorded exercises as
-//   the slots they already fill, and the newest assessment (exclude /
-//   reduce) applies to all of them — so an exercise excluded now drops
-//   out, and one that was excluded before comes back when it clears;
+// - every remaining slot is re-planned by the load planner, treating
+//   the recorded exercises as the slots they already fill (they count
+//   toward the per-part cap and consume their planned load from the
+//   budget), and the newest pain entry applies to all of them — so an
+//   exercise whose pain coefficient is now 0 drops out, and one that
+//   was dropped before comes back when it clears;
 // - if the new assessment is a warning-sign (care) or full-rest day,
 //   every unrecorded exercise is removed and only the recorded part
 //   stays, with the blocking reason left in the progression notes.
-// The session's id, date, rotation, and intro flag never change.
-export function refreshPlannedSession(store: Store, session: Session, assessment: Assessment, lang: Lang = "ja"): Session {
+// The session's id, date, and intro flag never change.
+export function refreshPlannedSession(store: Store, session: Session, entry: PainEntry | null, lang: Lang = "ja"): Session {
   if (session.status !== "planned") return session;
   const T = SRV[lang];
+  const assessment = assessPain(entry, lang);
   const recorded = session.exercises.filter(isRecordedExercise);
   if (assessment.care || assessment.rest) {
     const kept: Session = { ...session, exercises: recorded };
@@ -531,39 +594,17 @@ export function refreshPlannedSession(store: Store, session: Session, assessment
       totalVolume: sessionTotal(kept),
     };
   }
-  const rotations = catalogOf(store).rotations;
-  const rotation = rotations.find((r) => r.id === session.rotation) ?? rotations[0];
-  const ctx = planCtx(store, assessment, session.intro, lang);
-  const recordedBaseIds = new Set(recorded.map((e) => e.baseId));
-  const recordedByBase = new Map(recorded.map((e) => [e.baseId, e]));
-  const placed = new Map<string, SessionExercise>();
-  const notes: string[] = [];
-  let excludedFlag = false;
-  for (const baseId of rotation.exerciseIds) {
-    const rec = recordedByBase.get(baseId);
-    if (rec) { placed.set(baseId, rec); continue; }
-    const r = planExercise(store, baseId, ctx);
-    notes.push(...r.notes);
-    if (r.kind === "excluded") { excludedFlag = true; continue; }
-    // Never duplicate a recorded exercise (a substitute may land on
-    // one), and never place the same exercise twice.
-    if (recordedBaseIds.has(r.exercise.baseId) || placed.has(r.exercise.baseId)) continue;
-    placed.set(r.exercise.baseId, r.exercise);
-  }
-  const exercises = [...placed.values()];
-  const placedIds = new Set(exercises.map((e) => e.id));
-  // Recorded exercises that are not rotation members (substitutes)
-  // stay as well, in their original relative order.
-  for (const e of recorded) if (!placedIds.has(e.id)) exercises.push(e);
+  const plan = planMenu(store, session.date, entry, lang, { intro: session.intro, fixed: recorded });
   const rebuilt: Session = {
     ...session,
-    title: rotation.title + (excludedFlag ? T.titleAltSuffix : ""),
+    title: plan.title + (plan.alt ? T.titleAltSuffix : ""),
     focusNote: "",
-    progressionNotes: notes, exercises, totalVolume: 0,
+    progressionNotes: plan.notes, exercises: [...recorded, ...plan.exercises], totalVolume: 0,
   };
   rebuilt.totalVolume = sessionTotal(rebuilt);
   return rebuilt;
 }
+
 
 export function sessionTotal(s: Session): number {
   return s.exercises.reduce((sum: number, e) => sum + e.loggedSets.reduce((a: number, v) => a + setSum(v), 0), 0);

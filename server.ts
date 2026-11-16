@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
-import { assessPain, catalogOf, detectOverload, diffProfile, generateSession, painDurationGuidance, refreshPlannedSession, sessionTotal, setSum, type PainEntry, type SessionExercise, type SetLog, type Store } from "./src/logic";
-import { RED_FLAGS, EXERCISES } from "./src/exercises";
+import { assessPain, catalogOf, diffProfile, generateSession, painDurationGuidance, previewNextTitle, refreshPlannedSession, sessionTotal, setSum, type PainEntry, type SessionExercise, type SetLog, type Store } from "./src/logic";
+import { RED_FLAGS, EXERCISES, ROTATIONS } from "./src/exercises";
 import { loadStore, saveStore, resetStore } from "./src/store";
 import { InvalidInput, parseCatalogImport, parseProfile, parseStoreImport, validNote, validPainLevel, validRpe, validSetLog } from "./src/validate";
 import { SRV, VMSG, isLang, isTheme, langOf, redFlagLabel, rotationTitle, themeOf, type Lang } from "./src/i18n";
@@ -159,10 +159,14 @@ function publicState() {
   return {
     today: date, profile: store.profile, pain, lang, theme: themeOf(store),
     assessment: pain ? assessPain(pain, lang) : null,
-    // Additive, backward-compatible state: duration guidance (caution only)
-    // and the auto-judged 24-hour-rule overload flags for the next session.
+    // Additive, backward-compatible state: duration guidance
+    // (caution only). The 24-hour rule is no longer a separate
+    // adjustment: the next day's pain entry feeds the load planner's
+    // pain coefficients directly.
     guidance: painDurationGuidance(store, lang),
-    overload: detectOverload(store, lang),
+    // Preview of the next menu's title (selection ignoring pain),
+    // for displays like the home-screen widget.
+    nextPreview: { title: previewNextTitle(store, date, lang) },
     todaySession,
     activeSession,
     profileHistory: [...store.profileHistory].reverse(),
@@ -178,7 +182,10 @@ function publicState() {
     catalog: {
       muscleParts: cat.muscleParts, joints: cat.joints,
       redFlags: RED_FLAGS.map((f) => ({ id: f.id, label: redFlagLabel(f.id, lang) })),
-      rotations: cat.rotations.map((r) => ({ id: r.id, title: rotationTitle(r.id, r.title, lang) })),
+      // Legacy rotation titles, from the built-in definitions (not
+      // the user's catalog): sessions recorded under the rotation
+      // system still resolve their titles from these.
+      rotations: ROTATIONS.map((r) => ({ id: r.id, title: rotationTitle(r.id, r.title, lang) })),
       // Exercise ids recorded per side (left/right inputs); ids and
       // names are language-neutral, only the UI labels translate.
       unilateral: Object.values(cat.exercises).filter((e) => e.unilateral).map((e) => e.baseId),
@@ -299,7 +306,7 @@ const server = Bun.serve({
           ?? [...store.sessions].reverse().find((s) => s.status === "planned");
         if (target) {
           const idx = store.sessions.indexOf(target);
-          store.sessions[idx] = refreshPlannedSession(store, target, assessPain(entry, lang), lang);
+          store.sessions[idx] = refreshPlannedSession(store, target, entry, lang);
         }
         saveStore(store); return json(publicState());
       }
@@ -314,7 +321,7 @@ const server = Bun.serve({
         const assessment = assessPain(pain, lang);
         if (assessment.care) { logEvent("api", `403 POST ${path} (red flag)`); return json({ error: T.errBlockedRedFlag, assessment }, 403); }
         if (assessment.rest) { logEvent("api", `403 POST ${path} (rest day)`); return json({ error: T.errRestDay, assessment }, 403); }
-        const session = generateSession(store, date, assessment, lang);
+        const session = generateSession(store, date, pain, lang);
         if (session.exercises.length === 0) { logEvent("api", `403 POST ${path} (all excluded)`); return json({ error: T.errAllExcluded, assessment }, 403); }
         store.sessions.push(session); saveStore(store); return json(publicState());
       }

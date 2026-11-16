@@ -1,10 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { defaultCatalog, type Catalog } from "../src/exercises";
-import { assessPain, catalogOf, emptyStore, generateSession, type Store } from "../src/logic";
+import { catalogOf, emptyStore, generateSession, type Store } from "../src/logic";
 import { InvalidInput, parseCatalogImport, parseStoreImport } from "../src/validate";
 
 const clone = (c: Catalog): Catalog => JSON.parse(JSON.stringify(c)) as Catalog;
-const noPain = assessPain(null);
 
 describe("parseCatalogImport", () => {
   test("the built-in catalog round-trips", () => {
@@ -50,16 +49,12 @@ describe("parseCatalogImport", () => {
     expect(() => parseCatalogImport(raw)).toThrow(InvalidInput);
   });
 
-  test("rejects a rotation naming an unknown exercise", () => {
-    const raw = clone(defaultCatalog());
-    raw.rotations[0].exerciseIds = ["pushup", "nope"];
-    expect(() => parseCatalogImport(raw)).toThrow(InvalidInput);
-  });
-
-  test("rejects rotations that are not A, B, C exactly once", () => {
-    const raw = clone(defaultCatalog());
-    raw.rotations = raw.rotations.slice(0, 2);
-    expect(() => parseCatalogImport(raw)).toThrow(InvalidInput);
+  test("a legacy catalog carrying rotations still parses, and drops them", () => {
+    const raw = clone(defaultCatalog()) as unknown as Record<string, unknown>;
+    raw.rotations = [{ id: "A", title: "A", exerciseIds: ["pushup", "nope"] }];
+    const c = parseCatalogImport(raw);
+    expect("rotations" in c).toBe(false);
+    expect(Object.keys(c.exercises).length).toBe(13);
   });
 
   test("rejects an empty ladder and an out-of-range defaultLadder", () => {
@@ -103,24 +98,24 @@ describe("custom catalog in the store", () => {
     expect(catalogOf(broken).exercises.pushup.name).toBe("プッシュアップ");
   });
 
-  test("generation follows the store's catalog: renamed exercise and edited rotation", () => {
+  test("generation follows the store's catalog: a renamed exercise is used", () => {
     const cat = clone(defaultCatalog());
     cat.exercises.pushup.name = "腕立て伏せ";
-    cat.rotations[0].exerciseIds = ["pushup", "squat"];
     const store: Store = { ...emptyStore(), catalog: cat };
-    const s = generateSession(store, "2026-01-05", noPain);
-    expect(s.exercises.map((e) => e.baseId)).toEqual(["pushup", "squat"]);
-    expect(s.exercises[0].name).toBe("腕立て伏せ");
+    const s = generateSession(store, "2026-01-05", null);
+    const pushup = s.exercises.find((e) => e.baseId === "pushup")!;
+    expect(pushup).toBeDefined();
+    expect(pushup.name).toBe("腕立て伏せ");
   });
 
   test("a custom joint mapping drives exclusion through the map", () => {
     const cat = clone(defaultCatalog());
-    // Map 肩 to 胸 as well: shoulder joint pain at level 3 then excludes
-    // the chest exercise (pushup) through the mapping.
+    // Map 肩 to 胸 as well: shoulder joint pain at level 5 then makes
+    // the chest exercise's (pushup) pain coefficient 0 through the
+    // mapping, so it cannot be selected.
     cat.jointToMuscleParts["肩"] = ["肩", "胸"];
     const store: Store = { ...emptyStore(), catalog: cat };
-    const a = assessPain({ date: "2026-01-05", soreness: {}, jointPain: { "肩": 3 }, redFlags: [] });
-    const s = generateSession(store, "2026-01-05", a);
+    const s = generateSession(store, "2026-01-05", { date: "2026-01-05", soreness: {}, jointPain: { "肩": 5 }, redFlags: [] });
     expect(s.exercises.map((e) => e.baseId)).not.toContain("pushup");
   });
 

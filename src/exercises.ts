@@ -247,6 +247,10 @@ export const SUBSTITUTES: Record<string, string> = {
 };
 
 export interface RotationDef { id: string; title: string; exerciseIds: string[] }
+/** Legacy rotation definitions. Menus are no longer built from
+ *  rotations (the load planner selects exercises directly); these
+ *  remain only so sessions recorded under the rotation system keep
+ *  resolving their titles. */
 export const ROTATIONS: RotationDef[] = [
   { id: "A", title: "押す + 脚", exerciseIds: ["pushup", "squat", "pike", "calfJump", "plank"] },
   { id: "B", title: "背中 + 脚裏 + 体幹", exerciseIds: ["proneW", "gluteBridge", "rdl", "legRaise", "sidePlank"] },
@@ -266,7 +270,6 @@ export const INTRO_SESSIONS = 6;
 // criteria, not menu contents.
 export interface Catalog {
   exercises: Record<string, ExerciseDef>;
-  rotations: RotationDef[];
   substitutes: Record<string, string>;
   jointToMuscleParts: Record<string, string[]>;
   muscleParts: string[];
@@ -276,7 +279,6 @@ export interface Catalog {
 export function defaultCatalog(): Catalog {
   return {
     exercises: EXERCISES,
-    rotations: ROTATIONS,
     substitutes: SUBSTITUTES,
     jointToMuscleParts: JOINT_TO_MUSCLE_PARTS,
     muscleParts: [...MUSCLE_PARTS],

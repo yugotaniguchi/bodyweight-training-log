@@ -215,6 +215,13 @@ export interface ServerTexts {
   noteMemoEasy: (memo: string) => string;
   noteMemoJust: (memo: string) => string;
   noteNoRpe: string;
+  planBudget: (total: number) => string;
+  planBudgetFirst: string;
+  planPainFactor: (pct: number) => string;
+  planDropped: (name: string) => string;
+  planRepEasy: (rpe: number, pct: number) => string;
+  planRepHard: (rpe: number, pct: number) => string;
+  planStepChange: (variation: string) => string;
   noteRpeLadderUp: (rpe: number, pct: number, variation: string) => string;
   noteRpeSecondsUp: (rpe: number, pct: number) => string;
   noteRpeRepsPlus3: (rpe: number, pct: number) => string;
@@ -267,6 +274,13 @@ export const SRV: Record<Lang, ServerTexts> = {
     noteMemoEasy: (memo) => `種目メモの反映: 「${memo}」→ 多めに増加`,
     noteMemoJust: (memo) => `種目メモの反映: 「${memo}」→ 維持`,
     noteNoRpe: "RPE未記録のため前回と同じ負荷",
+    planBudget: (total) => `セッション負荷の予算: 約${total}（直近の実績負荷から算出）`,
+    planBudgetFirst: "セッション負荷の予算: 初回のため各種目の標準負荷から算出",
+    planPainFactor: (pct) => `痛み係数により負荷を${pct}%に調整`,
+    planDropped: (name) => `痛み係数0のため除外: ${name}`,
+    planRepEasy: (rpe, pct) => `RPE ${rpe}・達成率 ${pct}%: 余裕があったため1回あたりの負荷を低く見積もり、回数を多めに設定`,
+    planRepHard: (rpe, pct) => `RPE ${rpe}・達成率 ${pct}%: きつかったため1回あたりの負荷を高く見積もり、回数を少なめに設定`,
+    planStepChange: (variation) => `負荷の範囲に合わせ、バリエーションを「${variation}」に変更`,
     noteRpeLadderUp: (rpe, pct, variation) => `RPE ${rpe}・達成率 ${pct}%: 難易度を1段階上げて「${variation}」へ`,
     noteRpeSecondsUp: (rpe, pct) => `RPE ${rpe}・達成率 ${pct}%: 秒数を+25%`,
     noteRpeRepsPlus3: (rpe, pct) => `RPE ${rpe}・達成率 ${pct}%: 回数を+3`,
@@ -317,6 +331,13 @@ export const SRV: Record<Lang, ServerTexts> = {
     noteMemoEasy: (memo) => `From the exercise note: "${memo}" → increased by more`,
     noteMemoJust: (memo) => `From the exercise note: "${memo}" → kept the same`,
     noteNoRpe: "No RPE recorded, so the same load as last time",
+    planBudget: (total) => `Session load budget: about ${total} (from recent achieved load)`,
+    planBudgetFirst: "Session load budget: based on each exercise's standard load (first session)",
+    planPainFactor: (pct) => `Load scaled to ${pct}% by the pain coefficient`,
+    planDropped: (name) => `Excluded (pain coefficient 0): ${name}`,
+    planRepEasy: (rpe, pct) => `RPE ${rpe}, completion ${pct}%: room to spare, so each rep is estimated cheaper and reps are set higher`,
+    planRepHard: (rpe, pct) => `RPE ${rpe}, completion ${pct}%: tough last time, so each rep is estimated costlier and reps are set lower`,
+    planStepChange: (variation) => `Variation changed to "${variation}" to fit the load range`,
     noteRpeLadderUp: (rpe, pct, variation) => `RPE ${rpe}, completion ${pct}%: difficulty up one step, to "${variation}"`,
     noteRpeSecondsUp: (rpe, pct) => `RPE ${rpe}, completion ${pct}%: seconds +25%`,
     noteRpeRepsPlus3: (rpe, pct) => `RPE ${rpe}, completion ${pct}%: reps +3`,

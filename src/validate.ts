@@ -4,7 +4,7 @@
 // A rejected write answers HTTP 400 with the reason and stores nothing.
 // Reason texts come from the i18n tables (src/i18n.ts) in the store's
 // language; every function takes an optional language, default Japanese.
-import { RED_FLAGS, type Catalog, type ExerciseDef, type RotationDef } from "./exercises";
+import { RED_FLAGS, type Catalog, type ExerciseDef } from "./exercises";
 import { CMSG, isLang, isTheme, VMSG, type Lang, type Theme } from "./i18n";
 import { sessionTotal, type PainEntry, type Profile, type ProfileHistoryEntry, type Session, type SessionExercise, type SetLog, type Store } from "./logic";
 
@@ -242,7 +242,9 @@ export function parseCatalogImport(v: unknown, lang: Lang = "ja"): Catalog {
   const M = CMSG[lang];
   const bad = (msg: string): never => { throw new InvalidInput(msg); };
   if (!isObj(v)) bad(M.notObject);
-  for (const k of ["exercises", "rotations", "substitutes", "jointToMuscleParts", "muscleParts", "joints"]) {
+  // "rotations" is deliberately not required (and ignored when a
+  // legacy catalog still carries it): menus are planned by load now.
+  for (const k of ["exercises", "substitutes", "jointToMuscleParts", "muscleParts", "joints"]) {
     if (!(k in v)) bad(M.missingKey(k));
   }
   const strList = (x: unknown, key: string): string[] => {
@@ -304,26 +306,6 @@ export function parseCatalogImport(v: unknown, lang: Lang = "ja"): Catalog {
     };
   }
 
-  if (!Array.isArray(v.rotations)) bad(M.rotationsInvalid);
-  const rotations: RotationDef[] = [];
-  const seenRot = new Set<string>();
-  for (const r of v.rotations as unknown[]) {
-    if (!isObj(r) || typeof r.id !== "string" || typeof r.title !== "string" || r.title === ""
-      || !Array.isArray(r.exerciseIds)) bad(M.rotationsInvalid);
-    if (seenRot.has(r.id)) bad(M.rotationIdDup(r.id));
-    seenRot.add(r.id);
-    const ids = r.exerciseIds as unknown[];
-    const seenEx = new Set<string>();
-    for (const ex of ids) {
-      if (typeof ex !== "string" || !(ex in exercises)) bad(M.rotationExerciseUnknown(r.id, String(ex)));
-      if (seenEx.has(ex)) bad(M.rotationExerciseDup(r.id, ex));
-      seenEx.add(ex);
-    }
-    if (ids.length === 0) bad(M.rotationsInvalid);
-    rotations.push({ id: r.id, title: r.title, exerciseIds: ids as string[] });
-  }
-  if (rotations.length !== 3 || !["A", "B", "C"].every((id) => seenRot.has(id))) bad(M.rotationsInvalid);
-
   if (!isObj(v.substitutes)) bad(M.exerciseField("substitutes", "substitutes"));
   const substitutes: Record<string, string> = {};
   for (const [from, to] of Object.entries(v.substitutes)) {
@@ -341,7 +323,7 @@ export function parseCatalogImport(v: unknown, lang: Lang = "ja"): Catalog {
     jointToMuscleParts[joint] = [...(parts as string[])];
   }
 
-  return { exercises, rotations, substitutes, jointToMuscleParts, muscleParts, joints };
+  return { exercises, substitutes, jointToMuscleParts, muscleParts, joints };
 }
 
 export function parseStoreImport(v: unknown, lang: Lang = "ja"): Store {

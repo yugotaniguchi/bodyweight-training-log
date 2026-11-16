@@ -67,10 +67,12 @@ describe("main flow scenario", () => {
     // 3. Condition (pain) save.
     expect((await post("/api/pain", { soreness: { "胸": 1 }, jointPain: {}, redFlags: [] })).status).toBe(200);
 
-    // 4. Session generation: rotation A, planned, and it is the active session.
+    // 4. Session generation: a load-planned menu (no rotation),
+    // planned, and it is the active session.
     expect((await post("/api/session/generate", {})).status).toBe(200);
     st = await getState();
-    expect(st.todaySession.rotation).toBe("A");
+    expect(st.todaySession.rotation).toBe("");
+    expect(st.todaySession.exercises).toHaveLength(6);
     expect(st.todaySession.status).toBe("planned");
     expect(st.activeSession.id).toBe(st.todaySession.id);
 

@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { assessPain, decideNext, painDurationGuidance, emptyStore, type PainEntry } from "../src/logic";
+import { assessPain, personalAdjustment, painDurationGuidance, emptyStore, type PainEntry } from "../src/logic";
 import { EXERCISES } from "../src/exercises";
 import { validNote, validReps } from "../src/validate";
 
@@ -91,8 +91,8 @@ describe("server text tables (unit)", () => {
     expect(gEn[0].message).toContain("Soreness in the Chest has lasted 5 days");
     const gJa = painDurationGuidance(store);
     expect(gJa[0].message).toContain("筋肉痛（胸）が5日続いています");
-    expect(decideNext(EXERCISES.pushup, null, true, "en").notes[0]).toContain("First time");
-    expect(decideNext(EXERCISES.pushup, null, true).notes[0]).toContain("初回");
+    expect(personalAdjustment(EXERCISES.pushup, null, true, "en").notes[0]).toContain("First time");
+    expect(personalAdjustment(EXERCISES.pushup, null, true).notes[0]).toContain("初回");
   });
 });
 
@@ -132,7 +132,7 @@ describe("language setting (real server)", () => {
     expect(gen.status).toBe(200);
     const notes = (gen.data.todaySession.progressionNotes as string[]).join("\n");
     expect(notes).toContain("First time");
-    expect(notes).toContain("Reduced by the pain rules");
+    expect(notes).toContain("pain coefficient");
     const again = await post("/api/session/generate", {});
     expect(again.status).toBe(409);
     expect(String(again.data.error)).toContain("already been created");
