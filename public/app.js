@@ -41,7 +41,6 @@ const STR = {
     badgeRest: "4以上 ×2部位 休養", badgeSign: "サインあり 受診目安",
     ctaResults: "今日の結果を見る", ctaSaveStart: "保存してワークアウトを開始",
     carePrefix: "受診目安：", restPrefix: "完全休養日：", okPrefix: "開始できます。",
-    overloadH: "24時間ルールの自動判定（次回に反映）",
     gaugeSub: "／ {total} 種目完了",
     metricExercises: "種目", metricSets: "セット", metricSessions: "累計回",
     setLabel: "{n}セット目",
@@ -95,7 +94,7 @@ const STR = {
     dataFormats: "エクスポート：JSON（全データ、復元用）／ CSV（セッション記録の一覧、閲覧用）。インポート：JSONのみ（CSVは取り込めません）。",
     exportJsonBtn: "エクスポート（JSON）", exportCsvBtn: "エクスポート（CSV）", importBtn: "インポート",
     menuDefH: "メニュー定義",
-    menuDefNote: "ワークアウトのメニュー（種目・ローテーション・代替・痛みの対象部位）をJSONで編集できます。変更は次に生成されるセッションから反映され、記録済みのセッションは変わりません。",
+    menuDefNote: "ワークアウトのメニュー（種目・代替・痛みの対象部位）をJSONで編集できます。変更は次に生成されるセッションから反映され、記録済みのセッションは変わりません。",
     menuDefSaveBtn: "保存", menuDefExportBtn: "エクスポート", menuDefImportBtn: "インポート", menuDefResetBtn: "初期値に戻す",
     menuDefResetArmBtn: "本当に初期値に戻す", menuDefSaved: "保存しました",
     menuDefBtn: "メニュー編集",
@@ -121,7 +120,7 @@ const STR = {
     noteP1c: "完全休養はレベル4以上の筋肉痛が2部位以上の日だけです。",
     noteH2: "24時間ルール",
     noteP2a: "24時間ルール：運動中・運動後の痛みが翌朝までに元の水準へ戻らなければ、前回の負荷が高すぎたサインです。",
-    noteP2b: "痛みの記録から自動で判定し、過負荷の部位は次回軽減して進行しません（Silbernagelらの痛みモニタリングモデル）。",
+    noteP2b: "痛みの記録は次回のメニュー生成で痛み係数として反映され、痛い部位の負荷だけが下がります。他の部位には振り替えません（Silbernagelらの痛みモニタリングモデル）。",
     noteH3: "継続日数と関節痛",
     noteP3a: "継続日数チェック：同じ部位の筋肉痛が5日以上、関節痛が2週間改善しない場合は受診目安として注意表示します（関節痛は7日でも注意表示）。",
     noteP3b: "開始を止めるのは警告サインだけです。",
@@ -152,7 +151,6 @@ const STR = {
     badgeRest: "4+ in 2+ parts: rest", badgeSign: "Sign present: see a doctor",
     ctaResults: "See today's results", ctaSaveStart: "Save and start workout",
     carePrefix: "See a doctor: ", restPrefix: "Full rest day: ", okPrefix: "You can start. ",
-    overloadH: "24-hour rule (auto-judged, applies next time)",
     gaugeSub: "/ {total} exercises done",
     metricExercises: "Exercises", metricSets: "Sets", metricSessions: "Sessions",
     setLabel: "Set {n}",
@@ -206,7 +204,7 @@ const STR = {
     dataFormats: "Export: JSON (all data, for restoring) / CSV (session records as a table, for viewing). Import: JSON only (CSV cannot be imported).",
     exportJsonBtn: "Export (JSON)", exportCsvBtn: "Export (CSV)", importBtn: "Import",
     menuDefH: "Menu definition",
-    menuDefNote: "Edit the workout menu (exercises, rotations, substitutes, pain targets) as JSON. Changes apply to sessions generated afterwards; recorded sessions keep the names and targets they were created with.",
+    menuDefNote: "Edit the workout menu (exercises, substitutes, pain targets) as JSON. Changes apply to sessions generated afterwards; recorded sessions keep the names and targets they were created with.",
     menuDefSaveBtn: "Save", menuDefExportBtn: "Export", menuDefImportBtn: "Import", menuDefResetBtn: "Reset to defaults",
     menuDefResetArmBtn: "Tap again to reset", menuDefSaved: "Saved",
     menuDefBtn: "Edit menu",
@@ -232,7 +230,7 @@ const STR = {
     noteP1c: "A full rest day happens only when soreness at level 4 or higher is present in 2 or more parts.",
     noteH2: "24-hour rule",
     noteP2a: "24-hour rule: if pain during or after exercise has not returned to its baseline by the next morning, the previous load was probably too high.",
-    noteP2b: "This is judged automatically from your pain records, and an overloaded part is reduced next time and not progressed (the pain-monitoring model of Silbernagel et al.).",
+    noteP2b: "Your pain records feed the next menu as pain coefficients, lowering only the painful parts' load; the freed load is not moved to other parts (the pain-monitoring model of Silbernagel et al.).",
     noteH3: "Duration and joint pain",
     noteP3a: "Duration check: soreness in the same part lasting 5 or more days, or joint pain that does not improve within 2 weeks, is shown as see-a-doctor guidance (joint pain is already flagged at 7 days).",
     noteP3b: "Only warning signs stop a start.",
@@ -282,13 +280,17 @@ const FIELD_LABELS = {
   en: { age: "Age", sex: "Sex", heightCm: "Height", weightKg: "Weight", note: "Notes", bodyFatNote: "Body fat and other notes", habitNote: "Exercise habit notes" },
 };
 const fieldLabel = (c) => FIELD_LABELS[lang]?.[c.field] ?? c.label;
-// Session title: the rotation title comes from the catalog (already in
-// the UI language); the stored title only decides the "(alternative)"
-// suffix. In Japanese this reproduces the stored title exactly. The
-// rotation letter (A / B / C) is internal data and is NOT shown.
+// Session title: sessions recorded under the rotation system resolve
+// their base title from the catalog's legacy rotation titles; newer
+// sessions store a title composed from movement patterns, translated
+// token by token for English. In both cases the stored title only
+// decides the "(alternative)" suffix. The rotation letter (A / B / C)
+// is internal data and is NOT shown.
+const PATTERN_TOKENS = { "押す": "Push", "引く": "Pull", "脚": "Legs", "体幹": "Core", "全身": "Full body" };
 function sessionTitle(s) {
   const rot = state?.catalog?.rotations?.find((r) => r.id === s.rotation);
-  const base = rot ? rot.title : s.title;
+  let base = rot ? rot.title : s.title.replace(/（代替）$/, "").replace(/\(alternative\)$/, "");
+  if (!rot && lang === "en") base = base.split(" + ").map((tok) => PATTERN_TOKENS[tok] ?? tok).join(" + ");
   const alt = s.title.endsWith("（代替）") || s.title.endsWith("(alternative)");
   return `${base}${alt ? t("titleAltSuffix") : ""}`;
 }
@@ -790,7 +792,7 @@ function renderPain() {
       : a.rest ? `<div class="warn">${esc(t("restPrefix"))}${esc(a.restReason)}</div>`
       : `<div class="ok">${esc(t("okPrefix"))}${esc(a.parts.flatMap((p) => p.reasons).join(" / "))}</div>`) : ""}
   ${(state.guidance ?? []).map((g) => `<div class="caution">${esc(g.message)}</div>`).join("")}
-  ${(state.overload ?? []).length ? `<div class="caution">${esc(t("overloadH"))}<ul>${state.overload.map((o) => `<li>${esc(o.reason)}</li>`).join("")}</ul></div>` : ""}`;
+`;
 }
 function collectExercise(root, ex) {
   const loggedSets = ex.loggedSets.map((_, i) => {
