@@ -202,7 +202,7 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Legend badges, joints: `0–1 通常` `2 軽減` `3以上 除外` `サインあり 受診目安`
 - Muscle parts (10, in order): 胸・肩・上腕・前腕・背中・脚（前）・
   脚（後ろ）・お尻・ふくらはぎ・腹筋・体幹
-- Joints (8, in order): 腰・背骨・肩・肘・手首・股関節・膝・足首
+- Joints (10, in order): 腰・背骨・肩・肘・手首・手指・股関節・膝・足首・足指
 - Level words (0–5): `なし` `軽い` `普通` `強い` `かなり強い` `激しい`
 - Primary CTA, two states:
   - `保存してワークアウトを開始` — always, while today's session is not

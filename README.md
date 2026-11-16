@@ -261,7 +261,7 @@ Pain tiles (2-column grid, gap 8px):
   脚 / 体幹）: 胸上部・胸下部・肩前部・上腕三頭・肩後部・上腕二頭・
   背中上部・広背筋・脊柱起立筋・前腕・大腿四頭筋・ハムストリング・
   臀部・内転筋・ふくらはぎ・脛・腹筋上部・腹筋下部・腹斜筋・体幹深部.
-  Joints (8): 腰・背骨・肩・肘・手首・股関節・膝・足首.
+  Joints (10): 腰・背骨・肩・肘・手首・手指・股関節・膝・足首・足指.
 - Inside each tile: part name (15px bold white) at top-left, the level
   as a 34px Barlow Condensed numeral in white at top-right; second row:
   the level word in 12px WHITE (0 なし / 1 軽い / 2 普通 / 3 強い /
