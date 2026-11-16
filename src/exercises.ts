@@ -15,6 +15,14 @@ export interface ExerciseDef {
   baseSets: number;
   defaultLadder: number;
   ladder: string[];
+  /** Load points per rep (per second for timed exercises), one per
+   *  ladder step, easiest first. The session planner budgets and
+   *  distributes these; see loadOf for the fallback when absent. */
+  loads?: number[];
+  /** Movement pattern used for menu coverage: "push" | "pull" |
+   *  "legs" | "core" (any string groups with itself). See patternOf
+   *  for the fallback when absent. */
+  pattern?: string;
   cue: string;
   /** How-to for the workout tab's info window: the steps, in order. */
   steps: string[];
@@ -71,6 +79,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     jointParts: ["手首","肘","肩"],
     unit: "回", baseTarget: 8, baseSets: 3, defaultLadder: 1,
     ladder: ["壁プッシュアップ", "膝つきプッシュアップ", "プッシュアップ", "ダイヤモンドプッシュアップ"],
+    loads: [30, 45, 60, 80], pattern: "push",
     cue: "体を一直線に保ち、胸が床に近づくまで下ろす。反動は使わない。",
     steps: ["手を肩幅に置き、足を伸ばして体を一直線にする", "肘を曲げて、胸が床に近づくまで下ろす", "手のひらで床を押して体を持ち上げる"],
     focus: "胸と腕の裏側",
@@ -80,6 +89,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     jointParts: ["手首","肘","肩"],
     unit: "回", baseTarget: 6, baseSets: 2, defaultLadder: 1,
     ladder: ["壁際パイクプッシュアップ（浅め）", "パイクプッシュアップ（浅め）", "パイクプッシュアップ"],
+    loads: [40, 55, 75], pattern: "push",
     cue: "お尻を高く上げ、頭頂が床に向かうように肘を曲げる。",
     steps: ["四つ這いから腰を高く上げ、逆V字の姿勢を作る", "肘を曲げて、頭頂が床に近づくまで下ろす", "床を押して元の姿勢に戻る"],
     focus: "肩（特に前側）",
@@ -89,6 +99,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     jointParts: ["膝","股関節","足首","腰"],
     unit: "回", baseTarget: 10, baseSets: 3, defaultLadder: 1,
     ladder: ["椅子スクワット", "スクワット", "ジャンプスクワット"],
+    loads: [35, 50, 70], pattern: "legs",
     cue: "膝とつま先の向きをそろえ、椅子に座るように下ろす。",
     steps: ["足を肩幅に開き、つま先を少し外に向ける", "椅子に座るように腰を下ろす（膝とつま先の向きをそろえる）", "かかとで床を押して立ち上がる"],
     focus: "太ももの前側とお尻",
@@ -98,6 +109,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     jointParts: ["足首","膝"],
     unit: "回", baseTarget: 12, baseSets: 2, defaultLadder: 1,
     ladder: ["両脚カーフジャンプ（低く）", "カーフジャンプ", "片脚カーフジャンプ"],
+    loads: [20, 30, 50], pattern: "legs",
     cue: "かかとを上げた勢いで軽く跳ぶ。着地は静かに。",
     steps: ["足を腰幅に開いて立つ", "かかとを上げた勢いで軽く真上に跳ぶ", "つま先で静かに着地し、そのまま繰り返す"],
     focus: "ふくらはぎ",
@@ -107,6 +119,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     jointParts: ["肩","腰","背骨"],
     unit: "回", baseTarget: 12, baseSets: 2, defaultLadder: 0,
     ladder: ["プローンWレイズ", "プローンWレイズ（トップで止める）"],
+    loads: [35, 45], pattern: "pull",
     cue: "うつ伏せで腕をWの形にし、肩甲骨を寄せながら胸を少し浮かせる。",
     steps: ["うつ伏せで腕をWの形に曲げる", "肩甲骨を寄せながら、胸と腕を少し浮かせる", "ゆっくり元の位置に戻す"],
     focus: "背中の中央（肩甲骨まわり）",
@@ -116,6 +129,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     jointParts: ["肩","腰","背骨"],
     unit: "回", baseTarget: 10, baseSets: 2, defaultLadder: 0,
     ladder: ["プローンYレイズ", "プローンYレイズ（トップで止める）"],
+    loads: [35, 45], pattern: "pull",
     cue: "うつ伏せで腕をYの形に伸ばし、親指を上にして少し浮かせる。",
     steps: ["うつ伏せで腕をYの形に伸ばす（親指は上）", "腕と胸を少し浮かせる", "ゆっくり元の位置に戻す"],
     focus: "背中の上部と肩の後ろ側",
@@ -125,6 +139,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     jointParts: ["腰","膝","股関節"],
     unit: "回", baseTarget: 12, baseSets: 3, defaultLadder: 0,
     ladder: ["グルートブリッジ", "グルートブリッジ（トップで止める）", "片脚グルートブリッジ"],
+    loads: [35, 45, 65], pattern: "legs",
     cue: "かかとで床を押し、お尻を締めながら腰を持ち上げる。",
     steps: ["仰向けで膝を曲げ、足裏を床につける", "かかとで床を押し、お尻を締めながら腰を持ち上げる", "トップで止めてから、ゆっくり下ろす"],
     focus: "お尻と太ももの裏側",
@@ -134,6 +149,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     jointParts: ["腰","股関節","膝"],
     unit: "回", unilateral: true, baseTarget: 8, baseSets: 2, defaultLadder: 1,
     ladder: ["両脚ヒップヒンジ", "シングルレッグRDL（支えあり）", "シングルレッグRDL"],
+    loads: [30, 45, 60], pattern: "legs",
     cue: "背中をまっすぐに保ち、股関節から折りたたむ。左右それぞれ行う。",
     steps: ["片脚で立ち、反対の脚を少し後ろに引く", "背中をまっすぐに保ち、股関節から上体を前に倒す", "太ももの裏の伸びを感じたら元に戻る（左右それぞれ行う）"],
     focus: "太ももの裏側とお尻",
@@ -143,6 +159,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     jointParts: ["腰","股関節","背骨"],
     unit: "回", baseTarget: 10, baseSets: 2, defaultLadder: 1,
     ladder: ["膝曲げレッグレイズ", "レッグレイズ", "レッグレイズ（ゆっくり下ろす）"],
+    loads: [30, 45, 60], pattern: "core",
     cue: "腰を床に押し付けたまま、脚をゆっくり上げ下ろしする。",
     steps: ["仰向けで両脚をそろえ、腰を床に押し付ける", "脚をゆっくり持ち上げる", "腰が浮く手前まで、ゆっくり下ろす"],
     focus: "腹筋（特に下部）",
@@ -152,6 +169,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     jointParts: ["腰","背骨"],
     unit: "回", baseTarget: 12, baseSets: 2, defaultLadder: 0,
     ladder: ["クランチ", "クランチ（トップで止める）"],
+    loads: [30, 40], pattern: "core",
     cue: "腰を床につけたまま、肩甲骨が浮くところまで上体を丸める。首は引っ張らない。",
     steps: ["仰向けで膝を曲げ、手は胸の前か耳の横に置く", "肩甲骨が浮くところまで上体を丸める", "ゆっくり元に戻す（首は引っ張らない）"],
     focus: "腹筋（特に上部）",
@@ -161,6 +179,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     jointParts: ["肩","肘","手首","腰","背骨"],
     unit: "秒", baseTarget: 40, baseSets: 2, defaultLadder: 1,
     ladder: ["膝つきプランク", "プランク", "プランク（片脚浮かせ）"],
+    loads: [4, 6, 8], pattern: "core",
     cue: "肘とつま先で支え、腰を反らさず一直線を保つ。",
     steps: ["肘とつま先で体を支える", "頭からかかとまで一直線を保つ", "腰を反らさず、そのままキープする"],
     focus: "体幹全体（腹筋と背筋）",
@@ -170,6 +189,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     jointParts: ["肩","肘","腰","背骨"],
     unit: "秒", baseTarget: 30, baseSets: 2, defaultLadder: 0,
     ladder: ["サイドプランク（膝曲げ）", "サイドプランク"],
+    loads: [4, 6], pattern: "core",
     cue: "横向きで肘をつき、体を一直線に保つ。左右それぞれ行う。",
     steps: ["横向きで下の肘をつく", "体を一直線に持ち上げてキープする", "反対側も同じ時間行う"],
     focus: "体幹の側面（腹斜筋）",
@@ -179,11 +199,39 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     jointParts: ["膝","股関節","足首"],
     unit: "回", unilateral: true, baseTarget: 8, baseSets: 2, defaultLadder: 1,
     ladder: ["スプリットスクワット（浅め）", "リバースランジ", "ブルガリアンスクワット"],
+    loads: [35, 50, 70], pattern: "legs",
     cue: "一歩後ろに引き、上体をまっすぐに保って下ろす。左右それぞれ行う。",
     steps: ["立った姿勢から一歩後ろに引く", "上体をまっすぐに保ったまま腰を下ろす", "前脚のかかとで押して元に戻る（左右それぞれ行う）"],
     focus: "太ももの前側とお尻",
   },
 };
+
+/** Movement pattern of an exercise, for menu coverage. An explicit
+ *  `pattern` on the definition wins; otherwise the pattern is derived
+ *  from the pain part, and an unknown part groups with itself. */
+const PATTERN_BY_PART: Record<string, string> = {
+  "胸": "push", "肩": "push", "上腕": "push",
+  "背中": "pull",
+  "脚（前）": "legs", "脚（後ろ）・お尻": "legs", "ふくらはぎ": "legs",
+  "腹筋": "core", "体幹": "core",
+};
+export function patternOf(def: ExerciseDef): string {
+  return def.pattern ?? PATTERN_BY_PART[def.painPart] ?? def.painPart;
+}
+
+/** Load points of one rep (one second for timed exercises) at a
+ *  ladder step. An explicit `loads` array wins; otherwise a ramp is
+ *  derived around the default step (anchored at 60 points per rep /
+ *  4 per second, ×1.25 per step up, ×0.8 per step down), so a catalog
+ *  written before loads existed still plans sensibly. */
+export function loadOf(def: ExerciseDef, ladderIndex: number): number {
+  const explicit = def.loads?.[ladderIndex];
+  if (typeof explicit === "number" && explicit > 0) return explicit;
+  const anchor = def.unit === "秒" ? 4 : 60;
+  const diff = ladderIndex - def.defaultLadder;
+  const f = diff >= 0 ? Math.pow(1.25, diff) : Math.pow(0.8, -diff);
+  return Math.max(1, Math.round(anchor * f));
+}
 
 /** When an exercise cannot be done even once and it is already at its easiest
  *  variation, swap to this other exercise for the same body part. */

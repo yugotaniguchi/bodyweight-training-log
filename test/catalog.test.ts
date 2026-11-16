@@ -15,6 +15,20 @@ describe("parseCatalogImport", () => {
     expect(c.joints).toContain("背骨");
   });
 
+  test("loads and pattern round-trip; bad loads are rejected", () => {
+    const c = parseCatalogImport(clone(defaultCatalog()));
+    expect(c.exercises.pushup.loads).toEqual([30, 45, 60, 80]);
+    expect(c.exercises.pushup.pattern).toBe("push");
+    const raw = clone(defaultCatalog()) as unknown as { exercises: Record<string, Record<string, unknown>> };
+    raw.exercises.pushup.loads = [30, 45];
+    expect(() => parseCatalogImport(raw)).toThrow(InvalidInput);
+    raw.exercises.pushup.loads = [30, 45, -1, 80];
+    expect(() => parseCatalogImport(raw)).toThrow(InvalidInput);
+    raw.exercises.pushup.loads = [30, 45, 60, 80];
+    raw.exercises.pushup.pattern = "";
+    expect(() => parseCatalogImport(raw)).toThrow(InvalidInput);
+  });
+
   test("steps / focus fall back to the cue and the muscle group when omitted", () => {
     const raw = clone(defaultCatalog()) as unknown as { exercises: Record<string, Record<string, unknown>> };
     delete raw.exercises.pushup.steps;

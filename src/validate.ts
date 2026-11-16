@@ -277,6 +277,10 @@ export function parseCatalogImport(v: unknown, lang: Lang = "ja"): Catalog {
       || raw.ladder.some((s) => typeof s !== "string" || s === "")) bad(M.ladderInvalid(id));
     if (typeof raw.defaultLadder !== "number" || !Number.isInteger(raw.defaultLadder)
       || raw.defaultLadder < 0 || raw.defaultLadder >= (raw.ladder as string[]).length) bad(M.defaultLadderRange(id));
+    if (raw.loads !== undefined && (!Array.isArray(raw.loads)
+      || raw.loads.length !== (raw.ladder as string[]).length
+      || raw.loads.some((n) => typeof n !== "number" || !Number.isFinite(n) || n <= 0))) field("loads");
+    if (raw.pattern !== undefined && (typeof raw.pattern !== "string" || raw.pattern === "" || raw.pattern.length > 20)) field("pattern");
     if (typeof raw.cue !== "string") field("cue");
     let steps: string[];
     if (raw.steps === undefined) steps = [raw.cue as string];
@@ -294,6 +298,8 @@ export function parseCatalogImport(v: unknown, lang: Lang = "ja"): Catalog {
       ...(raw.unilateral === true ? { unilateral: true } : {}),
       baseTarget: raw.baseTarget as number, baseSets: raw.baseSets as number,
       defaultLadder: raw.defaultLadder as number, ladder: [...(raw.ladder as string[])],
+      ...(Array.isArray(raw.loads) ? { loads: [...(raw.loads as number[])] } : {}),
+      ...(typeof raw.pattern === "string" ? { pattern: raw.pattern as string } : {}),
       cue: raw.cue as string, steps, focus,
     };
   }
