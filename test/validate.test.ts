@@ -137,26 +137,36 @@ describe("parseStoreImport", () => {
     expect(out.nextSessionId).toBe(2);
     expect(out.nextExerciseId).toBe(2);
   });
-  test("a version-1 import is migrated; a version-2 import is not migrated twice", () => {
-    // No dataVersion: the old ladder's index 3 (ダイヤモンド) is the
-    // new ladder's index 5, and the old part name 胸 becomes 胸下部.
+  test("imports migrate forward once per version step, never twice", () => {
+    // No dataVersion (version 1): the old ladder's index 3
+    // (ダイヤモンド) chains through both remaps to index 6, and the
+    // old part name 胸 becomes 胸下部.
     const v1 = sample();
     v1.sessions[0].exercises[0].ladderIndex = 3;
     const out1 = parseStoreImport(structuredClone(v1));
-    expect(out1.dataVersion).toBe(2);
-    expect(out1.sessions[0].exercises[0].ladderIndex).toBe(5);
+    expect(out1.dataVersion).toBe(3);
+    expect(out1.sessions[0].exercises[0].ladderIndex).toBe(6);
     expect(out1.pain[0].soreness).toEqual({ "胸下部": 2 });
-    // A current export already carries version 2 and remapped
-    // indexes; re-importing it (the backup/restore flow) must leave
-    // both untouched.
+    // A version-2 export gains only the version-3 step (the pushup
+    // incline insertion): index 3 (プッシュアップ) becomes 4.
     const v2 = sample();
     v2.dataVersion = 2;
     v2.sessions[0].exercises[0].ladderIndex = 3;
     v2.pain[0].soreness = { "胸下部": 2 };
     const out2 = parseStoreImport(structuredClone(v2));
-    expect(out2.dataVersion).toBe(2);
-    expect(out2.sessions[0].exercises[0].ladderIndex).toBe(3);
+    expect(out2.dataVersion).toBe(3);
+    expect(out2.sessions[0].exercises[0].ladderIndex).toBe(4);
     expect(out2.pain[0].soreness).toEqual({ "胸下部": 2 });
+    // A current (version-3) export re-imported — the backup/restore
+    // flow — is left completely untouched.
+    const v3 = sample();
+    v3.dataVersion = 3;
+    v3.sessions[0].exercises[0].ladderIndex = 3;
+    v3.pain[0].soreness = { "胸下部": 2 };
+    const out3 = parseStoreImport(structuredClone(v3));
+    expect(out3.dataVersion).toBe(3);
+    expect(out3.sessions[0].exercises[0].ladderIndex).toBe(3);
+    expect(out3.pain[0].soreness).toEqual({ "胸下部": 2 });
   });
   test("rejects non-objects and missing keys", () => {
     for (const v of [null, [], "x", 42, {}, { profile: null, pain: [], sessions: [] }]) {

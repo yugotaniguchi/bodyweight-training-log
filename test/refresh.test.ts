@@ -94,7 +94,7 @@ const uniPrev = (loggedSets: SessionExercise["loggedSets"]): SessionExercise => 
 describe("unilateral pairs", () => {
   test("the flagged exercises are rep-based only", () => {
     const flagged = Object.values(EXERCISES).filter((e) => e.unilateral);
-    expect(flagged.map((e) => e.baseId).sort()).toEqual(["pistolSquat", "rdl", "reverseLunge", "sideLyingAbduction", "stepUp"]);
+    expect(flagged.map((e) => e.baseId).sort()).toEqual(["copenhagenAdduction", "pistolSquat", "rdl", "reverseLunge", "shrimpSquat", "sideLyingAbduction", "stepUp"]);
     for (const e of flagged) expect(e.unit).toBe("回");
   });
 

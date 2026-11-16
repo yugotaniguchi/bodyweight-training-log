@@ -10,7 +10,7 @@ const clone = (c: Catalog): Catalog => JSON.parse(JSON.stringify(c)) as Catalog;
 describe("parseCatalogImport", () => {
   test("the built-in catalog round-trips", () => {
     const c = parseCatalogImport(clone(defaultCatalog()));
-    expect(Object.keys(c.exercises).length).toBe(54);
+    expect(Object.keys(c.exercises).length).toBe(59);
     expect(c.exercises.pushup.steps.length).toBe(3);
     expect(c.exercises.pushup.focus).toBe("胸下部と上腕三頭");
     expect(c.joints).toContain("背骨");
@@ -18,14 +18,14 @@ describe("parseCatalogImport", () => {
 
   test("loads and pattern round-trip; bad loads are rejected", () => {
     const c = parseCatalogImport(clone(defaultCatalog()));
-    expect(c.exercises.pushup.loads).toEqual([30, 45, 55, 60, 70, 80, 95, 120]);
+    expect(c.exercises.pushup.loads).toEqual([30, 38, 45, 50, 60, 70, 80, 95, 120]);
     expect(c.exercises.pushup.pattern).toBe("push");
     const raw = clone(defaultCatalog()) as unknown as { exercises: Record<string, Record<string, unknown>> };
     raw.exercises.pushup.loads = [30, 45];
     expect(() => parseCatalogImport(raw)).toThrow(InvalidInput);
-    raw.exercises.pushup.loads = [30, 45, 55, 60, 70, 80, 95, -1];
+    raw.exercises.pushup.loads = [30, 38, 45, 50, 60, 70, 80, 95, -1];
     expect(() => parseCatalogImport(raw)).toThrow(InvalidInput);
-    raw.exercises.pushup.loads = [30, 45, 55, 60, 70, 80, 95, 120];
+    raw.exercises.pushup.loads = [30, 38, 45, 50, 60, 70, 80, 95, 120];
     raw.exercises.pushup.pattern = "";
     expect(() => parseCatalogImport(raw)).toThrow(InvalidInput);
   });
@@ -56,7 +56,7 @@ describe("parseCatalogImport", () => {
     raw.rotations = [{ id: "A", title: "A", exerciseIds: ["pushup", "nope"] }];
     const c = parseCatalogImport(raw);
     expect("rotations" in c).toBe(false);
-    expect(Object.keys(c.exercises).length).toBe(54);
+    expect(Object.keys(c.exercises).length).toBe(59);
   });
 
   test("rejects an empty ladder and an out-of-range defaultLadder", () => {
@@ -94,7 +94,7 @@ describe("parseCatalogImport", () => {
 
   test("unilateralFrom round-trips and is validated", () => {
     const c = parseCatalogImport(clone(defaultCatalog()));
-    expect(c.exercises.pushup.unilateralFrom).toBe(6);
+    expect(c.exercises.pushup.unilateralFrom).toBe(7);
     expect(c.exercises.tableRow.unilateralFrom).toBe(3);
     // Out of range: 0 would mean the whole family (use unilateral),
     // and the ladder length itself is past the last step.

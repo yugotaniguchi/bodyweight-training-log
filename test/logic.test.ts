@@ -162,15 +162,15 @@ describe("load planner (generateSession)", () => {
     expect(mid.progressionNotes.join("")).toContain("25%");
   });
   test("a cannot-do exercise comes back one ladder step easier", () => {
-    // History spread over nine realistic sessions (six exercises
-    // each, the whole catalog covered), with pushup's record in the
+    // History spread over realistic sessions (six exercises each,
+    // the whole catalog covered), with pushup's record in the
     // oldest session replaced by an all-zero cannot-do record:
     // pushup is the stalest exercise, so it is selected again, and
-    // the directive steps it down from 膝つき (1) to 壁 (0).
+    // the directive steps it down from 膝つき (2) to インクライン (1).
     const defs = Object.values(EXERCISES);
     const sessions: Session[] = [];
     for (let d = 0; d * 6 < defs.length; d++) {
-      const date = `2025-12-${23 + d}`;
+      const date = new Date(Date.UTC(2025, 11, 22 + d)).toISOString().slice(0, 10);
       sessions.push(doneSession(date, defs.slice(d * 6, d * 6 + 6).map((def, i) => ({
         id: d * 6 + i + 1, baseId: def.baseId, name: def.name, muscleGroup: def.muscleGroup, painPart: def.painPart,
         variation: def.ladder[def.defaultLadder], ladderIndex: def.defaultLadder,
@@ -183,7 +183,7 @@ describe("load planner (generateSession)", () => {
     pushupRec.rpe = 10;
     const s = generateSession(storeWith([], sessions), "2026-01-01", null);
     const pushup = s.exercises.find((e) => e.baseId === "pushup")!;
-    expect(pushup.ladderIndex).toBe(0);
+    expect(pushup.ladderIndex).toBe(1);
     expect(s.progressionNotes.join("")).toContain("できない種目の切り替え");
   });
   test("next-day pain is priced by the coefficient, not a separate 24-hour rule", () => {
@@ -248,7 +248,7 @@ describe("profile migration (two note fields -> one, sex -> select values)", () 
   });
 });
 
-describe("migrateStoreData (catalog expansion, data version 2)", () => {
+describe("migrateStoreData (data migrations)", () => {
   const v1Store = (): Store => ({
     ...emptyStore(),
     pain: [
@@ -269,7 +269,7 @@ describe("migrateStoreData (catalog expansion, data version 2)", () => {
 
   test("renames pain parts to their primary successors, larger level wins", () => {
     const s = migrateStoreData(v1Store());
-    expect(s.dataVersion).toBe(2);
+    expect(s.dataVersion).toBe(3);
     expect(s.pain[0].soreness).toEqual({ "胸下部": 2, "背中上部": 3, "ふくらはぎ": 1 });
     expect(s.pain[0].jointPain).toEqual({ "腰": 2 }); // joints are not renamed
     expect(s.pain[1].soreness).toEqual({ "胸下部": 4 });
@@ -278,7 +278,9 @@ describe("migrateStoreData (catalog expansion, data version 2)", () => {
   test("remaps ladder indexes whose ladders gained inserted steps", () => {
     const s = migrateStoreData(v1Store());
     const byBase = Object.fromEntries(s.sessions[0].exercises.map((e) => [e.baseId, e.ladderIndex]));
-    expect(byBase.pushup).toBe(5);  // ダイヤモンド sits at 5 in the new ladder
+    // ダイヤモンド: v1 index 3 -> v2 index 5 -> v3 index 6 (the
+    // incline step inserted in round 2 shifts it once more).
+    expect(byBase.pushup).toBe(6);
     expect(byBase.plank).toBe(2);   // プランク sits at 2
     expect(byBase.deadBug).toBe(1); // the standard form
     expect(byBase.crunch).toBe(1);  // untouched
@@ -287,11 +289,32 @@ describe("migrateStoreData (catalog expansion, data version 2)", () => {
     expect(loadOf(EXERCISES.plank, byBase.plank)).toBe(6);
   });
 
+  test("a version-2 store gains only the pushup incline shift", () => {
+    const s = migrateStoreData({
+      ...emptyStore(), dataVersion: 2,
+      pain: [{ date: "2026-01-01", soreness: { "胸下部": 2 }, jointPain: {}, redFlags: [] }],
+      sessions: [{
+        id: 1, date: "2026-01-01", rotation: "A", title: "押す + 脚", status: "completed", intro: false,
+        focusNote: "", progressionNotes: [], totalVolume: 100,
+        exercises: [
+          prev({ baseId: "pushup", ladderIndex: 3 }),  // プッシュアップ in the v2 ladder
+          prev({ id: 2, baseId: "plank", ladderIndex: 2, targetUnit: "秒" }),
+        ],
+      }],
+    });
+    expect(s.dataVersion).toBe(3);
+    expect(s.pain[0].soreness).toEqual({ "胸下部": 2 }); // already renamed in v2: untouched
+    const byBase = Object.fromEntries(s.sessions[0].exercises.map((e) => [e.baseId, e.ladderIndex]));
+    expect(byBase.pushup).toBe(4); // プッシュアップ sits at 4 in the v3 ladder
+    expect(loadOf(EXERCISES.pushup, byBase.pushup)).toBe(60);
+    expect(byBase.plank).toBe(2); // untouched by the v3 step
+  });
+
   test("is idempotent and leaves current stores untouched", () => {
     const once = migrateStoreData(v1Store());
     const snapshot = structuredClone(once);
     expect(migrateStoreData(once)).toEqual(snapshot);
-    const current: Store = { ...emptyStore(), dataVersion: 2 };
+    const current: Store = { ...emptyStore(), dataVersion: 3 };
     expect(migrateStoreData(current)).toBe(current);
   });
 });
