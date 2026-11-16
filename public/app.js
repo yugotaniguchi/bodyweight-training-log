@@ -249,7 +249,7 @@ const PART_EN = {
   "胸上部": "Upper chest", "胸下部": "Lower chest", "肩前部": "Front shoulders", "肩後部": "Rear shoulders",
   "上腕二頭": "Biceps", "上腕三頭": "Triceps", "前腕": "Forearms", "背中上部": "Upper back",
   "広背筋": "Lats", "脊柱起立筋": "Spinal erectors", "大腿四頭筋": "Quadriceps", "ハムストリング": "Hamstrings",
-  "臀部": "Glutes", "内転筋": "Adductors", "ふくらはぎ": "Calves", "腹筋上部": "Upper abs",
+  "臀部": "Glutes", "内転筋": "Adductors", "ふくらはぎ": "Calves", "脛": "Shins", "腹筋上部": "Upper abs",
   "腹筋下部": "Lower abs", "腹斜筋": "Obliques", "体幹深部": "Deep core",
   // Pre-expansion names, still found in older records.
   "胸": "Chest", "肩": "Shoulders", "上腕": "Upper arms", "背中": "Back", "脚（前）": "Legs (front)",
@@ -261,11 +261,11 @@ const PART_EN = {
 const PART_GROUPS = [
   { ja: "上半身（押す）", en: "Upper body (push)", parts: ["胸上部", "胸下部", "肩前部", "上腕三頭"] },
   { ja: "上半身（引く）", en: "Upper body (pull)", parts: ["肩後部", "上腕二頭", "背中上部", "広背筋", "脊柱起立筋", "前腕"] },
-  { ja: "脚", en: "Legs", parts: ["大腿四頭筋", "ハムストリング", "臀部", "内転筋", "ふくらはぎ"] },
+  { ja: "脚", en: "Legs", parts: ["大腿四頭筋", "ハムストリング", "臀部", "内転筋", "ふくらはぎ", "脛"] },
   { ja: "体幹", en: "Core", parts: ["腹筋上部", "腹筋下部", "腹斜筋", "体幹深部"] },
 ];
 const JOINT_EN = { "腰": "Lower back", "背骨": "Spine", "肩": "Shoulders", "肘": "Elbows", "手首": "Wrists", "股関節": "Hips", "膝": "Knees", "足首": "Ankles" };
-const GROUP_EN = { "胸・三頭": "Chest & Triceps", "肩": "Shoulders", "脚（前）": "Legs (front)", "ふくらはぎ": "Calves", "背中": "Back", "脚（後ろ）・お尻": "Legs (back) / Glutes", "腹筋": "Abs", "体幹": "Core", "体幹（側面）": "Core (sides)", "上腕": "Upper arms" };
+const GROUP_EN = { "胸・三頭": "Chest & Triceps", "肩": "Shoulders", "脚（前）": "Legs (front)", "ふくらはぎ": "Calves", "背中": "Back", "脚（後ろ）・お尻": "Legs (back) / Glutes", "腹筋": "Abs", "体幹": "Core", "体幹（側面）": "Core (sides)", "上腕": "Upper arms", "脛": "Shins" };
 const partLabel = (p) => (lang === "en" ? PART_EN[p] ?? p : p);
 const jointLabel = (j) => (lang === "en" ? JOINT_EN[j] ?? j : j);
 const groupLabel = (g) => (lang === "en" ? GROUP_EN[g] ?? g : g);
