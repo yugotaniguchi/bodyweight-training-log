@@ -89,7 +89,7 @@ export const RED_FLAGS: RedFlag[] = [
   { id: "saddle", label: "股間・肛門まわりの感覚異常がある" },
   { id: "swollenHot", label: "関節が熱く腫れている／発熱がある" },
   { id: "cannotBear", label: "体重をかけられない／変形がある" },
-  { id: "darkUrine", label: "強い筋肉痛・脱力に加え、尿が紅茶色・コーラ色／尿量が減った" },
+  { id: "darkUrine", label: "尿が紅茶色・コーラ色／尿量が減った（強い筋肉痛・脱力を伴う場合は特に）" },
   { id: "chestPain", label: "胸の痛みがある" },
   { id: "trauma", label: "大きな事故・転倒の直後である" },
 ];
