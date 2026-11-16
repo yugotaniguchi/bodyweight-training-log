@@ -114,7 +114,17 @@ References:
 - Pelland et al. 2025, Sports Medicine — weekly volume shows a diminishing dose–response, while frequency is a distribution tool; prioritising long-unused parts is therefore a recovery and pain-management heuristic, not an adaptation claim
 - CDC/NIOSH, "Rhabdomyolysis" — any one of its symptoms (dark urine, muscle pain, weakness) is enough to seek care, so the dark-urine warning sign stands on its own
 
-Note: the numeric pain thresholds above convert ideas from general-audience sources onto a 0–5 scale. That conversion has not been medically validated. The same holds for the pain coefficients, the ×1.02 budget progression, the full-rest condition and the per-part / per-session caps: they are adjustable design parameters, and the nearby frameworks sometimes cited for progression rates (the acute:chronic workload ratio, the 10% rule) were checked and do not validate them.
+Catalog sources (the ladders and load values):
+
+- Progression frameworks: Overcoming Gravity, 2nd edition (Steven Low) exercise charts; the r/bodyweightfitness Recommended Routine; Hybrid Calisthenics (Hampton Liu); the Convict Conditioning progressions
+- Push-up ladder calibration: Ebben et al. 2011, J Strength Cond Res (force-plate kinetics of push-up variations); Intziegianni et al. 2026, Muscles (EMG by hand position); Cogley et al. 2005; Marcolin et al. 2015; Kikuchi & Nakazato 2017
+- The prone Y/T/W series, and absorbing the reverse snow angel into prone T: Ekstrom et al. 2003 (trapezius EMG for prone raises)
+- Copenhagen adduction: Harøy et al. 2019 (adductor activation of the dynamic form)
+- Slide rollout: Escamilla et al. (EMG analyses of rollout exercises)
+- Nordic curl notes: van Dyk et al. 2019 (hamstring injury-risk reduction; later re-analyses temper the size of the effect)
+- Ladder ordering for the expansion families also drew on practitioner progression guides (Daily Growth Hub, 1X Health, Gravitus, Simple Calisthenics, PlayThenics and others — the full lists are in the research notes)
+
+Note: the numeric pain thresholds above convert ideas from general-audience sources onto a 0–5 scale. That conversion has not been medically validated. The same holds for the pain coefficients, the ×1.02 budget progression, the full-rest condition and the per-part / per-session caps: they are adjustable design parameters, and the nearby frameworks sometimes cited for progression rates (the acute:chronic workload ratio, the 10% rule) were checked and do not validate them. The load points are likewise relative values ordered by the catalog sources' difficulty progressions, not measurements — initial values for the planner, to be corrected by the user's own records.
 
 ## Limitations
 

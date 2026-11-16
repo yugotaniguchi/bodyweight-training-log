@@ -378,12 +378,14 @@ English sentences (in the client dictionary) in the same structure.
 > - 開始を止めるのは警告サインだけです。
 > - 関節痛は部位にも効きます（腰→脚・体幹、背骨→背中・腹筋・体幹、肩→押す系、肘→押す系・引く系、手首→押す系・プランク系、股関節・膝・足首→脚系）。
 >
-> 参考文献：ACSM ポジションスタンド（2026年版）、Robinson et al. 2024／Refalo et al. 2023（限界接近度）、Zourdos et al. 2016／Helms et al. 2016（RPE・RIR）、Silbernagel et al. 2007／Smith et al. 2017／Tran et al. 2025（痛みモニタリング）、Finucane et al. 2020（レッドフラッグ）、NICE ガイドライン NG59・NG226／Foster et al. 2018、Cheung et al. 2003／Hotfiel et al. 2018（DOMS）、McHugh 2003（反復バウト効果）、Davies et al. 2015（プライオメトリクス）、Pelland et al. 2025（量・頻度）、CDC/NIOSH 横紋筋融解症。
+> 参考文献：ACSM ポジションスタンド（2026年版）、Robinson et al. 2024／Refalo et al. 2023（限界接近度）、Zourdos et al. 2016／Helms et al. 2016（RPE・RIR）、Silbernagel et al. 2007／Smith et al. 2017／Tran et al. 2025（痛みモニタリング）、Finucane et al. 2020（レッドフラッグ）、NICE ガイドライン NG59・NG226／Foster et al. 2018、Cheung et al. 2003／Hotfiel et al. 2018（DOMS）、McHugh 2003（反復バウト効果）、Davies et al. 2015（プライオメトリクス）、Pelland et al. 2025（量・頻度）、CDC/NIOSH 横紋筋融解症。種目の階段・負荷値：Overcoming Gravity（Low）／r/bodyweightfitness Recommended Routine／Hybrid Calisthenics、Ebben et al. 2011、Ekstrom et al. 2003、Harøy et al. 2019、ほか実践ガイド群。
 
 (The rule sentences above remain fixed. The closing reference line
 is the bibliography and tracks the adopted reference set — it was
 expanded on 2026-11-16 when the ten researched proposals were
-adopted; the rule wording itself did not change.)
+adopted, and the catalog sources behind the ladders and load
+values were added to it the same day; the rule wording itself did
+not change.)
 
 ## Layout (exact)
 
