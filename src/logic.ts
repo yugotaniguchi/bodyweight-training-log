@@ -273,14 +273,23 @@ export function painFactorOf(def: ExerciseDef, entry: PainEntry | null, catalog:
 const weakTotal = (ex: SessionExercise): number =>
   ex.loggedSets.reduce((a: number, v) => a + setWeak(v), 0);
 
+/** The load one recorded exercise delivered, in points: step load
+ *  x performed amount (the weaker side for unilateral exercises, as
+ *  in the achievement measure). Exercises whose baseId is no longer
+ *  in the catalog (legacy records from older catalogs) are priced at
+ *  the generic anchor — 60 points per rep, 4 per second — so old
+ *  sessions still contribute a plausible score instead of zero. */
+export function exerciseLoad(ex: SessionExercise, catalog: Catalog): number {
+  const def = catalog.exercises[ex.baseId];
+  const price = def ? loadOf(def, ex.ladderIndex) : (ex.targetUnit === "秒" ? 4 : 60);
+  return price * weakTotal(ex);
+}
+
 /** The load a completed session actually delivered, in points:
- *  step load x performed amount, summed over exercises (the weaker
- *  side for unilateral exercises, as in the achievement measure). */
+ *  the sum of its exercises' loads. This is the score totals and
+ *  graphs are based on — never a mixed reps-plus-seconds sum. */
 export function achievedLoad(s: Session, catalog: Catalog): number {
-  return s.exercises.reduce((sum, ex) => {
-    const def = catalog.exercises[ex.baseId];
-    return def ? sum + loadOf(def, ex.ladderIndex) * weakTotal(ex) : sum;
-  }, 0);
+  return s.exercises.reduce((sum, ex) => sum + exerciseLoad(ex, catalog), 0);
 }
 
 /** The load an exercise was planned to deliver (its target load). */

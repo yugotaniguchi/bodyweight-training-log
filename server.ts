@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
-import { assessPain, catalogOf, diffProfile, generateSession, painDurationGuidance, previewNextTitle, refreshPlannedSession, sessionTotal, setSum, type PainEntry, type SessionExercise, type SetLog, type Store } from "./src/logic";
+import { achievedLoad, assessPain, catalogOf, diffProfile, exerciseLoad, generateSession, painDurationGuidance, previewNextTitle, refreshPlannedSession, sessionTotal, setSum, type PainEntry, type Session, type SessionExercise, type SetLog, type Store } from "./src/logic";
 import { RED_FLAGS, EXERCISES, ROTATIONS } from "./src/exercises";
 import { loadStore, saveStore, resetStore } from "./src/store";
 import { InvalidInput, parseCatalogImport, parseProfile, parseStoreImport, validNote, validPainLevel, validRpe, validSetLog } from "./src/validate";
@@ -156,6 +156,15 @@ function publicState() {
   const activeSession = todaySession
     ?? [...store.sessions].reverse().find((s) => s.status === "planned")
     ?? null;
+  // Sessions carry their load score (and each exercise its own) as
+  // additive display fields: totals and graphs are based on load,
+  // never on a mixed reps-plus-seconds sum. The stored totalVolume
+  // stays in the data for compatibility but is no longer displayed.
+  const withLoad = (s: Session | null) => s === null ? null : {
+    ...s,
+    exercises: s.exercises.map((e) => ({ ...e, load: exerciseLoad(e, cat) })),
+    load: achievedLoad(s, cat),
+  };
   return {
     today: date, profile: store.profile, pain, lang, theme: themeOf(store),
     assessment: pain ? assessPain(pain, lang) : null,
@@ -167,13 +176,14 @@ function publicState() {
     // Preview of the next menu's title (selection ignoring pain),
     // for displays like the home-screen widget.
     nextPreview: { title: previewNextTitle(store, date, lang) },
-    todaySession,
-    activeSession,
+    todaySession: withLoad(todaySession),
+    activeSession: withLoad(activeSession),
     profileHistory: [...store.profileHistory].reverse(),
-    sessions: [...store.sessions].reverse(),
+    sessions: [...store.sessions].reverse().map((s) => withLoad(s)!),
     stats: {
       totalCompleted: store.sessions.filter((s) => s.status === "completed").length,
       totalVolume: store.sessions.reduce((a, s) => a + s.totalVolume, 0),
+      totalLoad: store.sessions.reduce((a, s) => a + achievedLoad(s, cat), 0),
     },
     // The catalog's display labels (red flags, rotation titles) follow
     // the language; the part / joint names stay the canonical Japanese

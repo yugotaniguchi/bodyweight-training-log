@@ -20,7 +20,7 @@ const STR = {
   ja: {
     appTitle: "自重トレーニング記録",
     purpose: "器具なし / 筋力・筋肥大",
-    totalLabel: "累計", totalUnit: "レップ",
+    totalLabel: "累計", totalUnit: "負荷",
     gear: "設定",
     tab_pain: "コンディション", tab_menu: "ワークアウト", tab_history: "レポート",
     loading: "読み込み中…",
@@ -75,7 +75,7 @@ const STR = {
     monthCount: "{n}回", histNewer: "新しい日へ", histOlder: "古い日へ",
     histDayView: "日別", histMonthView: "月別",
     noMatch: "該当する記録がありません。",
-    notePrefix: "種目メモ： ", repsSuffix: "レップ",
+    notePrefix: "種目メモ： ", loadSuffix: "負荷",
     editRecord: "記録を編集", editDoneBtn: "編集を終わる",
     rpeParen: "（RPE {rpe} {word}）", rpePlain: "RPE {rpe} {word}",
     backHome: "← ホームに戻る",
@@ -130,7 +130,7 @@ const STR = {
   en: {
     appTitle: "Bodyweight Training Log",
     purpose: "No equipment / Strength & hypertrophy",
-    totalLabel: "Total", totalUnit: "reps",
+    totalLabel: "Total", totalUnit: "load",
     gear: "Settings",
     tab_pain: "Condition", tab_menu: "Workout", tab_history: "Report",
     loading: "Loading…",
@@ -185,7 +185,7 @@ const STR = {
     monthCount: "{n} sessions", histNewer: "Newer day", histOlder: "Older day",
     histDayView: "Daily", histMonthView: "Monthly",
     noMatch: "No matching records.",
-    notePrefix: "Note: ", repsSuffix: " reps",
+    notePrefix: "Note: ", loadSuffix: " load",
     editRecord: "Edit record", editDoneBtn: "Done editing",
     rpeParen: "(RPE {rpe} {word})", rpePlain: "RPE {rpe} {word}",
     backHome: "← Back to home",
@@ -636,8 +636,9 @@ function updateHeader() {
   const dates = state.sessions.map((s) => s.date).sort();
   const dayCount = dates.length ? Math.round(n - dayNum(dates[0])) + 1 : 1;
   document.getElementById("ah-day").textContent = dayCount;
-  // Cumulative reps = total logged volume across all recorded sessions.
-  document.getElementById("ah-reps").textContent = state.stats.totalVolume;
+  // Cumulative total = the load score across all recorded sessions
+  // (never a mixed reps-plus-seconds sum).
+  document.getElementById("ah-reps").textContent = state.stats.totalLoad ?? 0;
 }
 
 // ---------- week dots (menu screen) ----------
@@ -1030,7 +1031,7 @@ function historySummariesHtml() {
   for (const s of state.sessions) {
     const k = s.date.slice(0, 7);
     const m = months.get(k) ?? { n: 0, vol: 0 };
-    m.n++; m.vol += s.totalVolume; months.set(k, m);
+    m.n++; m.vol += s.load ?? 0; months.set(k, m);
   }
   const monthList = [...months.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   const monthMax = Math.max(1, ...monthList.map(([, m]) => m.vol));
@@ -1039,7 +1040,7 @@ function historySummariesHtml() {
   for (const s of state.sessions) for (const e of s.exercises) {
     if (!e.completed && !e.loggedSets.some((v) => setSum(v) > 0)) continue;
     const g = groups.get(e.muscleGroup) ?? { n: 0, vol: 0 };
-    g.n++; g.vol += e.loggedSets.reduce((a, v) => a + setSum(v), 0); groups.set(e.muscleGroup, g);
+    g.n++; g.vol += e.load ?? 0; groups.set(e.muscleGroup, g);
   }
   const groupList = [...groups.entries()].sort((a, b) => b[1].vol - a[1].vol);
   const groupMax = Math.max(1, ...groupList.map(([, v]) => v.vol));
@@ -1059,8 +1060,8 @@ function histCurrent() {
 // It sits at the very top of the report, above the monthly chart.
 function trendChartHtml(curId) {
   const days = [...state.sessions].reverse(); // chronological
-  const max = Math.max(1, ...days.map((s) => s.totalVolume));
-  const bars = days.map((s) => `<button type="button" class="trend-bar${s.id === curId ? " cur" : ""}" data-hist-day="${s.id}" title="${esc(histDate(s.date))}" aria-label="${esc(histDate(s.date))}"><span class="trend-fill" style="height:${Math.max(4, Math.round((s.totalVolume / max) * 100))}%"></span></button>`).join("");
+  const max = Math.max(1, ...days.map((s) => s.load ?? 0));
+  const bars = days.map((s) => `<button type="button" class="trend-bar${s.id === curId ? " cur" : ""}" data-hist-day="${s.id}" title="${esc(histDate(s.date))}" aria-label="${esc(histDate(s.date))}"><span class="trend-fill" style="height:${Math.max(4, Math.round(((s.load ?? 0) / max) * 100))}%"></span></button>`).join("");
   return `<div class="trend" id="histTrend">${bars}</div>`;
 }
 function histDayHtml() {
@@ -1074,6 +1075,19 @@ function histDayHtml() {
   if (editing) {
     return `${head}<div class="pager-day">${s.exercises.map((ex) => menuExerciseCard(s, ex, { history: true })).join("")}<button class="edit-btn" data-exit-history="${s.id}">${esc(t("editDoneBtn"))}</button></div>`;
   }
+  // Supplementary performed amounts for the day page, kept in their
+  // own units — reps and seconds are never added together.
+  const repsSecondsText = (sess) => {
+    let reps = 0, secs = 0;
+    for (const e of sess.exercises) {
+      const sum = e.loggedSets.reduce((a, v) => a + setSum(v), 0);
+      if (e.targetUnit === "秒") secs += sum; else reps += sum;
+    }
+    const parts = [];
+    if (reps > 0) parts.push(`${reps}回`);
+    if (secs > 0) parts.push(`${secs}秒`);
+    return parts.join(" + ");
+  };
   const totals = s.exercises.map((ex) => ({ ex, v: ex.loggedSets.reduce((a, v) => a + setSum(v), 0), t: (ex.targetReps ?? 0) * (ex.targetSets ?? 0) }));
   const max = Math.max(1, ...totals.map((x) => x.v));
   const rows = totals.map(({ ex, v, t }) => {
@@ -1087,7 +1101,8 @@ function histDayHtml() {
     return `<div class="hbar-row"><div class="hbar-label">${esc(ex.variation || ex.name)}<span class="ex-sub rpe-line">${rpe}</span></div><div class="hbar-track"><div class="hbar" style="width:${Math.max(2, Math.round(pct))}%"></div></div><div class="hbar-val num">${val}<span class="hbar-unit">${esc(unitWord(ex.targetUnit))}</span></div></div>${ex.note ? `<div class="ex-memo">${esc(t("notePrefix"))}${esc(ex.note)}</div>` : ""}`;
   }).join("");
   return `${head}<div class="pager-day" id="pagerDay">
-    <div class="pager-total"><span class="num">${s.totalVolume}</span>${esc(t("repsSuffix"))}</div>
+    <div class="pager-total"><span class="num">${s.load ?? 0}</span>${esc(t("loadSuffix"))}</div>
+    ${repsSecondsText(s) ? `<div class="pager-sub">${esc(repsSecondsText(s))}</div>` : ""}
     <div class="hchart">${rows}</div>
     <button class="edit-btn" data-edit-history="${s.id}">${esc(t("editRecord"))}</button>
   </div>`;

@@ -90,6 +90,11 @@ describe("main flow scenario", () => {
     expect(st.sessions).toHaveLength(1);
     expect(st.sessions[0].status).toBe("completed");
     expect(st.sessions[0].totalVolume).toBeGreaterThan(0);
+    // Totals are load scores now: the state carries them per session
+    // and in the stats.
+    expect(st.sessions[0].load).toBeGreaterThan(0);
+    expect(st.sessions[0].exercises[0].load).toBeGreaterThan(0);
+    expect(st.stats.totalLoad).toBe(st.sessions[0].load);
     expect(st.stats.totalCompleted).toBe(1);
   });
 

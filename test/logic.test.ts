@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { EXERCISES, defaultCatalog, loadOf } from "../src/exercises";
 import {
-  assessPain, painFactorOf, personalAdjustment, achievedLoad, generateSession, painDurationGuidance, emptyStore, setSum,
+  assessPain, painFactorOf, personalAdjustment, achievedLoad, exerciseLoad, generateSession, painDurationGuidance, emptyStore, setSum,
   type PainEntry, type Profile, type Session, type SessionExercise, type Store,
 } from "../src/logic";
 import { diffProfile, migrateProfile } from "../src/logic";
@@ -121,6 +121,12 @@ describe("load planner (generateSession)", () => {
   test("achievedLoad prices performed work by step load", () => {
     const s = doneSession("2026-01-01", [prev({ ladderIndex: 2, loggedSets: [8, 8, 8] })]);
     expect(achievedLoad(s, defaultCatalog())).toBe(loadOf(EXERCISES.pushup, 2) * 24);
+  });
+  test("legacy exercises missing from the catalog still score at the generic anchor", () => {
+    const legacy = prev({ baseId: "deadBug", name: "デッドバグ", ladderIndex: 0, loggedSets: [10, 10] });
+    expect(exerciseLoad(legacy, defaultCatalog())).toBe(60 * 20); // 60 points per rep
+    const timed = prev({ baseId: "oldTimer", targetUnit: "秒", loggedSets: [30, 30] });
+    expect(exerciseLoad(timed, defaultCatalog())).toBe(4 * 60); // 4 points per second
   });
   // One completed session that trained every exercise at a neutral
   // RPE 8 with full achievement, so recency is uniform and the
