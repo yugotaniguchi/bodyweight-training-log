@@ -16,6 +16,46 @@ The colour values were originally measured from screenshots of the
 original Muse space; together with the values the standalone app ships,
 they are fixed here as the specification.
 
+## Platform basis — Modern Web Guidance
+
+The **look** specified here is fixed, but the **techniques** that
+realise it follow the modern web platform as curated by
+[Modern Web Guidance](https://github.com/GoogleChrome/modern-web-guidance)
+(GoogleChrome, stewarded with the Edge, Firefox and MDN teams). Where
+an older draft of this document prescribed a legacy technique, the
+modern platform equivalent below replaces the technique — never the
+values, the wording, or the behaviour.
+
+Adoption policy (normative):
+
+- **Baseline floor.** Every feature this design relies on is
+  Baseline **Widely Available**. A feature that is only Baseline
+  **Newly Available** may be used solely as progressive enhancement:
+  the screen must look and work exactly as specified without it, and
+  the enhancement may only improve on that baseline.
+- **No gated features.** Origin Trial APIs and volatile
+  (single-engine, still-stabilising) features are never used, in
+  line with the guidance's own gating.
+- **Lightweight fallbacks.** Where a fallback is needed it is a few
+  lines of case-specific CSS or JS — never a polyfill bundle or a
+  framework.
+- **Platform before code.** Native elements and CSS features come
+  first (the `<dialog>` element, `light-dark()`, container queries,
+  `:user-invalid`); JavaScript reimplements a platform behaviour
+  only where this document says so explicitly.
+
+Where each discipline lands in this document:
+
+| Discipline | Applied in |
+|---|---|
+| Visual design (colour, dark mode) | "Theme", "Colour tokens" — `color-scheme`, `light-dark()` tokens, `accent-color`, `scrollbar-color`, forced-colors behaviour |
+| CSS layout | "Layout" — container queries, dynamic viewport units, logical properties, reserved boxes (no layout shift) |
+| Typography | "Typography" — rem implementation, `text-wrap`, stable numeral fallbacks |
+| Forms & UI | "Form uniformity", "Input validation" — native constraint validation, `:user-invalid`, `field-sizing` |
+| User experience / motion | "Motion and transitions" — same-document view transitions as enhancement, `prefers-reduced-motion` |
+| Performance | "Performance" — `content-visibility`, interaction responsiveness |
+| Accessibility | "Accessibility" — labels, focus, forced colors, error announcement |
+
 ## Theme
 
 - **Two themes — dark and light — over one teal colour family.** A
@@ -24,14 +64,43 @@ they are fixed here as the specification.
   OS `prefers-color-scheme`). **The default is `システム`.**
 - The setting is stored server-side in the store (`theme`; absent
   means `システム`), exactly like the language. Changing it applies
-  **immediately, with no reload**: the resolved theme is carried on
-  `<html data-theme="dark|light">` and every colour below is a CSS
-  variable with a value per theme. To avoid a flash of the wrong
-  theme, the setting is also mirrored to `localStorage`
-  (`btl-theme`) and a small inline script in the page head resolves
-  and applies it before first paint; on load the server value wins
-  and re-syncs the mirror. While the setting is `システム`, an OS
-  colour-scheme change re-resolves the theme at once.
+  **immediately, with no reload**. The mechanism is the platform's
+  own theming path, not per-theme style blocks:
+  - The page head declares `<meta name="color-scheme"
+    content="light dark">`, so the browser knows both schemes are
+    supported before first paint and never flashes an un-themed
+    canvas.
+  - The resolved theme is carried on `<html data-theme="dark|light">`,
+    which sets the **`color-scheme` property on `:root`** to the
+    resolved scheme — scrollbars, form controls and the canvas
+    background follow the theme natively.
+  - Every colour token below is defined **once**, as a
+    `light-dark(<light value>, <dark value>)` pair over raw
+    per-theme custom properties (`--<token>-light` /
+    `--<token>-dark`, kept separate so values can be recombined).
+    Components reference only the resolved token and **never branch
+    on the theme** — there are no duplicated per-theme variable
+    blocks and no per-theme component overrides (the pain-tile ramp
+    included: each ramp colour is a `light-dark()` token).
+  - To avoid a flash of the wrong theme, the setting is also
+    mirrored to `localStorage` (`btl-theme`) and a small inline
+    script in the page head resolves and applies it before first
+    paint; on load the server value wins and re-syncs the mirror.
+    While the setting is `システム`, an OS colour-scheme change
+    re-resolves the theme at once.
+  - Native controls take the theme's accent: `accent-color:
+    var(--accent)` on `:root`. Scrollbars are tinted from the
+    tokens — `scrollbar-color: var(--border) var(--bg)` — and
+    `scrollbar-color` is **never transitioned** (a WebKit bug makes
+    it flicker); on macOS the overlay scrollbar may ignore the
+    tint, which is acceptable.
+  - **Forced Colors Mode** (Windows High Contrast) overrides author
+    colours by design; the design survives it because no state is
+    carried by colour alone (see the contrast rule below). In
+    forced colors the notice boxes and tiles keep a visible 1px
+    border in a system colour (`ButtonText`), and the tile ramp
+    simply flattens — the numeral, level word and tick count still
+    carry the level.
 - The dark token set is the original measured look: near-black
   background, white text, gray secondary text, one bright teal
   accent. The light set keeps the same teal family on white /
@@ -63,9 +132,16 @@ they are fixed here as the specification.
 
 ## Colour tokens (normative)
 
-Each token has a dark value and a light value; components always
-reference the token, never a raw hex (the pain-tile ramps below are
-the one fixed exception).
+Each token has a dark value and a light value, defined once as a
+`light-dark()` pair (see "Theme"); components always reference the
+token, never a raw hex (the pain-tile ramps below are the one fixed
+exception). The token set is closed: a shade the design needs is a
+token in these tables, never derived at runtime. If a genuinely new
+tint is ever required, it is added here as a fixed value — not
+computed by adjusting a lightness channel (browsers do not gamut-map
+relative `oklch`/`oklab` colours predictably); `color-mix(in oklab,
+…)` with white or black is the only permitted derivation, and its
+result is then frozen into this table.
 
 | Token | Dark | Light | Used for |
 |---|---|---|---|
@@ -154,6 +230,20 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Headings (`h2`): 17px, bold, `--text`, margin 22px 0 4px.
 - Section descriptions (`.desc`): 13px, `--sub`, margin 0 0 10px.
 - Small text (`.small`, `.refs`): 13px, `--sub`.
+- **Implementation units.** Sizes in this document are stated in px
+  for exactness; implement them in **rem** (root = the browser's
+  default, normally 16px) so the OS / browser text-scale preference
+  keeps working. At default settings every rendered size is exactly
+  the px value stated. Line heights stay unitless.
+- **Wrapping.** Headings and the session title use
+  `text-wrap: balance`; the one-line `.desc` descriptions use
+  `text-wrap: pretty`. Both are progressive enhancements — where
+  unsupported, text wraps as before.
+- **Numeral fallback stability.** When Barlow Condensed cannot be
+  loaded, numerals fall back to system-ui; the fixed line heights
+  and letter spacing above keep that swap from moving the layout,
+  and `font-size-adjust` may be set on numeral elements to bring
+  the fallback's x-height in line. No other font is ever loaded.
 
 ## Text-minimal principle (standing rule)
 
@@ -200,8 +290,10 @@ All three notice boxes share: 1px solid border, radius 10px, padding
   `胸の痛みがある` / `大きな事故・転倒の直後である`
 - Legend badges, muscle: `0–1 通常` `2 軽減` `3以上 除外` `4以上 ×2部位 休養`
 - Legend badges, joints: `0–1 通常` `2 軽減` `3以上 除外` `サインあり 受診目安`
-- Muscle parts (10, in order): 胸・肩・上腕・前腕・背中・脚（前）・
-  脚（後ろ）・お尻・ふくらはぎ・腹筋・体幹
+- Muscle parts (20, grouped in this order): 上半身（押す）=
+  胸上部・胸下部・肩前部・上腕三頭； 上半身（引く）= 肩後部・上腕二頭・
+  背中上部・広背筋・脊柱起立筋・前腕； 脚 = 大腿四頭筋・ハムストリング・
+  臀部・内転筋・ふくらはぎ・脛； 体幹 = 腹筋上部・腹筋下部・腹斜筋・体幹深部
 - Joints (10, in order): 腰・背骨・肩・肘・手首・手指・股関節・膝・足首・足指
 - Level words (0–5): `なし` `軽い` `普通` `強い` `かなり強い` `激しい`
 - Primary CTA, two states:
@@ -373,6 +465,24 @@ bite. Do not re-add explanatory footer prose.
 - Pain tiles: **2-column grid**, gap **8px**.
 - The primary CTA sits after the screen's content, full width.
 - Vertical rhythm: `h2` sections as above; cards have margin 12px 0.
+- **Container, not viewport.** The content column is a containment
+  context (`container-type: inline-size` on the main element).
+  Components that adapt — the pain-tile grid, the settings form
+  grid, the summary blocks — respond to the **container's** width
+  via `@container` queries, never to the viewport; at the app's own
+  widths the results are exactly the layouts specified above.
+  Viewport units appear only for page-level sizing, and there the
+  dynamic units (`dvh` / `dvw`) are used, never `vh` / `vw`, so
+  mobile browser chrome showing or hiding cannot break the layout.
+- **Logical properties.** Direction-sensitive spacing and offsets
+  in new or changed CSS are written with logical properties
+  (`margin-inline`, `padding-inline`, `inset-inline-end`, …). Both
+  shipped languages are LTR, so every rendered value is the one
+  specified in this document; the layout simply stops assuming it.
+- **No layout shift.** Anything whose size depends on data — the
+  ring gauge, the trend and monthly charts, the day pager —
+  reserves its final box before the data renders (fixed dimensions
+  or `aspect-ratio`), so nothing moves once content arrives.
 
 ## Components (exact values and states)
 
@@ -525,12 +635,17 @@ bite. Do not re-add explanatory footer prose.
     name**; the cue line remains only on history-edit cards.
   - **How-to (i) button** (workout cards only): a 26px circular outline
     button with an italic `i`, sitting next to the exercise name
-    (title row, flex). It opens the **guide window**: a centred modal
-    (overlay, max width 480px) with the exercise name, a `手順` heading
+    (title row, flex). It opens the **guide window**: a native
+    `<dialog>` element shown with `showModal()` — the platform
+    supplies the top layer, the focus trap and Esc-to-close; no
+    hand-rolled overlay or focus code. The dialog is centred, max
+    width 480px, max height 80dvh, `--bg` fill, 1px solid `--border`,
+    radius 12px, padding 18px; its `::backdrop` is
+    `rgba(0,0,0,0.55)`, and a tap on the backdrop closes it (as does
+    the × button). Inside: the exercise name, a `手順` heading
     and the numbered steps, then a `意識する部位` heading and the focus
     text — both from the catalog's per-exercise guide data (`steps` /
-    `focus`), so they follow the user's own menu definition. The ×
-    button or a tap on the overlay closes it.
+    `focus`), so they follow the user's own menu definition.
   - Right: the **total target** (target reps × sets, or total seconds)
     as a **36px Barlow Condensed numeral** in `--text` — the same
     bright colour as the card's other numerals; under it the label
@@ -783,6 +898,25 @@ bite. Do not re-add explanatory footer prose.
   no separate generic set / RPE inputs anymore.)
 - Settings fields sit on the regular grid described above; no field is
   sized ad hoc.
+- **Native validation drives the styling.** Each field carries the
+  HTML constraint attributes that mirror the server rules below
+  (`required`, `min` / `max`, `maxlength`, and the `inputmode` /
+  `pattern` pairs from "Numeric keyboards"), and the client reads
+  validity from the platform instead of re-checking by hand wherever
+  the platform can express the rule. Error styling keys off
+  **`:user-invalid`** — the state after the user has interacted and
+  left the field invalid — never `:invalid`, so nothing shows an
+  error while it is still being typed or before it is touched. An
+  error is always a text message as well as a colour (never colour
+  alone), and while a field is invalid its message is listed in the
+  field's `aria-describedby` so screen readers announce it with the
+  field.
+- **Self-sizing text fields.** The per-exercise note input and the
+  profile 補足 textarea use `field-sizing: content` and grow with
+  their content (vertically for the textarea; its width stays
+  100%), bounded by the min/max heights in the geometry above.
+  Where `field-sizing` is unsupported they keep exactly the fixed
+  heights specified — the enhancement is invisible when absent.
 - The workout exercise cards deliberately use their own black-field
   geometry (see "Workout exercise cards"), uniform within the card.
 
@@ -820,6 +954,40 @@ wait or a failure would otherwise leave a blank or unresponsive screen.
 - A network-level failure (no response at all) is always worded
   `通信に失敗しました。接続を確認してもう一度お試しください。`; a server
   refusal shows the server's reason text.
+
+## Motion and transitions
+
+- The app is nearly still by design: the only transitions are the
+  ones this document specifies (the gear button's 0.2s fade, the
+  timer bar's 0.2s linear width). Nothing else animates, and no
+  animation is decorative.
+- **`prefers-reduced-motion`.** Under
+  `@media (prefers-reduced-motion: reduce)` every transition above
+  becomes instant (no fade, no slide of the timer bar — its width
+  simply steps), and view transitions are disabled entirely.
+- **View transitions (enhancement only).** Switching between the
+  three views, or to and from settings, may run a same-document
+  view transition — a short cross-fade — where the platform
+  supports it. It is purely additive: navigation, history and
+  scroll restoration behave exactly as specified in "Navigation"
+  with or without it. The day pager's swipe is a direct-manipulation
+  gesture and never uses a view transition.
+
+## Performance
+
+- **Deferred rendering.** A self-contained block that sits below
+  the initial viewport and can grow long — profile-history entries,
+  the report's summary blocks — carries `content-visibility: auto`
+  with `contain-intrinsic-size: auto` and a plausible first-render
+  height, so off-screen entries cost no layout or paint until
+  scrolled to. Never apply it to content in the initial viewport.
+- **Responsive taps.** A tap answers within the frame: pain-tile
+  taps only update the tile and the draft state. Heavy work — menu
+  planning, imports, catalog validation — runs on explicit submit
+  actions (the CTA, the save buttons), never per keystroke or per
+  tap, and the debounced profile autosave never re-renders the form
+  (see "Settings screen").
+- **No layout shift** after first paint, per the rule in "Layout".
 
 ## Input validation, escaping, and numeric keyboards
 
@@ -1263,6 +1431,17 @@ assessment, treating what is already recorded as fixed premises
   (the 34px gear, the chips at 7px vertical padding, the 12px
   history `記録を編集` pill) are **not** enlarged — the normative sizes
   win over the 44px guideline where they conflict.
+- **Forced Colors Mode** is supported as specified in "Theme":
+  state is never carried by colour alone anywhere in the app, and
+  borders keep tiles and notice boxes distinguishable when author
+  colours are overridden.
+- **Reduced motion** is honoured as specified in "Motion and
+  transitions": no information is conveyed by an animation, so
+  removing animation removes nothing.
+- **Validation errors are announced**, not just shown: while a
+  field is invalid, its message sits in the field's
+  `aria-describedby` (see "Form uniformity"), mirroring the visual
+  `:user-invalid` state for assistive technology.
 
 ## Date display — only two forms
 - Dates may appear **only** in these two shapes: (a) the header's
@@ -1325,7 +1504,7 @@ assessment, treating what is already recorded as fixed premises
    a custom catalog's own part — collects under a final その他
    heading)
 7. `今日の関節痛は？（関節ごと）` — heading, description, legend badges,
-   2-column tiles (8 joints)
+   2-column tiles (10 joints)
 8. Primary CTA （保存してワークアウトを開始 — it saves the condition
    check, rebuilds the day's planned session, creates today's session
    first if none exists, and goes to the workout screen;
@@ -1356,11 +1535,13 @@ assessment, treating what is already recorded as fixed premises
 1. Header; segment navigation （レポート active); gear as on every
    screen (visible only at the very top)
 2. Heading `レポート` (or the empty-state text + `ワークアウトへ` CTA)
-3. Search field `種目名・メモで検索`; while a query is present, the
-   summaries hide and the entries are filtered
-4. Summaries `月別` and `部位別` (quiet two-column rows)
-5. Entries, newest first, in the list form above; an entry in edit
-   mode shows its edit cards in place
+3. 日別 / 月別 toggle under the heading
+4. Daily view: the trend chart (top), then the day pager — one
+   recorded day at a time (swipe, ‹ › buttons, or a trend-bar tap),
+   its exercises as horizontal bars; an entry in edit mode shows
+   its edit cards in place
+5. Monthly view: the `月別` vertical bar chart and the `部位別`
+   horizontal bars
 
 ### 4. Settings （設定， via the gear)
 1. Header; segment navigation (no segment active); gear in its
@@ -1400,5 +1581,18 @@ assessment, treating what is already recorded as fixed premises
 - Do not add a week strip, week boxes, or day numbers to the workout
   screen — the week dot row (letters + dots only) is the whole of it.
 - Do not drop Barlow Condensed for the numerals.
-- Do not add explanatory prose outside the two places allowed by the
+- Do not add explanatory prose outside the one place allowed by the
   text-minimal principle.
+- Do not adopt Origin Trial or volatile (single-engine,
+  still-stabilising) platform features, and do not ship a polyfill
+  bundle to support an enhancement — enhancements degrade silently
+  or not at all (see "Platform basis").
+- Do not duplicate the theme tokens into per-theme blocks or
+  per-theme component overrides; tokens are single `light-dark()`
+  pairs driven by `color-scheme` on `:root`.
+- Do not style a form field's error state with `:invalid`; the
+  error state is `:user-invalid` only, so nothing errors while it
+  is still being typed.
+- Do not transition `scrollbar-color`, and do not reimplement the
+  guide window with a hand-rolled overlay div — it is a native
+  `<dialog>`.
