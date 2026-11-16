@@ -109,6 +109,7 @@ nav button.active{background:var(--accent);color:var(--on-accent)}
    colour through level 2 and deepens through the teal ramp only from
    level 3 up (3 → 4 → 5), as fixed in DESIGN.md. Never a heat scale. */
 .tapgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tapgroup-h{font-size:13px;color:var(--sub);margin:14px 0 6px}
 .tap{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:11px;border:none;background:var(--surface);color:var(--text);cursor:pointer;text-align:left;min-height:74px}
 .tap-row{display:flex;justify-content:space-between;align-items:flex-start}
 .tap-name{font-weight:700;font-size:15px}

@@ -199,6 +199,11 @@ function publicState() {
       // Exercise ids recorded per side (left/right inputs); ids and
       // names are language-neutral, only the UI labels translate.
       unilateral: Object.values(cat.exercises).filter((e) => e.unilateral).map((e) => e.baseId),
+      // Families whose harder steps (from this ladder index on) are
+      // recorded per side, though the easier steps are bilateral.
+      unilateralFrom: Object.fromEntries(Object.values(cat.exercises)
+        .filter((e) => typeof e.unilateralFrom === "number")
+        .map((e) => [e.baseId, e.unilateralFrom as number])),
       // How-to guides for the workout tab's info window (steps + the
       // body part to focus on), keyed by exercise id. Catalog data, so
       // it follows the user's own menu definition when they edit it.
