@@ -987,6 +987,11 @@ Two export formats exist; import is JSON only:
   (menus are planned by load, not rotations). An exercise may carry
   `loads` (positive per-step load points, one per ladder step) and a
   `pattern` (its movement pattern); both are validated when present.
+  An exercise may also carry `unilateralFrom` — the first ladder
+  index whose steps are recorded per side, for families whose easier
+  steps are bilateral and only the harder steps are single-side; it
+  must satisfy 1 ≤ value < ladder length and, like `unilateral`, is
+  never allowed on a timed exercise.
   An exercise's `steps` / `focus` (the guide window's
   contents) may be omitted and fall back to its cue / muscle group.
   The catalog endpoints mirror the data ones: `GET /api/catalog`
@@ -1086,6 +1091,35 @@ Two export formats exist; import is JSON only:
   pain — for external displays (the home-screen widget).
 - The pain coefficients are adjustable initial values, not medically
   grounded constants; the README's caution applies.
+
+## Catalog expansion and stored-data migration (data version 2)
+
+- The built-in catalog holds **54 exercise families** (the original
+  13 plus 41 added 2026-11-16, researched from published bodyweight
+  progressions) and **19 pain parts**: the original 10 parts split by
+  the muscle actually loaded （胸→胸上部/胸下部、肩→肩前部/肩後部、
+  上腕→上腕二頭/上腕三頭、背中→背中上部/広背筋/脊柱起立筋、
+  脚（後ろ）・お尻→ハムストリング/臀部、腹筋→腹筋上部/腹筋下部、
+  体幹→腹斜筋/体幹深部， plus the new 内転筋）. The joint-to-part map
+  expands each old part to all of its successors. Three legacy
+  baseIds return as families: `calf` （カーフレイズ）, `deadBug`
+  （デッドバグ） and `superman` （スーパーマン）; the remaining legacy
+  ids (`diamond`, `splitSquat`) stay outside the catalog and keep
+  scoring at the generic anchor.
+- Load points for the new families are relative values ordered by
+  the sources' difficulty progressions on the existing scale
+  (standard push-up rep = 60, plank = 6/sec) — initial values to be
+  corrected by the user's own records, not measurements.
+- Stores carry `dataVersion` (absent = 1). On load and on import,
+  `migrateStoreData` brings a version-1 store forward exactly once:
+  pain-entry soreness keys are renamed to each old part's primary
+  successor (the larger level wins on a collision), and recorded
+  ladder indexes are remapped for the families whose ladders gained
+  inserted steps (pushup, squat, plank, legRaise, gluteBridge, plus
+  deadBug/superman step 0 → 1, their recorded standard form). The
+  migration assumes the built-in taxonomy; recorded sessions keep
+  their stored names, variations and pain-part labels as history —
+  only the index (the pricing/selection key) is remapped.
 
 ## Condition re-save rebuilds the planned session
 
@@ -1275,9 +1309,12 @@ assessment, treating what is already recorded as fixed premises
    visible only while scrolled to the very top)
 5. `まず、警告サインの確認` — heading, description, warning-sign chips
 6. `今日の筋肉痛は？（部位ごと）` — heading, description, legend badges,
-   2-column tiles (10 parts)
+   2-column tiles (19 parts, grouped under the region headings
+   上半身（押す）/ 上半身（引く）/ 脚 / 体幹； a part no group claims —
+   a custom catalog's own part — collects under a final その他
+   heading)
 7. `今日の関節痛は？（関節ごと）` — heading, description, legend badges,
-   2-column tiles (7 joints)
+   2-column tiles (8 joints)
 8. Primary CTA （保存してワークアウトを開始 — it saves the condition
    check, rebuilds the day's planned session, creates today's session
    first if none exists, and goes to the workout screen;
