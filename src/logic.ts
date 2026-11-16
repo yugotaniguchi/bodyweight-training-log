@@ -90,6 +90,9 @@ export interface Store {
    *  hand-corrupted store file falls back to the built-in catalog
    *  instead of breaking session generation. */
   catalog?: Catalog;
+  /** Stored-data format version; absent means 1 (pre catalog
+   *  expansion). migrateStoreData brings older stores forward. */
+  dataVersion?: number;
 }
 
 /** The catalog a store runs on: its own when present and structurally
@@ -105,6 +108,72 @@ export function catalogOf(store: Store): Catalog {
   return defaultCatalog();
 }
 export const emptyStore = (): Store => ({ profile: null, pain: [], sessions: [], nextSessionId: 1, nextExerciseId: 1, profileHistory: [] });
+
+/** Current stored-data format version. Version 2 is the 2026-11-16
+ *  catalog expansion: the pain parts split from 10 into 19 finer
+ *  parts, and several ladders gained inserted steps, which shifts
+ *  the meaning of a recorded ladderIndex. */
+export const STORE_DATA_VERSION = 2;
+
+/** Where a pre-expansion pain part's history lands after the split:
+ *  each old part's primary successor (an old part that split several
+ *  ways keeps one home; parts that did not split are absent here). */
+export const LEGACY_PART_PRIMARY: Record<string, string> = {
+  "胸": "胸下部", "肩": "肩前部", "上腕": "上腕三頭", "背中": "背中上部",
+  "脚（前）": "大腿四頭筋", "脚（後ろ）・お尻": "ハムストリング",
+  "腹筋": "腹筋上部", "体幹": "体幹深部",
+};
+
+/** Old ladder index -> new ladder index, per family whose ladder
+ *  gained inserted steps in the expansion (append-only families are
+ *  the identity and need no entry). deadBug and superman are legacy
+ *  baseIds the expansion re-admits as families: their recorded
+ *  step 0 was the standard form, which sits at index 1 in the new
+ *  ladders. calf, the third re-admitted legacy id, needs no entry:
+ *  its recorded step 0 （両脚カーフレイズ） is still step 0. */
+export const LADDER_INDEX_REMAP: Record<string, Record<number, number>> = {
+  pushup: { 0: 0, 1: 1, 2: 3, 3: 5 },
+  squat: { 0: 0, 1: 1, 2: 3 },
+  plank: { 0: 0, 1: 2, 2: 3 },
+  legRaise: { 0: 0, 1: 1, 2: 3 },
+  gluteBridge: { 0: 0, 1: 1, 2: 3 },
+  deadBug: { 0: 1 },
+  superman: { 0: 1 },
+};
+
+/** Bring a store written before the catalog expansion forward, in
+ *  place: rename pain-entry soreness keys to the finer parts (the
+ *  larger level wins when an old and a new key collide) and remap
+ *  recorded ladder indexes whose ladders gained inserted steps.
+ *  Version-gated and idempotent; applied on store load and on
+ *  import, so the rest of the code only ever sees current data.
+ *  Assumes the built-in taxonomy — a store carrying its own custom
+ *  catalog from before the expansion would need its pain keys
+ *  renamed by hand to match its own parts, and its recorded ladder
+ *  indexes checked against its own ladders (the remap below shifts
+ *  indexes for the built-in ladders' inserted steps). Lookups into
+ *  the two maps go through Object.hasOwn so a crafted key like
+ *  "constructor" in imported data cannot resolve through the
+ *  prototype chain. */
+export function migrateStoreData(store: Store): Store {
+  if ((store.dataVersion ?? 1) >= STORE_DATA_VERSION) return store;
+  for (const entry of store.pain) {
+    const renamed: Record<string, number> = {};
+    for (const [part, level] of Object.entries(entry.soreness ?? {})) {
+      const next = Object.hasOwn(LEGACY_PART_PRIMARY, part) ? LEGACY_PART_PRIMARY[part] : part;
+      renamed[next] = Math.max(renamed[next] ?? 0, level);
+    }
+    entry.soreness = renamed;
+  }
+  for (const session of store.sessions) {
+    for (const ex of session.exercises) {
+      const map = Object.hasOwn(LADDER_INDEX_REMAP, ex.baseId) ? LADDER_INDEX_REMAP[ex.baseId] : undefined;
+      if (map && Object.hasOwn(map, ex.ladderIndex)) ex.ladderIndex = map[ex.ladderIndex];
+    }
+  }
+  store.dataVersion = STORE_DATA_VERSION;
+  return store;
+}
 
 // ---------- profile change history ----------
 // Every profile save is diffed against the stored one; the differences

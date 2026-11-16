@@ -1,6 +1,6 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { emptyStore, migrateProfile, type Store } from "./logic";
+import { emptyStore, migrateProfile, migrateStoreData, type Store } from "./logic";
 import { logEvent } from "./log";
 
 const DATA_FILE = process.env.DATA_FILE ?? join(process.cwd(), "data", "store.json");
@@ -51,7 +51,10 @@ function tryParse(raw: string): Store | null {
       // Saved profiles from the two-note-fields era are carried over
       // losslessly (merged note, sex folded to the select options).
       s.profile = migrateProfile(s.profile);
-      return s;
+      // Stores from before the catalog expansion are brought to the
+      // current data version (finer pain parts, remapped ladder
+      // indexes); a no-op for current stores.
+      return migrateStoreData(s);
     }
   } catch { /* fall through */ }
   return null;

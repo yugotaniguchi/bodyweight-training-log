@@ -6,7 +6,7 @@
 // language; every function takes an optional language, default Japanese.
 import { RED_FLAGS, type Catalog, type ExerciseDef } from "./exercises";
 import { CMSG, isLang, isTheme, VMSG, type Lang, type Theme } from "./i18n";
-import { sessionTotal, type PainEntry, type Profile, type ProfileHistoryEntry, type Session, type SessionExercise, type SetLog, type Store } from "./logic";
+import { migrateStoreData, sessionTotal, type PainEntry, type Profile, type ProfileHistoryEntry, type Session, type SessionExercise, type SetLog, type Store } from "./logic";
 
 export class InvalidInput extends Error {}
 
@@ -263,6 +263,10 @@ export function parseCatalogImport(v: unknown, lang: Lang = "ja"): Catalog {
   for (const [id, raw] of Object.entries(v.exercises)) {
     if (!isObj(raw)) bad(M.exerciseField(id, "baseId"));
     const field = (name: string): never => bad(M.exerciseField(id, name));
+    // Ids that name Object.prototype members are refused: assigning
+    // one into the exercises record would set its prototype instead
+    // of an entry, silently swallowing the exercise.
+    if (id === "__proto__" || id === "constructor" || id === "prototype") field("baseId");
     if (raw.baseId !== id) field("baseId");
     if (typeof raw.name !== "string" || raw.name === "") field("name");
     if (typeof raw.muscleGroup !== "string" || raw.muscleGroup === "") field("muscleGroup");
@@ -277,6 +281,15 @@ export function parseCatalogImport(v: unknown, lang: Lang = "ja"): Catalog {
     if (typeof raw.baseSets !== "number" || !Number.isInteger(raw.baseSets) || raw.baseSets < 1 || raw.baseSets > 10) field("baseSets");
     if (!Array.isArray(raw.ladder) || raw.ladder.length === 0
       || raw.ladder.some((s) => typeof s !== "string" || s === "")) bad(M.ladderInvalid(id));
+    // unilateralFrom is checked only after the ladder itself is
+    // validated, so its range test uses the ladder's real length:
+    // 1 <= value < ladder length, and never on a timed exercise.
+    if (raw.unilateralFrom !== undefined) {
+      if (typeof raw.unilateralFrom !== "number" || !Number.isInteger(raw.unilateralFrom)
+        || raw.unilateralFrom < 1
+        || raw.unilateralFrom >= (raw.ladder as string[]).length) field("unilateralFrom");
+      if (raw.unit === "秒") bad(M.unilateralTimed(id));
+    }
     if (typeof raw.defaultLadder !== "number" || !Number.isInteger(raw.defaultLadder)
       || raw.defaultLadder < 0 || raw.defaultLadder >= (raw.ladder as string[]).length) bad(M.defaultLadderRange(id));
     if (raw.loads !== undefined && (!Array.isArray(raw.loads)
@@ -298,6 +311,7 @@ export function parseCatalogImport(v: unknown, lang: Lang = "ja"): Catalog {
       painPart: raw.painPart as string, jointParts: [...(raw.jointParts as string[])],
       unit: raw.unit as "回" | "秒",
       ...(raw.unilateral === true ? { unilateral: true } : {}),
+      ...(typeof raw.unilateralFrom === "number" ? { unilateralFrom: raw.unilateralFrom } : {}),
       baseTarget: raw.baseTarget as number, baseSets: raw.baseSets as number,
       defaultLadder: raw.defaultLadder as number, ladder: [...(raw.ladder as string[])],
       ...(Array.isArray(raw.loads) ? { loads: [...(raw.loads as number[])] } : {}),
@@ -309,7 +323,7 @@ export function parseCatalogImport(v: unknown, lang: Lang = "ja"): Catalog {
   if (!isObj(v.substitutes)) bad(M.exerciseField("substitutes", "substitutes"));
   const substitutes: Record<string, string> = {};
   for (const [from, to] of Object.entries(v.substitutes)) {
-    if (typeof to !== "string" || !(from in exercises) || !(to in exercises)) bad(M.substituteUnknown(from, String(to)));
+    if (typeof to !== "string" || !Object.hasOwn(exercises, from) || !Object.hasOwn(exercises, to)) bad(M.substituteUnknown(from, String(to)));
     if (from === to) bad(M.substituteSelf(from));
     substitutes[from] = to;
   }
@@ -352,11 +366,23 @@ export function parseStoreImport(v: unknown, lang: Lang = "ja"): Store {
   if (v.catalog !== undefined) {
     importedCatalog = parseCatalogImport(v.catalog, lang);
   }
+  // The data format version is optional exactly like lang/theme:
+  // an export written before it existed imports as version 1 and is
+  // migrated below, while a current export carries the version and
+  // must NOT be migrated again — its ladder indexes are already
+  // remapped, and migrating twice would shift them a second time.
+  let importedVersion: number | undefined;
+  if (v.dataVersion !== undefined) {
+    if (typeof v.dataVersion !== "number" || !Number.isInteger(v.dataVersion) || v.dataVersion < 1) impFail(lang);
+    importedVersion = v.dataVersion;
+  }
   const profile = v.profile === null ? null : isObj(v.profile) ? parseProfile(v.profile, lang, { foldLegacySex: true }) : impFail(lang);
   const sessions = (v.sessions as unknown[]).map((s) => parseImportedSession(s, lang));
   const maxSessionId = sessions.reduce((a, s) => Math.max(a, s.id), 0);
   const maxExerciseId = sessions.reduce((a, s) => s.exercises.reduce((b, e) => Math.max(b, e.id), a), 0);
-  return {
+  // An export written before the catalog expansion imports as
+  // version-1 data; migrate it forward like a store load does.
+  return migrateStoreData({
     profile,
     pain: (v.pain as unknown[]).map((p) => parseImportedPain(p, lang)),
     sessions,
@@ -366,5 +392,6 @@ export function parseStoreImport(v: unknown, lang: Lang = "ja"): Store {
     ...(importedLang ? { lang: importedLang } : {}),
     ...(importedTheme ? { theme: importedTheme } : {}),
     ...(importedCatalog ? { catalog: importedCatalog } : {}),
-  };
+    ...(importedVersion ? { dataVersion: importedVersion } : {}),
+  });
 }
