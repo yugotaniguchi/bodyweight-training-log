@@ -115,10 +115,14 @@ export const emptyStore = (): Store => ({ profile: null, pain: [], sessions: [],
  *  the meaning of a recorded ladderIndex. Version 3 is the same
  *  day's second round: the pushup ladder gained an incline step
  *  (and its wide step was repriced), shifting pushup indexes again.
+ *  Version 4 merges families: superman and backExtension become
+ *  floorBackExtension, reverseSnowAngel is absorbed into proneT,
+ *  and proneT gains a step at the bottom — recorded baseIds and
+ *  ladder indexes are rewritten to the merged ladders.
  *  Adding families or parts (round 2 also added both) does not by
  *  itself need a version: stored data simply has no records for
  *  them yet. Only a change that reinterprets stored values does. */
-export const STORE_DATA_VERSION = 3;
+export const STORE_DATA_VERSION = 4;
 
 /** Where a pre-expansion pain part's history lands after the split:
  *  each old part's primary successor (an old part that split several
@@ -152,6 +156,26 @@ export const LADDER_INDEX_REMAP: Record<string, Record<number, number>> = {
  *  (55 -> 50) does not move any index. */
 export const LADDER_INDEX_REMAP_V3: Record<string, Record<number, number>> = {
   pushup: { 0: 0, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8 },
+};
+
+/** Version 3 -> 4 family merges: a recorded exercise in a retired
+ *  family is rewritten to the family that absorbed it, with its
+ *  ladder index mapped onto the merged ladder. The merged ladders
+ *  interleave the old steps by load, so a mapped index prices the
+ *  record at the same step as before — except the two upper
+ *  reverseSnowAngel steps, whose floating arc movement lands on
+ *  proneT's floating steps (30 -> 35 and 40 -> 45 points). */
+export const FAMILY_MERGE_V4: Record<string, { to: string; index: Record<number, number> }> = {
+  superman: { to: "floorBackExtension", index: { 0: 1, 1: 3, 2: 5, 3: 7 } },
+  backExtension: { to: "floorBackExtension", index: { 0: 0, 1: 2, 2: 4, 3: 6 } },
+  reverseSnowAngel: { to: "proneT", index: { 0: 0, 1: 2, 2: 3 } },
+};
+
+/** Version 3 -> 4 ladder remap for a family that survives the
+ *  merges: proneT absorbed the snow angel step at the bottom, so
+ *  its own recorded steps shift by one at unchanged prices. */
+export const LADDER_INDEX_REMAP_V4: Record<string, Record<number, number>> = {
+  proneT: { 0: 1, 1: 2, 2: 3 },
 };
 
 /** Bring a store written before the catalog expansion forward, in
@@ -196,6 +220,24 @@ export function migrateStoreData(store: Store): Store {
       }
     }
     version = 3;
+  }
+  if (version < 4) {
+    // One pass keyed on each exercise's original baseId: a merged
+    // exercise is rewritten exactly once, and the indexes the merge
+    // writes are already new-ladder indexes, never re-remapped.
+    for (const session of store.sessions) {
+      for (const ex of session.exercises) {
+        const merge = Object.hasOwn(FAMILY_MERGE_V4, ex.baseId) ? FAMILY_MERGE_V4[ex.baseId] : undefined;
+        if (merge) {
+          if (Object.hasOwn(merge.index, ex.ladderIndex)) ex.ladderIndex = merge.index[ex.ladderIndex];
+          ex.baseId = merge.to;
+          continue;
+        }
+        const map = Object.hasOwn(LADDER_INDEX_REMAP_V4, ex.baseId) ? LADDER_INDEX_REMAP_V4[ex.baseId] : undefined;
+        if (map && Object.hasOwn(map, ex.ladderIndex)) ex.ladderIndex = map[ex.ladderIndex];
+      }
+    }
+    version = 4;
   }
   store.dataVersion = STORE_DATA_VERSION;
   return store;
