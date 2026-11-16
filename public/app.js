@@ -125,7 +125,7 @@ const STR = {
     noteP3a: "継続日数チェック：同じ部位の筋肉痛が5日以上、関節痛が2週間改善しない場合は受診目安として注意表示します（関節痛は7日でも注意表示）。",
     noteP3b: "開始を止めるのは警告サインだけです。",
     noteP3c: "関節痛は部位にも効きます（腰→脚・体幹、背骨→背中・腹筋・体幹、肩→押す系、肘→押す系・引く系、手首→押す系・プランク系、股関節・膝・足首→脚系）。",
-    noteRefs: "参考文献：ACSM ポジションスタンド／ACSM 筋肉痛（DOMS）資料、Silbernagel et al. 2007 (Am J Sports Med)、NHS 関節痛・腰痛、CDC/NIOSH 横紋筋融解症。",
+    noteRefs: "参考文献：ACSM ポジションスタンド（2026年版）、Robinson et al. 2024／Refalo et al. 2023（限界接近度）、Zourdos et al. 2016／Helms et al. 2016（RPE・RIR）、Silbernagel et al. 2007／Smith et al. 2017／Tran et al. 2025（痛みモニタリング）、Finucane et al. 2020（レッドフラッグ）、NICE ガイドライン NG59・NG226／Foster et al. 2018、Cheung et al. 2003／Hotfiel et al. 2018（DOMS）、McHugh 2003（反復バウト効果）、Davies et al. 2015（プライオメトリクス）、Pelland et al. 2025（量・頻度）、CDC/NIOSH 横紋筋融解症。",
   },
   en: {
     appTitle: "Bodyweight Training Log",
@@ -235,7 +235,7 @@ const STR = {
     noteP3a: "Duration check: soreness in the same part lasting 5 or more days, or joint pain that does not improve within 2 weeks, is shown as see-a-doctor guidance (joint pain is already flagged at 7 days).",
     noteP3b: "Only warning signs stop a start.",
     noteP3c: "Joint pain also reaches body parts (lower back → legs and core, shoulders → pushing, elbows → pushing and pulling, wrists → pushing and planks, hips, knees and ankles → legs).",
-    noteRefs: "References: ACSM position stands / ACSM material on delayed onset muscle soreness (DOMS), Silbernagel et al. 2007 (Am J Sports Med), NHS joint pain and back pain, CDC/NIOSH rhabdomyolysis.",
+    noteRefs: "References: ACSM position stand (2026 edition), Robinson et al. 2024 / Refalo et al. 2023 (proximity to failure), Zourdos et al. 2016 / Helms et al. 2016 (RPE and RIR), Silbernagel et al. 2007 / Smith et al. 2017 / Tran et al. 2025 (pain monitoring), Finucane et al. 2020 (red flags), NICE guidelines NG59 and NG226 / Foster et al. 2018, Cheung et al. 2003 / Hotfiel et al. 2018 (DOMS), McHugh 2003 (repeated bout effect), Davies et al. 2015 (plyometrics), Pelland et al. 2025 (volume and frequency), CDC/NIOSH rhabdomyolysis.",
   },
 };
 function t(key, vars) {

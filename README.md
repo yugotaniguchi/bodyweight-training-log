@@ -98,17 +98,23 @@ The menu is planned in **load points** — there are no fixed rotations. Every l
 - Joint pain is judged more strictly: level 2 reduces the load, level 3 or higher excludes it. It applies both to the joints an exercise loads and, through the joint → muscle-part mapping above, to the muscle parts those joints serve.
 - A full rest day happens only when level 4 or higher soreness is present in **2 or more body parts**.
 - **24-hour rule**: If pain has not returned to its baseline by the next morning, the previous load was probably too high. There is no separate auto-judgment for this: the next day's pain check prices that part down through the pain coefficients when the next menu is planned. Soreness that does not improve in 5 days, or joint pain that does not improve in 1–2 weeks, is a sign to get checked; the app counts these durations and shows the guidance.
-- Muscle soreness (DOMS) usually starts 12–24 hours after exercise, peaks at 24–72 hours, and settles within 3–5 days.
+- Muscle soreness (DOMS) usually starts within about a day of exercise, peaks at 24–72 hours, and fades within about a week.
 
 References:
 
-- ACSM position stands (progression models for resistance training; on hypertrophy, there is no need to train to failure — stopping with 2–3 reps left is fine)
-- ACSM material on delayed onset muscle soreness (DOMS)
-- Silbernagel et al. 2007, Am J Sports Med (pain-monitoring model)
-- NHS, "Joint pain" and "Back pain"
-- CDC/NIOSH, "Rhabdomyolysis"
+- ACSM position stand, 2026 edition (Currier et al., Med Sci Sports Exerc 2026; replaces the 2009 stand) — progression models; bodyweight training counts as resistance training; on hypertrophy, there is no need to train to failure (2–3 reps in reserve is a practical guide; the stand notes the evidence does not pin down precise effort targets)
+- Robinson et al. 2024 and Refalo et al. 2023, Sports Medicine — dose–response of proximity to failure: strength gains are largely independent of it and hypertrophy rises only slightly nearer failure, so stopping short is well supported
+- Zourdos et al. 2016 and Helms et al. 2016, with Halperin et al. 2022 — validity of the RPE / repetitions-in-reserve scale the autoregulation uses; estimates are most accurate near failure, so the adjustments stay gentle
+- Silbernagel et al. 2007, Am J Sports Med (pain-monitoring model), with Smith et al. 2017 and Tran et al. 2025 — exercising with pain has no established benefit and no clear harm either; the trial protocols cap pain at 5/10 and require a return to baseline by the next day, which is what the 24-hour rule and the reduce-on-pain design implement, conservatively
+- Finucane et al. 2020, J Orthop Sports Phys Ther — the international red-flag framework behind the warning-sign list; single flags have limited diagnostic accuracy on their own, so the app deliberately keeps a sensitivity-first gate
+- NICE guidelines NG59 (low back pain) and NG226 (osteoarthritis), with Foster et al. 2018, The Lancet — stay active; therapeutic exercise is core treatment for joint pain (replaces the NHS pages used before)
+- Cheung et al. 2003 and Hotfiel et al. 2018, with ACSM material on delayed onset muscle soreness (DOMS) — the soreness time course and graded reintroduction
+- McHugh 2003 — the repeated bout effect behind the introductory period
+- Davies et al. 2015 — plyometric progressions and prerequisites
+- Pelland et al. 2025, Sports Medicine — weekly volume shows a diminishing dose–response, while frequency is a distribution tool; prioritising long-unused parts is therefore a recovery and pain-management heuristic, not an adaptation claim
+- CDC/NIOSH, "Rhabdomyolysis" — any one of its symptoms (dark urine, muscle pain, weakness) is enough to seek care, so the dark-urine warning sign stands on its own
 
-Note: the numeric pain thresholds above convert ideas from general-audience sources onto a 0–5 scale. That conversion has not been medically validated.
+Note: the numeric pain thresholds above convert ideas from general-audience sources onto a 0–5 scale. That conversion has not been medically validated. The same holds for the pain coefficients, the ×1.02 budget progression, the full-rest condition and the per-part / per-session caps: they are adjustable design parameters, and the nearby frameworks sometimes cited for progression rates (the acute:chronic workload ratio, the 10% rule) were checked and do not validate them.
 
 ## Limitations
 

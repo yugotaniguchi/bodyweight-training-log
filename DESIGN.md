@@ -201,7 +201,7 @@ All three notice boxes share: 1px solid border, radius 10px, padding
   `しびれ・脱力がある` / `排尿・排便の変化がある（腰まわり）` /
   `股間・肛門まわりの感覚異常がある` / `関節が熱く腫れている／発熱がある` /
   `体重をかけられない／変形がある` /
-  `強い筋肉痛・脱力に加え、尿が紅茶色・コーラ色／尿量が減った` /
+  `尿が紅茶色・コーラ色／尿量が減った（強い筋肉痛・脱力を伴う場合は特に）` /
   `胸の痛みがある` / `大きな事故・転倒の直後である`
 - Legend badges, muscle: `0–1 通常` `2 軽減` `3以上 除外` `4以上 ×2部位 休養`
 - Legend badges, joints: `0–1 通常` `2 軽減` `3以上 除外` `サインあり 受診目安`
@@ -378,7 +378,12 @@ English sentences (in the client dictionary) in the same structure.
 > - 開始を止めるのは警告サインだけです。
 > - 関節痛は部位にも効きます（腰→脚・体幹、背骨→背中・腹筋・体幹、肩→押す系、肘→押す系・引く系、手首→押す系・プランク系、股関節・膝・足首→脚系）。
 >
-> 参考文献：ACSM ポジションスタンド／ACSM 筋肉痛（DOMS）資料、Silbernagel et al. 2007 (Am J Sports Med)、NHS 関節痛・腰痛、CDC/NIOSH 横紋筋融解症。
+> 参考文献：ACSM ポジションスタンド（2026年版）、Robinson et al. 2024／Refalo et al. 2023（限界接近度）、Zourdos et al. 2016／Helms et al. 2016（RPE・RIR）、Silbernagel et al. 2007／Smith et al. 2017／Tran et al. 2025（痛みモニタリング）、Finucane et al. 2020（レッドフラッグ）、NICE ガイドライン NG59・NG226／Foster et al. 2018、Cheung et al. 2003／Hotfiel et al. 2018（DOMS）、McHugh 2003（反復バウト効果）、Davies et al. 2015（プライオメトリクス）、Pelland et al. 2025（量・頻度）、CDC/NIOSH 横紋筋融解症。
+
+(The rule sentences above remain fixed. The closing reference line
+is the bibliography and tracks the adopted reference set — it was
+expanded on 2026-11-16 when the ten researched proposals were
+adopted; the rule wording itself did not change.)
 
 ## Layout (exact)
 
@@ -1059,7 +1064,12 @@ Two export formats exist; import is JSON only:
   (push / pull / legs / core — an exercise's catalog `pattern`), then
   the stalest muscle parts and exercises (days since last trained),
   at most 2 exercises per muscle part. An exercise whose pain
-  coefficient is 0 is not a candidate.
+  coefficient is 0 is not a candidate. The staleness priority is a
+  recovery and pain-management heuristic: the dose–response
+  literature (Pelland et al. 2025) supports distributing a weekly
+  volume across parts, but frequency itself is only a distribution
+  tool — no adaptation benefit is claimed for picking the
+  longest-unused part.
 - **Budget**: the mean achieved load (step load × performed amount,
   weaker side for unilateral) of the last 3 completed sessions
   × 1.02. With no history, the budget is the sum of the picked
