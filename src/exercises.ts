@@ -48,7 +48,7 @@ export interface ExerciseDef {
 export const MUSCLE_PARTS = [
   "胸上部", "胸下部", "肩前部", "上腕三頭",
   "肩後部", "上腕二頭", "背中上部", "広背筋", "脊柱起立筋", "前腕",
-  "大腿四頭筋", "ハムストリング", "臀部", "内転筋", "ふくらはぎ",
+  "大腿四頭筋", "ハムストリング", "臀部", "内転筋", "ふくらはぎ", "脛",
   "腹筋上部", "腹筋下部", "腹斜筋", "体幹深部",
 ] as const;
 
@@ -79,7 +79,7 @@ export const JOINT_TO_MUSCLE_PARTS: Record<string, string[]> = {
   "手首": ["胸上部", "胸下部", "肩前部", "肩後部", "腹斜筋", "体幹深部"],
   "股関節": ["大腿四頭筋", "ハムストリング", "臀部", "腹筋上部", "腹筋下部"],
   "膝": ["大腿四頭筋", "ハムストリング", "臀部", "ふくらはぎ"],
-  "足首": ["大腿四頭筋", "ハムストリング", "臀部", "ふくらはぎ"],
+  "足首": ["大腿四頭筋", "ハムストリング", "臀部", "ふくらはぎ", "脛"],
 };
 
 export interface RedFlag { id: string; label: string }
@@ -98,9 +98,9 @@ export const EXERCISES: Record<string, ExerciseDef> = {
   pushup: {
     baseId: "pushup", name: "プッシュアップ", muscleGroup: "胸・三頭", painPart: "胸下部",
     jointParts: ["手首","肘","肩"],
-    unit: "回", unilateralFrom: 6, baseTarget: 8, baseSets: 3, defaultLadder: 1,
-    ladder: ["壁プッシュアップ", "膝つきプッシュアップ", "ワイドプッシュアップ", "プッシュアップ", "足上げプッシュアップ", "ダイヤモンドプッシュアップ", "アーチャープッシュアップ", "片手プッシュアップ"],
-    loads: [30, 45, 55, 60, 70, 80, 95, 120], pattern: "push",
+    unit: "回", unilateralFrom: 7, baseTarget: 8, baseSets: 3, defaultLadder: 2,
+    ladder: ["壁プッシュアップ", "インクラインプッシュアップ（台が高め）", "膝つきプッシュアップ", "ワイドプッシュアップ", "プッシュアップ", "足上げプッシュアップ", "ダイヤモンドプッシュアップ", "アーチャープッシュアップ", "片手プッシュアップ"],
+    loads: [30, 38, 45, 50, 60, 70, 80, 95, 120], pattern: "push",
     cue: "体を一直線に保ち、胸が床に近づくまで下ろす。反動は使わない。",
     steps: ["手を肩幅に置き、足を伸ばして体を一直線にする", "肘を曲げて、胸が床に近づくまで下ろす", "手のひらで床を押して体を持ち上げる"],
     focus: "胸下部と上腕三頭",
@@ -236,7 +236,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     unit: "回", baseTarget: 8, baseSets: 2, defaultLadder: 0,
     ladder: ["膝曲げ椅子ディップス", "椅子ディップス（脚伸ばし）", "足上げ椅子ディップス", "片脚支持椅子ディップス"],
     loads: [40, 55, 70, 80], pattern: "push",
-    cue: "安定した椅子の縁につかまり、肘を曲げて体を下ろす。肩が肘より下がりすぎない範囲で止める。",
+    cue: "安定した椅子の縁につかまり、肘を曲げて体を下ろす。肩が肘より下がりすぎない範囲で止める。肩のインピンジメントや不安定性の既往がある場合は避ける。",
     steps: ["安定した椅子の縁に背を向けて両手をつく", "肘を曲げて体をゆっくり下ろす（肩が肘より下がりすぎない範囲で）", "肘を伸ばして元の位置に戻る"],
     focus: "上腕三頭と胸下部",
   },
@@ -259,6 +259,16 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     cue: "壁を使って行う。足上げパイクで十分な回数がこなせることが前提。下ろす動作（ネガティブ）から段階を踏む。",
     steps: ["壁に向かって倒立し、壁に足を預ける", "肘を曲げて頭頂が床に近づくまでゆっくり下ろす", "床を押して元の姿勢に戻る（できない段では下ろすだけでよい）"],
     focus: "肩前部と上腕三頭",
+  },
+  pseudoPlanchePushup: {
+    baseId: "pseudoPlanchePushup", name: "疑似プランクプッシュアップ", muscleGroup: "肩", painPart: "肩前部",
+    jointParts: ["手首","肩","肘"],
+    unit: "回", baseTarget: 6, baseSets: 2, defaultLadder: 1,
+    ladder: ["膝つき疑似プランクプッシュアップ", "疑似プランクプッシュアップ（浅い預け）", "疑似プランクプッシュアップ", "タックプランクプッシュアップ移行段"],
+    loads: [55, 70, 85, 105], pattern: "push",
+    cue: "手を腰の横に置き、体重を前へ預けて行う。手首と肩への負担が大きい型なので、通常のプッシュアップが十分な回数できることが前提。手を置く位置を後ろへずらすほど負荷が上がる。",
+    steps: ["手を腰の横（指先は横か後ろ向き）に置き、体を一直線にする", "体重を前へ預けたまま、肘を曲げて体を下ろす", "手のひらで床を押して元の位置に戻る"],
+    focus: "肩前部・胸上部・体幹深部",
   },
   plankUpDown: {
     baseId: "plankUpDown", name: "プランクアップダウン", muscleGroup: "体幹", painPart: "上腕三頭",
@@ -370,13 +380,23 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     steps: ["片脚で立ち、反対の脚を前に伸ばす", "椅子に触れる深さまで、ゆっくり腰を下ろす", "支持脚のかかとで押して立ち上がる（左右それぞれ行う）"],
     focus: "大腿四頭筋と臀部",
   },
+  shrimpSquat: {
+    baseId: "shrimpSquat", name: "シュリンプスクワット", muscleGroup: "脚（後ろ）・お尻", painPart: "臀部",
+    jointParts: ["膝","股関節","足首"],
+    unit: "回", unilateral: true, baseTarget: 5, baseSets: 2, defaultLadder: 0,
+    ladder: ["ビギナーシュリンプ（後ろ膝を床につける・保持なし）", "インターミディエイトシュリンプ（片手で後ろ足を持つ）", "アドバンストシュリンプ（両手で後ろ足を持つ）", "段差シュリンプ（支持脚を段に乗せる）"],
+    loads: [70, 85, 100, 115], pattern: "legs",
+    cue: "後ろ脚を曲げて持ち、支持脚だけでゆっくり下ろす。後ろ膝を床に打ちつけないよう静かに下ろす。膝が前に出る動きが大きいため、膝に痛みがある場合は避ける。左右それぞれ行う。",
+    steps: ["片脚で立ち、反対の脚を後ろで曲げる（段に応じて手で持つ）", "支持脚の膝を曲げて、ゆっくり腰を下ろす", "支持脚のかかとで押して立ち上がる（左右それぞれ行う）"],
+    focus: "臀部とハムストリング",
+  },
   legExtension: {
     baseId: "legExtension", name: "自重レッグエクステンション", muscleGroup: "脚（前）", painPart: "大腿四頭筋",
     jointParts: ["膝","股関節"],
     unit: "回", baseTarget: 6, baseSets: 2, defaultLadder: 0,
     ladder: ["膝立ちレッグエクステンション（浅め・支えあり）", "膝立ちレッグエクステンション", "シシースクワット（支えあり）", "シシースクワット"],
     loads: [40, 60, 70, 85], pattern: "legs",
-    cue: "必ず何かにつかまって行う。膝への負担が大きい種目なので、膝に痛みがある場合は避ける。",
+    cue: "必ず何かにつかまって行う。膝への負担が大きい種目なので、膝に痛みがある場合は避ける。特に上段のシシースクワットは膝蓋腱と膝前面への負荷が高く、膝蓋腱の痛み・膝前面の痛み・ACLのけがの既往がある場合は行わない。",
     steps: ["膝立ちで体を一直線に保ち、何かにつかまる", "膝を支点に、体をゆっくり後ろへ倒す", "太ももの前側の力で元の姿勢に戻る"],
     focus: "大腿四頭筋",
   },
@@ -436,7 +456,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     unit: "回", baseTarget: 4, baseSets: 2, defaultLadder: 0,
     ladder: ["ノルディックカール（部分的な可動域）", "ノルディックカール（ネガティブのみ、手で戻る）", "ノルディックカール（腰を少し曲げて補助）", "ノルディックカール"],
     loads: [60, 80, 95, 120], pattern: "legs",
-    cue: "足をソファの下などに固定して行う（ソファが滑らないことを確認）。負荷が非常に強く筋肉痛が出やすいので、部分的な可動域やネガティブのみの段から始める。",
+    cue: "足をソファの下などに固定して行う（ソファが滑らないことを確認）。負荷が非常に強く筋肉痛が出やすいので、部分的な可動域やネガティブのみの段から始める。週の回数を欲張らず、少量から増やす。",
     steps: ["膝立ちで足を固定し、体を一直線に保つ", "膝を支点に、体をゆっくり前に倒す（耐えられる範囲まで）", "手をついて元の姿勢に戻る"],
     focus: "ハムストリング",
   },
@@ -490,6 +510,16 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     steps: ["膝を軽く曲げた姿勢を取る（座位の段は椅子に座る）", "膝の角度を保ったまま、かかとを上げる", "ゆっくり下ろす"],
     focus: "ヒラメ筋",
   },
+  tibialisRaise: {
+    baseId: "tibialisRaise", name: "前脛骨筋レイズ", muscleGroup: "脛", painPart: "脛",
+    jointParts: ["足首"],
+    unit: "回", unilateralFrom: 3, baseTarget: 15, baseSets: 2, defaultLadder: 1,
+    ladder: ["座位トゥレイズ", "壁ティビアリスレイズ（足を壁から近く）", "壁ティビアリスレイズ（足を遠く）", "片脚壁ティビアリスレイズ"],
+    loads: [10, 15, 20, 30], pattern: "legs",
+    cue: "壁に背を預け、かかとを支点につま先を持ち上げる。足を壁から遠くに出すほど負荷が上がる。高回数（15〜25回）で行う種目。片脚の段は左右それぞれ行う。",
+    steps: ["壁に背をつけて立ち、足を前に出す（座位の段は椅子に座る）", "かかとをつけたまま、つま先をすねへ向けて持ち上げる", "ゆっくり下ろす"],
+    focus: "前脛骨筋",
+  },
   deadBug: {
     baseId: "deadBug", name: "デッドバグ", muscleGroup: "体幹", painPart: "体幹深部",
     jointParts: ["腰","背骨","股関節"],
@@ -509,6 +539,16 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     cue: "四つ這いから対角の手足をまっすぐ伸ばす。骨盤を水平に保ち、腰を反らさない。",
     steps: ["四つ這いになる", "対角の手と脚を、体と一直線になるまで伸ばす", "元の姿勢に戻り、反対の対角も行う"],
     focus: "脊柱起立筋と臀部",
+  },
+  slideRollout: {
+    baseId: "slideRollout", name: "床スライドロールアウト", muscleGroup: "腹筋", painPart: "腹筋上部",
+    jointParts: ["肩","腰","手首"],
+    unit: "回", baseTarget: 6, baseSets: 2, defaultLadder: 0,
+    ladder: ["膝つきスライドアウト（短い距離・壁で止める）", "膝つきスライドアウト", "膝つきスライドアウト（片手ずつ交互）"],
+    loads: [45, 60, 75], pattern: "core",
+    cue: "膝つきで、手の下のタオルを床で滑らせて体を前へ送る。腰が反る手前で止めることが前提で、腰痛がある場合はデッドバグにする。立位からは行わない。",
+    steps: ["膝つきになり、両手をタオルの上に置く", "体を一直線に保ったまま、手を前へ滑らせて体を送る", "腹筋の力で手を引き戻す"],
+    focus: "腹筋上部と体幹深部",
   },
   hollowHold: {
     baseId: "hollowHold", name: "ホローホールド", muscleGroup: "腹筋", painPart: "腹筋下部",
@@ -590,6 +630,16 @@ export const EXERCISES: Record<string, ExerciseDef> = {
     steps: ["横向きで下の肘をつき、上の脚を椅子やソファの縁に乗せる", "体を一直線に持ち上げる", "そのまま保持し、反対側も同じ時間行う"],
     focus: "内転筋と腹斜筋",
   },
+  copenhagenAdduction: {
+    baseId: "copenhagenAdduction", name: "コペンハーゲンアダクション", muscleGroup: "体幹（側面）", painPart: "内転筋",
+    jointParts: ["股関節","腰","肩","肘"],
+    unit: "回", unilateral: true, baseTarget: 6, baseSets: 2, defaultLadder: 0,
+    ladder: ["コペンハーゲンアダクション（短いレバー）", "コペンハーゲンアダクション（長いレバー）"],
+    loads: [45, 65], pattern: "core",
+    cue: "上の脚を台に乗せ、その脚を支点に体を持ち上げて下ろす動的版。台の高さが体に合わないと腰や股関節に無理がかかるため、高さの合う安定した台を使う。鼠径部の傷害予防で報告された数字（約41%減）は、保持ではなくこの動的版のプログラムでの結果。左右それぞれ行う。",
+    steps: ["横向きで下の肘をつき、上の脚を椅子やソファの縁に乗せる", "上の脚を支点に体を一直線まで持ち上げ、下の脚を台へ近づける", "ゆっくり下ろし、反対側も同じ回数行う"],
+    focus: "内転筋と腹斜筋",
+  },
   lSit: {
     baseId: "lSit", name: "Lシット", muscleGroup: "腹筋", painPart: "腹筋下部",
     jointParts: ["手首","肩","股関節"],
@@ -648,7 +698,7 @@ export const EXERCISES: Record<string, ExerciseDef> = {
 const PATTERN_BY_PART: Record<string, string> = {
   "胸上部": "push", "胸下部": "push", "肩前部": "push", "上腕三頭": "push",
   "肩後部": "pull", "上腕二頭": "pull", "背中上部": "pull", "広背筋": "pull", "脊柱起立筋": "pull", "前腕": "pull",
-  "大腿四頭筋": "legs", "ハムストリング": "legs", "臀部": "legs", "内転筋": "legs", "ふくらはぎ": "legs",
+  "大腿四頭筋": "legs", "ハムストリング": "legs", "臀部": "legs", "内転筋": "legs", "ふくらはぎ": "legs", "脛": "legs",
   "腹筋上部": "core", "腹筋下部": "core", "腹斜筋": "core", "体幹深部": "core",
   // Pre-expansion part names, for catalogs written before the split.
   "胸": "push", "肩": "push", "上腕": "push",
@@ -727,6 +777,12 @@ export const SUBSTITUTES: Record<string, string> = {
   bearCrawl: "plank",
   inchworm: "rdl",
   skaterJump: "squat",
+  // Round-2 families (2026-11-16 second research): swap to a sibling.
+  pseudoPlanchePushup: "pushup",
+  shrimpSquat: "pistolSquat",
+  tibialisRaise: "calf",
+  slideRollout: "deadBug",
+  copenhagenAdduction: "sidePlank",
 };
 
 export interface RotationDef { id: string; title: string; exerciseIds: string[] }

@@ -33,7 +33,7 @@ export const PART_EN: Record<string, string> = {
   "上腕二頭": "Biceps", "上腕三頭": "Triceps", "背中上部": "Upper back", "広背筋": "Lats",
   "脊柱起立筋": "Spinal erectors", "大腿四頭筋": "Quadriceps", "ハムストリング": "Hamstrings",
   "臀部": "Glutes", "内転筋": "Adductors", "腹筋上部": "Upper abs", "腹筋下部": "Lower abs",
-  "腹斜筋": "Obliques", "体幹深部": "Deep core",
+  "腹斜筋": "Obliques", "体幹深部": "Deep core", "脛": "Shins",
   // Pre-expansion names, still found in older records.
   "胸": "Chest", "肩": "Shoulders", "上腕": "Upper arms", "前腕": "Forearms", "背中": "Back",
   "脚（前）": "Legs (front)", "脚（後ろ）・お尻": "Legs (back) / Glutes", "ふくらはぎ": "Calves",
@@ -46,7 +46,7 @@ export const JOINT_EN: Record<string, string> = {
 export const GROUP_EN: Record<string, string> = {
   "胸・三頭": "Chest & Triceps", "肩": "Shoulders", "脚（前）": "Legs (front)", "ふくらはぎ": "Calves",
   "背中": "Back", "脚（後ろ）・お尻": "Legs (back) / Glutes", "腹筋": "Abs",
-  "体幹": "Core", "体幹（側面）": "Core (sides)", "上腕": "Upper arms",
+  "体幹": "Core", "体幹（側面）": "Core (sides)", "上腕": "Upper arms", "脛": "Shins",
 };
 export const ROTATION_EN: Record<string, string> = {
   A: "Push + Legs", B: "Back + Posterior Legs + Core", C: "Full Body",
