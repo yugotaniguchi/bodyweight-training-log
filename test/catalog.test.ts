@@ -10,7 +10,7 @@ const clone = (c: Catalog): Catalog => JSON.parse(JSON.stringify(c)) as Catalog;
 describe("parseCatalogImport", () => {
   test("the built-in catalog round-trips", () => {
     const c = parseCatalogImport(clone(defaultCatalog()));
-    expect(Object.keys(c.exercises).length).toBe(59);
+    expect(Object.keys(c.exercises).length).toBe(57);
     expect(c.exercises.pushup.steps.length).toBe(3);
     expect(c.exercises.pushup.focus).toBe("胸下部と上腕三頭");
     expect(c.joints).toContain("背骨");
@@ -56,7 +56,7 @@ describe("parseCatalogImport", () => {
     raw.rotations = [{ id: "A", title: "A", exerciseIds: ["pushup", "nope"] }];
     const c = parseCatalogImport(raw);
     expect("rotations" in c).toBe(false);
-    expect(Object.keys(c.exercises).length).toBe(59);
+    expect(Object.keys(c.exercises).length).toBe(57);
   });
 
   test("rejects an empty ladder and an out-of-range defaultLadder", () => {

@@ -269,7 +269,7 @@ describe("migrateStoreData (data migrations)", () => {
 
   test("renames pain parts to their primary successors, larger level wins", () => {
     const s = migrateStoreData(v1Store());
-    expect(s.dataVersion).toBe(3);
+    expect(s.dataVersion).toBe(4);
     expect(s.pain[0].soreness).toEqual({ "胸下部": 2, "背中上部": 3, "ふくらはぎ": 1 });
     expect(s.pain[0].jointPain).toEqual({ "腰": 2 }); // joints are not renamed
     expect(s.pain[1].soreness).toEqual({ "胸下部": 4 });
@@ -302,7 +302,7 @@ describe("migrateStoreData (data migrations)", () => {
         ],
       }],
     });
-    expect(s.dataVersion).toBe(3);
+    expect(s.dataVersion).toBe(4);
     expect(s.pain[0].soreness).toEqual({ "胸下部": 2 }); // already renamed in v2: untouched
     const byBase = Object.fromEntries(s.sessions[0].exercises.map((e) => [e.baseId, e.ladderIndex]));
     expect(byBase.pushup).toBe(4); // プッシュアップ sits at 4 in the v3 ladder
@@ -310,11 +310,63 @@ describe("migrateStoreData (data migrations)", () => {
     expect(byBase.plank).toBe(2); // untouched by the v3 step
   });
 
+  test("a version-3 store gains only the family merges", () => {
+    const s = migrateStoreData({
+      ...emptyStore(), dataVersion: 3,
+      sessions: [{
+        id: 1, date: "2026-01-01", rotation: "B", title: "背中 + 脚裏 + 体幹", status: "completed", intro: false,
+        focusNote: "", progressionNotes: [], totalVolume: 100,
+        exercises: [
+          prev({ baseId: "superman", ladderIndex: 1 }),       // スーパーマン (35)
+          prev({ id: 2, baseId: "backExtension", ladderIndex: 2 }), // 手を頭の後ろ (40)
+          prev({ id: 3, baseId: "reverseSnowAngel", ladderIndex: 1 }), // 浮かせた弧の動作 (30)
+          prev({ id: 4, baseId: "proneT", ladderIndex: 0 }),  // Tスライド (25)
+          prev({ id: 5, baseId: "pushup", ladderIndex: 4 }),  // untouched by v4
+        ],
+      }],
+    });
+    expect(s.dataVersion).toBe(4);
+    const byId = Object.fromEntries(s.sessions[0].exercises.map((e) => [e.id, e]));
+    expect(byId[1].baseId).toBe("floorBackExtension");
+    expect(byId[1].ladderIndex).toBe(3);
+    expect(loadOf(EXERCISES.floorBackExtension, byId[1].ladderIndex)).toBe(35); // same step, same price
+    expect(byId[2].baseId).toBe("floorBackExtension");
+    expect(byId[2].ladderIndex).toBe(4);
+    expect(loadOf(EXERCISES.floorBackExtension, byId[2].ladderIndex)).toBe(40);
+    expect(byId[3].baseId).toBe("proneT");
+    expect(byId[3].ladderIndex).toBe(2); // the floating arc lands on プローンTレイズ
+    expect(loadOf(EXERCISES.proneT, byId[3].ladderIndex)).toBe(35); // the merge's one repricing: 30 -> 35
+    expect(byId[4].baseId).toBe("proneT");
+    expect(byId[4].ladderIndex).toBe(1); // Tスライド shifts by one, same price
+    expect(loadOf(EXERCISES.proneT, byId[4].ladderIndex)).toBe(25);
+    expect(byId[5].baseId).toBe("pushup");
+    expect(byId[5].ladderIndex).toBe(4);
+  });
+
+  test("a version-1 superman record chains through both remaps into the merged family", () => {
+    // Legacy step 0 was the standard form: the v2 step moves it to
+    // index 1 (スーパーマン), and the v4 merge maps that to index 3
+    // of floorBackExtension — the same step at the same price, never
+    // remapped twice.
+    const s = migrateStoreData({
+      ...emptyStore(),
+      sessions: [{
+        id: 1, date: "2026-01-01", rotation: "B", title: "背中 + 脚裏 + 体幹", status: "completed", intro: false,
+        focusNote: "", progressionNotes: [], totalVolume: 24,
+        exercises: [prev({ baseId: "superman", ladderIndex: 0 })],
+      }],
+    });
+    expect(s.dataVersion).toBe(4);
+    expect(s.sessions[0].exercises[0].baseId).toBe("floorBackExtension");
+    expect(s.sessions[0].exercises[0].ladderIndex).toBe(3);
+    expect(loadOf(EXERCISES.floorBackExtension, 3)).toBe(35);
+  });
+
   test("is idempotent and leaves current stores untouched", () => {
     const once = migrateStoreData(v1Store());
     const snapshot = structuredClone(once);
     expect(migrateStoreData(once)).toEqual(snapshot);
-    const current: Store = { ...emptyStore(), dataVersion: 3 };
+    const current: Store = { ...emptyStore(), dataVersion: 4 };
     expect(migrateStoreData(current)).toBe(current);
   });
 });

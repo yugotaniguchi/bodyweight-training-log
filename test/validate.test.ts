@@ -144,7 +144,7 @@ describe("parseStoreImport", () => {
     const v1 = sample();
     v1.sessions[0].exercises[0].ladderIndex = 3;
     const out1 = parseStoreImport(structuredClone(v1));
-    expect(out1.dataVersion).toBe(3);
+    expect(out1.dataVersion).toBe(4);
     expect(out1.sessions[0].exercises[0].ladderIndex).toBe(6);
     expect(out1.pain[0].soreness).toEqual({ "胸下部": 2 });
     // A version-2 export gains only the version-3 step (the pushup
@@ -154,19 +154,29 @@ describe("parseStoreImport", () => {
     v2.sessions[0].exercises[0].ladderIndex = 3;
     v2.pain[0].soreness = { "胸下部": 2 };
     const out2 = parseStoreImport(structuredClone(v2));
-    expect(out2.dataVersion).toBe(3);
+    expect(out2.dataVersion).toBe(4);
     expect(out2.sessions[0].exercises[0].ladderIndex).toBe(4);
     expect(out2.pain[0].soreness).toEqual({ "胸下部": 2 });
-    // A current (version-3) export re-imported — the backup/restore
-    // flow — is left completely untouched.
+    // A version-3 export gains only the version-4 step (the family
+    // merges): pushup is not a merged family, so its index stays.
     const v3 = sample();
     v3.dataVersion = 3;
     v3.sessions[0].exercises[0].ladderIndex = 3;
     v3.pain[0].soreness = { "胸下部": 2 };
     const out3 = parseStoreImport(structuredClone(v3));
-    expect(out3.dataVersion).toBe(3);
+    expect(out3.dataVersion).toBe(4);
     expect(out3.sessions[0].exercises[0].ladderIndex).toBe(3);
     expect(out3.pain[0].soreness).toEqual({ "胸下部": 2 });
+    // A current (version-4) export re-imported — the backup/restore
+    // flow — is left completely untouched.
+    const v4 = sample();
+    v4.dataVersion = 4;
+    v4.sessions[0].exercises[0].ladderIndex = 3;
+    v4.pain[0].soreness = { "胸下部": 2 };
+    const out4 = parseStoreImport(structuredClone(v4));
+    expect(out4.dataVersion).toBe(4);
+    expect(out4.sessions[0].exercises[0].ladderIndex).toBe(3);
+    expect(out4.pain[0].soreness).toEqual({ "胸下部": 2 });
   });
   test("rejects non-objects and missing keys", () => {
     for (const v of [null, [], "x", 42, {}, { profile: null, pain: [], sessions: [] }]) {
