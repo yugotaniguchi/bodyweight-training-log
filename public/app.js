@@ -347,6 +347,7 @@ let profileSaveTimer = null; // settings: pending profile-autosave debounce time
 let profileError = ""; // settings: last autosave error, shown in place under the form
 let profileSavedShow = false; // settings: whether the 保存済み indicator is shown
 let guideFor = null; // workout tab: baseId whose how-to window is open, or null
+let guideShownFor = null; // baseId the current dialog was already opened for (re-open guard)
 let menuDefText = null; // settings: menu-definition JSON text (null = not loaded yet)
 let menuDefLoading = false; // settings: a /api/catalog fetch is in flight
 let menuDefError = ""; // settings: last menu-definition save/import error
@@ -366,6 +367,18 @@ const PATH_VIEWS = { "/": "pain", "/workout": "menu", "/report": "history", "/se
 let navKeySeq = 0;
 let navKey = 0;
 const scrollByKey = {};
+// View switches (and only view switches — in-view re-renders call
+// render() directly) may run as a same-document view transition: a
+// short cross-fade where the platform supports it and the user has
+// not asked for reduced motion. Purely additive (DESIGN.md).
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+function renderNav(update) {
+  // The update (scroll handling) runs inside the transition callback
+  // when there is one, so it always lands after the new view renders.
+  if (document.startViewTransition && !reduceMotion.matches) {
+    document.startViewTransition(() => { render(); update?.(); });
+  } else { render(); update?.(); }
+}
 function go(v) {
   flushProfileSave(); // a pending profile autosave fires before the form unmounts
   if (v === view) { render(); return; }
@@ -373,9 +386,7 @@ function go(v) {
   view = v; menuCancelArm = false; menuGenError = "";
   navKey = ++navKeySeq;
   history.pushState({ v, k: navKey }, "", VIEW_PATHS[v]);
-  render();
-  window.scrollTo(0, 0);
-  syncGear();
+  renderNav(() => { window.scrollTo(0, 0); syncGear(); });
 }
 window.addEventListener("popstate", (e) => {
   flushProfileSave(); // same as go(): do not lose a pending autosave
@@ -383,9 +394,10 @@ window.addEventListener("popstate", (e) => {
   scrollByKey[navKey] = window.scrollY;
   navKey = e.state?.k ?? 0;
   view = v; menuCancelArm = false; menuGenError = "";
-  render();
-  const y = scrollByKey[navKey] ?? 0;
-  requestAnimationFrame(() => { window.scrollTo(0, y); syncGear(); });
+  renderNav(() => {
+    const y = scrollByKey[navKey] ?? 0;
+    requestAnimationFrame(() => { window.scrollTo(0, y); syncGear(); });
+  });
 });
 
 // ---------- settings gear: every view, only at the very top ----------
@@ -850,18 +862,43 @@ function validateProfileData(v) {
 // runs first: an invalid form is NOT saved and the reason shows in
 // place. On success only the small 保存済み indicator flips — the form
 // itself is never re-rendered, so focus and input are never lost.
+// Per-field mirror of validateProfileData's rules, used only to mark
+// the offending fields for assistive technology while the form is
+// invalid: aria-invalid plus aria-describedby pointing at the error
+// line, so the reason is announced with the field (DESIGN.md).
+function profileFieldInvalid(v) {
+  const num = (s) => { const t2 = String(s).trim(); return t2 === "" ? null : Number(t2); };
+  const badInt = (s, lo, hi) => { const n = num(s); return n === null || Number.isNaN(n) || !Number.isInteger(n) || n < lo || n > hi; };
+  const w = num(v.weightKg);
+  return {
+    "pf-age": badInt(v.age, 10, 100),
+    "pf-height": badInt(v.heightCm, 100, 250),
+    "pf-weight": w === null || Number.isNaN(w) || w < 20 || w > 300,
+    "pf-sex": !["男性", "女性", ""].includes(v.sex),
+    "pf-note": v.note.length > PROFILE_NOTE_MAX_LEN,
+  };
+}
 async function saveProfileAuto() {
   const el = (id) => document.getElementById(id);
   if (!el("pf-age")) return; // the settings view is gone; nothing to read
   const values = { age: el("pf-age").value, sex: el("pf-sex").value, heightCm: el("pf-height").value, weightKg: el("pf-weight").value, note: el("pf-note").value };
   const errEl = el("profileErr");
-  const showErr = (msg) => { profileError = msg; if (errEl) errEl.textContent = msg; };
+  const markFields = () => {
+    const bad = profileFieldInvalid(values);
+    for (const [id, isBad] of Object.entries(bad)) {
+      const f = el(id); if (!f) continue;
+      if (isBad) { f.setAttribute("aria-invalid", "true"); f.setAttribute("aria-describedby", "profileErr"); }
+      else { f.removeAttribute("aria-invalid"); f.removeAttribute("aria-describedby"); }
+    }
+  };
+  const showErr = (msg) => { profileError = msg; if (errEl) errEl.textContent = msg; markFields(); };
   const err = validateProfileData(values);
   if (err) { showErr(err); return; }
   try {
     await api("/api/profile", values);
     profileError = ""; profileSavedShow = true;
     if (errEl) errEl.textContent = "";
+    markFields(); // local rules pass: every mark clears
     const ind = el("profileSaved"); if (ind) ind.hidden = false;
   } catch (e) { showErr(e.message); }
 }
@@ -940,7 +977,7 @@ function menuExerciseCard(s, ex, opts = {}) {
     <hr class="ex-divider">
     <div class="rpe-row"><label for="rpe-${ex.id}">${esc(t("rpeLabel"))}</label><select class="rpe-select" id="rpe-${ex.id}" data-rpe="${ex.id}">${rpeOptions}</select></div>
     <label class="note-label" for="note-${ex.id}">${esc(t("noteLabel"))}</label>
-    <input class="note-input" id="note-${ex.id}" type="text" data-note="${ex.id}" placeholder="${esc(t("notePlaceholder"))}" value="${esc(draft ? draft.note : ex.note)}">
+    <input class="note-input" id="note-${ex.id}" type="text" maxlength="200" data-note="${ex.id}" placeholder="${esc(t("notePlaceholder"))}" value="${esc(draft ? draft.note : ex.note)}">
     <div class="note-hint">${esc(t("noteHint"))}</div>
     ${!historyMode && ex.targetUnit === "秒" ? timerHtml(ex) : ""}
     <button class="cta ex-save" ${historyMode ? `data-save-history-ex="${s.id}:${ex.id}"` : `data-save-ex="${s.id}:${ex.id}"`}>${esc(recorded ? t("updateRecord") : t("saveAndDone"))}</button>
@@ -954,13 +991,16 @@ function guideModal(s) {
   const ex = s.exercises.find((e) => e.baseId === guideFor);
   const g = state.catalog.guides?.[guideFor];
   if (!ex || !g) return "";
-  return `<div class="guide-overlay" id="guideOverlay"><div class="guide-window" role="dialog" aria-modal="true">
+  // A native <dialog>: render() opens it with showModal() while
+  // guideFor is set; the platform supplies the top layer, the focus
+  // trap and Esc-to-close, and the close event clears guideFor.
+  return `<dialog class="guide-window" id="guideDialog">
     <div class="guide-head"><h3>${esc(ex.variation || ex.name)}</h3><button class="guide-close" type="button" id="guideClose" aria-label="${esc(t("guideClose"))}">×</button></div>
     <h4>${esc(t("guideStepsH"))}</h4>
     <ol class="guide-steps">${g.steps.map((st) => `<li>${esc(st)}</li>`).join("")}</ol>
     <h4>${esc(t("guideFocusH"))}</h4>
     <p class="guide-focus">${esc(g.focus)}</p>
-  </div></div>`;
+  </dialog>`;
 }
 function renderMenu() {
   const s = menuSession();
@@ -1135,11 +1175,11 @@ function renderSettings() {
   return `<button class="back-btn" id="backHome">${esc(t("backHome"))}</button>
   <h2>${esc(t("profileH"))}</h2>
   <div class="form-grid">
-    <div class="field"><label for="pf-age">${esc(t("fAge"))}</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="pf-age" value="${p.age ?? ""}"></div>
+    <div class="field"><label for="pf-age">${esc(t("fAge"))}</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="pf-age" required value="${p.age ?? ""}"></div>
     <div class="field"><label for="pf-sex">${esc(t("fSex"))}</label><select id="pf-sex"><option value=""${p.sex === "" ? " selected" : ""}>${esc(t("sexNone"))}</option><option value="男性"${p.sex === "男性" ? " selected" : ""}>${esc(t("sexMale"))}</option><option value="女性"${p.sex === "女性" ? " selected" : ""}>${esc(t("sexFemale"))}</option></select></div>
-    <div class="field"><label for="pf-height">${esc(t("fHeight"))}</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="pf-height" value="${p.heightCm ?? ""}"></div>
-    <div class="field"><label for="pf-weight">${esc(t("fWeight"))}</label><input type="text" inputmode="decimal" id="pf-weight" value="${p.weightKg ?? ""}"></div>
-    <div class="field wide"><label for="pf-note">${esc(t("fNote"))}</label><textarea id="pf-note" rows="3">${esc(p.note)}</textarea><div class="field-hint">${esc(t("fNoteHint"))}</div></div>
+    <div class="field"><label for="pf-height">${esc(t("fHeight"))}</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="pf-height" required value="${p.heightCm ?? ""}"></div>
+    <div class="field"><label for="pf-weight">${esc(t("fWeight"))}</label><input type="text" inputmode="decimal" id="pf-weight" required value="${p.weightKg ?? ""}"></div>
+    <div class="field wide"><label for="pf-note">${esc(t("fNote"))}</label><textarea id="pf-note" rows="3" maxlength="500">${esc(p.note)}</textarea><div class="field-hint">${esc(t("fNoteHint"))}</div></div>
   </div>
   <p class="profile-save-line"><span id="profileSaved" class="saved-ind"${profileSavedShow ? "" : " hidden"}>${esc(t("savedIndicator"))}</span><span id="profileErr" class="error">${esc(profileError)}</span></p>
   <h2>${esc(t("languageH"))}</h2>
@@ -1189,6 +1229,13 @@ function render() {
     scrollToMenuDef = false;
     requestAnimationFrame(() => document.getElementById("menuDefSection")?.scrollIntoView({ block: "start" }));
   }
+  // The guide window is a native <dialog>: while guideFor is set its
+  // element exists in the workout view — open it modally, but only
+  // for a guideFor that has not been shown yet (showModal on an
+  // already-open dialog would throw, and a re-render racing a close
+  // must not re-open it; see the dismiss wiring in bind()).
+  const gd = document.getElementById("guideDialog");
+  if (gd && !gd.open && guideFor !== guideShownFor) { guideShownFor = guideFor; gd.showModal(); }
 }
 // Bindings for the report day pager only. bind() calls this on every
 // full render, so the pager controls and edit buttons always work.
@@ -1424,12 +1471,27 @@ function bind() {
     await withBusy(resetConfirm, async () => { await api("/api/reset", {}); resetArm = false; dropAllDrafts(); painGen = 0; painSavedGen = -1; go("pain"); });
   });
   // Workout tab: the i button next to an exercise name opens its
-  // how-to window; the backdrop or the × button closes it.
-  $app.querySelectorAll("[data-guide]").forEach((el) => el.addEventListener("click", () => { guideFor = el.dataset.guide; render(); }));
-  const guideClose = document.getElementById("guideClose");
-  if (guideClose) guideClose.addEventListener("click", () => { guideFor = null; render(); });
-  const guideOverlay = document.getElementById("guideOverlay");
-  if (guideOverlay) guideOverlay.addEventListener("click", (e) => { if (e.target === guideOverlay) { guideFor = null; render(); } });
+  // how-to window (a native <dialog>, opened by render()); the ×
+  // button, a backdrop tap, or Esc closes it, and the dialog's close
+  // event clears the state without a re-render — the closed element
+  // simply stays inert until the next render drops it.
+  $app.querySelectorAll("[data-guide]").forEach((el) => el.addEventListener("click", () => { guideFor = el.dataset.guide; guideShownFor = null; render(); }));
+  const guideDialog = document.getElementById("guideDialog");
+  if (guideDialog) {
+    // State clears synchronously on the click paths, and on Esc via
+    // the cancel event (which precedes close); render()'s open hook
+    // additionally refuses to re-open a dialog for a guideFor that
+    // was already shown, so a racing re-render can never resurrect
+    // a closing dialog.
+    const dismiss = () => { guideFor = null; guideShownFor = null; guideDialog.close(); };
+    document.getElementById("guideClose")?.addEventListener("click", dismiss);
+    guideDialog.addEventListener("click", (e) => {
+      const r = guideDialog.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) dismiss();
+    });
+    guideDialog.addEventListener("cancel", () => { guideFor = null; guideShownFor = null; });
+    guideDialog.addEventListener("close", () => { guideFor = null; guideShownFor = null; });
+  }
   // Workout tab -> settings, straight at the menu-definition section.
   const goMenuDef = document.getElementById("goMenuDef");
   if (goMenuDef) goMenuDef.addEventListener("click", () => { scrollToMenuDef = true; go("settings"); });

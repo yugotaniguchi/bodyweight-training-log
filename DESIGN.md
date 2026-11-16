@@ -976,11 +976,13 @@ wait or a failure would otherwise leave a blank or unresponsive screen.
 ## Performance
 
 - **Deferred rendering.** A self-contained block that sits below
-  the initial viewport and can grow long — profile-history entries,
-  the report's summary blocks — carries `content-visibility: auto`
-  with `contain-intrinsic-size: auto` and a plausible first-render
-  height, so off-screen entries cost no layout or paint until
-  scrolled to. Never apply it to content in the initial viewport.
+  the initial viewport and has a **stable height** — the report's
+  monthly chart — carries `content-visibility: auto` with
+  `contain-intrinsic-size: auto` set to that exact height, so it
+  costs no layout or paint until scrolled to and nothing shifts
+  when it renders. Never apply it to content in the initial
+  viewport, and never to a block whose height varies with its
+  content (a wrong estimate trades the saving for layout shift).
 - **Responsive taps.** A tap answers within the frame: pain-tile
   taps only update the tile and the draft state. Heavy work — menu
   planning, imports, catalog validation — runs on explicit submit
