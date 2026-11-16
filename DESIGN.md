@@ -228,8 +228,10 @@ All three notice boxes share: 1px solid border, radius 10px, padding
   - care: `受診目安：{reasons joined with " / "}`
   - rest day: `完全休養日：{reason}`
   - OK: `開始できます。{reasons joined with " / "}`
-- Overload notice heading line: `24時間ルールの自動判定（次回に反映）`,
-  followed by the reasons as a bulleted list.
+- Duration-guidance cautions (the footer note's 継続日数と関節痛 rules)
+  appear as caution boxes under the assessment box. There is no
+  separate 24-hour-rule notice: next-day pain reaches the next menu
+  through the planner's pain coefficients instead.
 
 ### Workout screen
 - Condition-missing state (no session yet AND no condition recorded
@@ -239,7 +241,7 @@ All three notice boxes share: 1px solid border, radius 10px, padding
 - Empty state text: `今日のセッションはまだありません。`
 - Empty state CTA: `今日のワークアウトを作る`
 - Gauge sub-label: `／ {total} 種目完了`
-- Session title: `{title}` (e.g. `背中 + 脚裏 + 体幹`) — the rotation
+- Session title: `{title}` (e.g. `押す + 脚 + 体幹`) — the rotation
   letter (A / B / C) is internal data and never shown
 - Past-day session label (only when the shown session belongs to an
   earlier day — see "Dates and sessions"): `{M/D（曜）}のセッション`,
@@ -369,7 +371,7 @@ English sentences (in the client dictionary) in the same structure.
 >
 > **24時間ルール**
 > - 24時間ルール：運動中・運動後の痛みが翌朝までに元の水準へ戻らなければ、前回の負荷が高すぎたサインです。
-> - 痛みの記録から自動で判定し、過負荷の部位は次回軽減して進行しません（Silbernagelらの痛みモニタリングモデル）。
+> - 痛みの記録は次回のメニュー生成で痛み係数として反映され、痛い部位の負荷だけが下がります。他の部位には振り替えません（Silbernagelらの痛みモニタリングモデル）。
 >
 > **継続日数と関節痛**
 > - 継続日数チェック：同じ部位の筋肉痛が5日以上、関節痛が2週間改善しない場合は受診目安として注意表示します（関節痛は7日でも注意表示）。
@@ -500,7 +502,7 @@ English sentences (in the client dictionary) in the same structure.
 
 ### Session title block (workout screen)
 - Centred, margin-top 12px. Session title: 20px bold `--text`,
-  `{title}` — the title only (e.g. `背中 + 脚裏 + 体幹`); the rotation
+  `{title}` — the title only (e.g. `押す + 脚 + 体幹`); the rotation
   letter is never displayed. Long titles wrap inside the block
   (`overflow-wrap: anywhere`); the font size never changes.
 - When the shown session belongs to an earlier day, a 12px `--sub`
@@ -750,7 +752,7 @@ English sentences (in the client dictionary) in the same structure.
   (`GET /api/export.csv` — see "Data export / import"); `インポート`
   opens a JSON file picker (import is JSON only).
 - Heading `メニュー定義`; small text (13px `--sub`) explaining that the
-  menu (exercises, rotations, substitutes, pain targets) is editable
+  menu (exercises, substitutes, pain targets) is editable
   as JSON, that changes apply to sessions generated afterwards, and
   that recorded sessions never change. Below it, the current menu
   definition in a monospace textarea (the store's own catalog, or the
@@ -975,10 +977,13 @@ Two export formats exist; import is JSON only:
   (`parseCatalogImport`): exercises keyed by id with `painPart` in
   `muscleParts` and every `jointParts` entry in `joints`, a non-empty
   `ladder` with `defaultLadder` in range, no `unilateral` on timed
-  exercises, rotations exactly A/B/C once each naming only defined
   exercises, substitutes naming only defined exercises (never itself),
   and `jointToMuscleParts` keys in `joints` with values in
-  `muscleParts`. An exercise's `steps` / `focus` (the guide window's
+  `muscleParts`. A `rotations` key in a legacy definition is ignored
+  (menus are planned by load, not rotations). An exercise may carry
+  `loads` (positive per-step load points, one per ladder step) and a
+  `pattern` (its movement pattern); both are validated when present.
+  An exercise's `steps` / `focus` (the guide window's
   contents) may be omitted and fall back to its cue / muscle group.
   The catalog endpoints mirror the data ones: `GET /api/catalog`
   (the current definition as JSON), `GET /api/catalog/export`
@@ -1033,6 +1038,51 @@ Two export formats exist; import is JSON only:
   that day; yesterday's check is history, used by the 24-hour rule
   and duration guidance.
 
+## Load-based menu planning (no rotations)
+
+- A menu is planned in **load points**, not rotations. Every ladder
+  step carries a load value (points per rep; per second for timed
+  exercises — the catalog's `loads`, with a derived fallback ramp).
+  The stored session's `rotation` field is `""` for planned menus;
+  legacy sessions keep their letter and resolve titles from the
+  built-in rotation definitions.
+- **Selection** (up to 6 exercises): movement-pattern coverage first
+  (push / pull / legs / core — an exercise's catalog `pattern`), then
+  the stalest muscle parts and exercises (days since last trained),
+  at most 2 exercises per muscle part. An exercise whose pain
+  coefficient is 0 is not a candidate.
+- **Budget**: the mean achieved load (step load × performed amount,
+  weaker side for unilateral) of the last 3 completed sessions
+  × 1.02. With no history, the budget is the sum of the picked
+  exercises' standard loads. The first 6 completed sessions are the
+  intro period: exercises without a record start one ladder step
+  easier with one fewer set.
+- **Distribution**: each exercise's weight is its usual target load
+  (previous target, or the catalog default) scaled by its memo share
+  factor （痛・違和感 0.7 / きつい系 0.85 / 楽系 1.15 / ちょうど 1.0).
+  Its share of the budget is scaled by its **pain coefficient**:
+  muscle soreness by level 0–5 → 1 / 0.9 / 0.7 / 0.45 / 0.2 / 0,
+  times the worst joint factor among the joints it loads (directly
+  or through the joint-to-part map) → 1 / 0.8 / 0.55 / 0.25 / 0.1 / 0.
+  Load freed by pain is **not** redistributed to other parts; two
+  exercises on the same part split that part's portion of the
+  budget, because the distribution is per exercise by weight.
+- **Reps are solved back** from the share: reps = share / (step
+  load × personal rep-price factor × sets), clamped to 3–40 reps or
+  10–120 seconds (5-second steps); the ladder step moves when the
+  share does not fit the range. The rep-price factor comes from the
+  last record's RPE + achievement （余裕 0.9–0.95 / きつい 1.05–1.15 /
+  その他 1.0). A cannot-do record is a directive that precedes the
+  factors: one ladder step easier, else the catalog substitute, else
+  half the share. Exercises are ordered by planned load, descending.
+- **Title**: the menu's movement patterns joined with ` + `, or
+  `全身` when all four main patterns are present; `（代替）` is
+  appended when pain changed the selection. The state also carries
+  `nextPreview.title` — the next menu's title selected ignoring
+  pain — for external displays (the home-screen widget).
+- The pain coefficients are adjustable initial values, not medically
+  grounded constants; the README's caution applies.
+
 ## Condition re-save rebuilds the planned session
 
 Saving the condition check is not only a record write: **every**
@@ -1049,13 +1099,15 @@ assessment, treating what is already recorded as fixed premises
   record all stay — and it is never removed from the composition and
   never duplicated by a remaining slot.
 - Every unrecorded slot is re-planned with the normal generation
-  pipeline (rotation composition, body-part balance, the decision
-  engine), treating the recorded exercises as the slots they already
-  fill. The newest assessment applies to all remaining slots: an
-  exercise that is newly excluded drops out, one newly reduced gets
-  the reduced target, and one whose exclusion has cleared is planned
-  again. The progression (adjustment) notes are regenerated from
-  the newest assessment. (The session data still carries a
+  pipeline (the load planner: exercise selection, budget
+  distribution, pain coefficients), treating the recorded exercises
+  as the slots they already fill — they count toward the per-part
+  cap and consume their planned load from the budget. The newest
+  pain entry applies to all remaining slots: an exercise whose pain
+  coefficient is now 0 drops out, one newly scaled gets the scaled
+  target, and one whose coefficient has cleared is planned again.
+  The progression (adjustment) notes are regenerated from the
+  newest pain entry. (The session data still carries a
   `focusNote` field for compatibility, but it is always empty — no
   focus-note text is generated or displayed.)
 - If the new assessment is a warning-sign (care) day or a full-rest
