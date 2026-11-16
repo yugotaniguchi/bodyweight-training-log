@@ -1092,11 +1092,11 @@ Two export formats exist; import is JSON only:
 - The pain coefficients are adjustable initial values, not medically
   grounded constants; the README's caution applies.
 
-## Catalog expansion and stored-data migration (data version 2)
+## Catalog expansion and stored-data migration (data versions 2–3)
 
-- The built-in catalog holds **54 exercise families** (the original
-  13 plus 41 added 2026-11-16, researched from published bodyweight
-  progressions) and **19 pain parts**: the original 10 parts split by
+- At data version 2 the built-in catalog held **54 exercise families**
+  (the original 13 plus 41 added 2026-11-16, researched from published
+  bodyweight progressions) and **19 pain parts**: the original 10 parts split by
   the muscle actually loaded （胸→胸上部/胸下部、肩→肩前部/肩後部、
   上腕→上腕二頭/上腕三頭、背中→背中上部/広背筋/脊柱起立筋、
   脚（後ろ）・お尻→ハムストリング/臀部、腹筋→腹筋上部/腹筋下部、
@@ -1120,6 +1120,20 @@ Two export formats exist; import is JSON only:
   migration assumes the built-in taxonomy; recorded sessions keep
   their stored names, variations and pain-part labels as history —
   only the index (the pricing/selection key) is remapped.
+- A second research round the same day brought the catalog to **59
+  families** and **20 parts**: shrimp squat, pseudo-planche push-up,
+  tibialis raise (with the new part 脛 — the shin, which no existing
+  part covered), floor slide rollout, and the Copenhagen adduction
+  as its own rep-based family beside the timed Copenhagen plank.
+  The pushup ladder was recalibrated against force-plate and EMG
+  comparisons: an incline step (38) inserted between wall and knee,
+  the wide step repriced 55 → 50. That insertion is **data version
+  3**: a version-2 store's pushup indexes shift by one from 膝つき
+  on, applied by the same chained `migrateStoreData` (each version
+  step runs exactly once, in order). Adding families or parts alone
+  does not bump the version — only a change that reinterprets stored
+  values does. Safety notes were added to the sissy-squat steps,
+  chair dips and the Nordic curl from the same round's sources.
 
 ## Condition re-save rebuilds the planned session
 
@@ -1309,7 +1323,7 @@ assessment, treating what is already recorded as fixed premises
    visible only while scrolled to the very top)
 5. `まず、警告サインの確認` — heading, description, warning-sign chips
 6. `今日の筋肉痛は？（部位ごと）` — heading, description, legend badges,
-   2-column tiles (19 parts, grouped under the region headings
+   2-column tiles (20 parts, grouped under the region headings
    上半身（押す）/ 上半身（引く）/ 脚 / 体幹； a part no group claims —
    a custom catalog's own part — collects under a final その他
    heading)
