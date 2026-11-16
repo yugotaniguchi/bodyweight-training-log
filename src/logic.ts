@@ -112,8 +112,13 @@ export const emptyStore = (): Store => ({ profile: null, pain: [], sessions: [],
 /** Current stored-data format version. Version 2 is the 2026-11-16
  *  catalog expansion: the pain parts split from 10 into 19 finer
  *  parts, and several ladders gained inserted steps, which shifts
- *  the meaning of a recorded ladderIndex. */
-export const STORE_DATA_VERSION = 2;
+ *  the meaning of a recorded ladderIndex. Version 3 is the same
+ *  day's second round: the pushup ladder gained an incline step
+ *  (and its wide step was repriced), shifting pushup indexes again.
+ *  Adding families or parts (round 2 also added both) does not by
+ *  itself need a version: stored data simply has no records for
+ *  them yet. Only a change that reinterprets stored values does. */
+export const STORE_DATA_VERSION = 3;
 
 /** Where a pre-expansion pain part's history lands after the split:
  *  each old part's primary successor (an old part that split several
@@ -141,6 +146,14 @@ export const LADDER_INDEX_REMAP: Record<string, Record<number, number>> = {
   superman: { 0: 1 },
 };
 
+/** Version 2 -> 3 ladder remap: the pushup ladder gained an
+ *  incline step at index 1, so every step from 膝つき on shifts
+ *  by one. Only pushup changed; the wide step's repricing
+ *  (55 -> 50) does not move any index. */
+export const LADDER_INDEX_REMAP_V3: Record<string, Record<number, number>> = {
+  pushup: { 0: 0, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8 },
+};
+
 /** Bring a store written before the catalog expansion forward, in
  *  place: rename pain-entry soreness keys to the finer parts (the
  *  larger level wins when an old and a new key collide) and remap
@@ -156,20 +169,33 @@ export const LADDER_INDEX_REMAP: Record<string, Record<number, number>> = {
  *  "constructor" in imported data cannot resolve through the
  *  prototype chain. */
 export function migrateStoreData(store: Store): Store {
-  if ((store.dataVersion ?? 1) >= STORE_DATA_VERSION) return store;
-  for (const entry of store.pain) {
-    const renamed: Record<string, number> = {};
-    for (const [part, level] of Object.entries(entry.soreness ?? {})) {
-      const next = Object.hasOwn(LEGACY_PART_PRIMARY, part) ? LEGACY_PART_PRIMARY[part] : part;
-      renamed[next] = Math.max(renamed[next] ?? 0, level);
+  let version = store.dataVersion ?? 1;
+  if (version >= STORE_DATA_VERSION) return store;
+  if (version < 2) {
+    for (const entry of store.pain) {
+      const renamed: Record<string, number> = {};
+      for (const [part, level] of Object.entries(entry.soreness ?? {})) {
+        const next = Object.hasOwn(LEGACY_PART_PRIMARY, part) ? LEGACY_PART_PRIMARY[part] : part;
+        renamed[next] = Math.max(renamed[next] ?? 0, level);
+      }
+      entry.soreness = renamed;
     }
-    entry.soreness = renamed;
+    for (const session of store.sessions) {
+      for (const ex of session.exercises) {
+        const map = Object.hasOwn(LADDER_INDEX_REMAP, ex.baseId) ? LADDER_INDEX_REMAP[ex.baseId] : undefined;
+        if (map && Object.hasOwn(map, ex.ladderIndex)) ex.ladderIndex = map[ex.ladderIndex];
+      }
+    }
+    version = 2;
   }
-  for (const session of store.sessions) {
-    for (const ex of session.exercises) {
-      const map = Object.hasOwn(LADDER_INDEX_REMAP, ex.baseId) ? LADDER_INDEX_REMAP[ex.baseId] : undefined;
-      if (map && Object.hasOwn(map, ex.ladderIndex)) ex.ladderIndex = map[ex.ladderIndex];
+  if (version < 3) {
+    for (const session of store.sessions) {
+      for (const ex of session.exercises) {
+        const map = Object.hasOwn(LADDER_INDEX_REMAP_V3, ex.baseId) ? LADDER_INDEX_REMAP_V3[ex.baseId] : undefined;
+        if (map && Object.hasOwn(map, ex.ladderIndex)) ex.ladderIndex = map[ex.ladderIndex];
+      }
     }
+    version = 3;
   }
   store.dataVersion = STORE_DATA_VERSION;
   return store;
